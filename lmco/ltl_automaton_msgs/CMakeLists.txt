@@ -23,6 +23,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/LTLStateRuns.msg"
   "msg/RelayRequest.msg"
   "msg/RelayResponse.msg"
+  "msg/TaskRequest.msg"
   
   # Generate services in the 'srv' folder
   "srv/TrapCheck.srv"

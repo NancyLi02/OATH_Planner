@@ -1,0 +1,16 @@
+# tasks.yaml
+# Define LTL formulas for each task as hard and soft tasks
+
+tasks:
+  task1:
+    hard_task: "<>(b) && [](b -> X(loaded && (!c && !d && !f) U (e && unloaded)))"
+    soft_task: ""
+  task2:
+    hard_task: "<>(c) && [](c -> X(loaded && (!b && !d && !f) U (e && unloaded)))"
+    soft_task: ""
+  task3:
+    hard_task: "<>(f) && [](f -> X(loaded && (!b && !c && !d) U (e && unloaded)))"
+    soft_task: ""
+  task4:
+    hard_task: "<>(d) && [](d -> X(loaded && (!b && !c && !f) U (e && unloaded)))"
+    soft_task: ""

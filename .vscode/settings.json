@@ -1,3 +1,44 @@
 {
-    "cmake.ignoreCMakeListsMissing": true
+    "python.autoComplete.extraPaths": [
+        "/home/nanli/ros2_ws/install/ltl_automaton_planner/lib/python3.10/site-packages",
+        "/home/nanli/ros2_ws/install/ltl_automaton_msgs/local/lib/python3.10/dist-packages",
+        "/home/nanli/ros2_ws/install/interfaces_hmm_sim/local/lib/python3.10/dist-packages",
+        "/home/nanli/dev_ws/install/learning_urdf/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_topic/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_tf/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_service/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_qos/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_pkg_python/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_parameter/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_node/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_launch/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_action/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_interface/local/lib/python3.10/dist-packages",
+        "/home/nanli/dev_ws/install/learning_gazebo_harmonic/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_gazebo/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_cv/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/nanli/ros2_ws/install/ltl_automaton_planner/lib/python3.10/site-packages",
+        "/home/nanli/ros2_ws/install/ltl_automaton_msgs/local/lib/python3.10/dist-packages",
+        "/home/nanli/ros2_ws/install/interfaces_hmm_sim/local/lib/python3.10/dist-packages",
+        "/home/nanli/dev_ws/install/learning_urdf/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_topic/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_tf/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_service/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_qos/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_pkg_python/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_parameter/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_node/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_launch/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_action/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_interface/local/lib/python3.10/dist-packages",
+        "/home/nanli/dev_ws/install/learning_gazebo_harmonic/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_gazebo/lib/python3.10/site-packages",
+        "/home/nanli/dev_ws/install/learning_cv/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
 }
