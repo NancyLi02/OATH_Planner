@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <!-- Arguments -->
+  <arg name="algo_type" default="dstar"/>
+  <arg name="N" default="10"/>
+  <!-- <arg name="agent_name" default="turtlebot"/>
+  
+  <param name="agent_name" type="string" value="$(arg agent_name)" /> -->
+  <!-- hard and soft task parameters -->
+  <rosparam command="load" file="$(find ltl_automaton_planner)/config/benchmark_ltl_formula.yaml" />
+  <!-- Transition system -->
+  <param name="transition_system_textfile" type="str" textfile="$(find ltl_automaton_planner)/config/benchmark_known_$(arg N).yaml" />
+
+
+  <node name="simulation" pkg="ltl_automaton_planner" type="benchmark_node.py" output="screen">
+    <param name="N" type="int" value="$(arg N)"/>
+  </node>
+  <node name="ltl_planner" pkg="ltl_automaton_planner" type="planner_node.py" output="screen">
+    <param name="algo_type" type="str" value="$(arg algo_type)" />
+    <param name="N" type="int" value="$(arg N)"/>
+  </node>
+  
+</launch>

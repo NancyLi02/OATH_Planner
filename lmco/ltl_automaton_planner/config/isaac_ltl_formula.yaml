@@ -1,0 +1,19 @@
+/robot1/planner_node:
+  ros__parameters:
+    hard_task: "(<>b)  && (<>c) && (<>f) &&  (<>d) && [](b ->  X(loaded && (!c && !d && !f) U (e && unloaded))) && [](c ->  X(loaded && (!b && !d && !f) U (e && unloaded))) && [](f ->  X(loaded && (!b && !c && !d) U (e && unloaded)))  && [](d ->  X(loaded && (!b && !c && !f) U (e && unloaded)))"
+    soft_task: ""
+
+/robot2/planner_node:
+  ros__parameters:
+    hard_task: "(<>b)  && (<>c) && (<>f) &&  (<>d) && [](b ->  X(loaded && (!c && !d && !f) U (e && unloaded))) && [](c ->  X(loaded && (!b && !d && !f) U (e && unloaded))) && [](f ->  X(loaded && (!b && !c && !d) U (e && unloaded)))  && [](d ->  X(loaded && (!b && !c && !f) U (e && unloaded)))"
+    soft_task: ""
+
+/robot1/benchmark_node:
+  ros__parameters:
+    hard_task: "(<>b)  && (<>c) && (<>f) &&  (<>d) && [](b ->  X(loaded && (!c && !d && !f) U (e && unloaded))) && [](c ->  X(loaded && (!b && !d && !f) U (e && unloaded))) && [](f ->  X(loaded && (!b && !c && !d) U (e && unloaded)))  && [](d ->  X(loaded && (!b && !c && !f) U (e && unloaded)))"
+    soft_task: ""
+
+/robot2/benchmark_node:
+  ros__parameters:
+    hard_task: "(<>b)  && (<>c) && (<>f) &&  (<>d) && [](b ->  X(loaded && (!c && !d && !f) U (e && unloaded))) && [](c ->  X(loaded && (!b && !d && !f) U (e && unloaded))) && [](f ->  X(loaded && (!b && !c && !d) U (e && unloaded)))  && [](d ->  X(loaded && (!b && !c && !f) U (e && unloaded)))"
+    soft_task: ""

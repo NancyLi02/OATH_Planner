@@ -1,0 +1,6283 @@
+actions:
+  goto_c0_r0:
+    attr:
+      pose: '[[15, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r1:
+    attr:
+      pose: '[[5, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r10:
+    attr:
+      pose: '[[5, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r11:
+    attr:
+      pose: '[[5, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r12:
+    attr:
+      pose: '[[5, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r13:
+    attr:
+      pose: '[[5, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r14:
+    attr:
+      pose: '[[5, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r15:
+    attr:
+      pose: '[[5, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r16:
+    attr:
+      pose: '[[5, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r17:
+    attr:
+      pose: '[[5, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r18:
+    attr:
+      pose: '[[5, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r19:
+    attr:
+      pose: '[[5, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r2:
+    attr:
+      pose: '[[5, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r3:
+    attr:
+      pose: '[[5, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r4:
+    attr:
+      pose: '[[5, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r5:
+    attr:
+      pose: '[[5, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r6:
+    attr:
+      pose: '[[5, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r7:
+    attr:
+      pose: '[[5, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r8:
+    attr:
+      pose: '[[5, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r9:
+    attr:
+      pose: '[[5, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r0:
+    attr:
+      pose: '[[115, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r1:
+    attr:
+      pose: '[[105, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r10:
+    attr:
+      pose: '[[105, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r11:
+    attr:
+      pose: '[[105, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r12:
+    attr:
+      pose: '[[105, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r13:
+    attr:
+      pose: '[[105, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r14:
+    attr:
+      pose: '[[105, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r15:
+    attr:
+      pose: '[[105, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r16:
+    attr:
+      pose: '[[105, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r17:
+    attr:
+      pose: '[[105, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r18:
+    attr:
+      pose: '[[105, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r19:
+    attr:
+      pose: '[[105, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r2:
+    attr:
+      pose: '[[105, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r3:
+    attr:
+      pose: '[[105, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r4:
+    attr:
+      pose: '[[105, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r5:
+    attr:
+      pose: '[[105, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r6:
+    attr:
+      pose: '[[105, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r7:
+    attr:
+      pose: '[[105, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r8:
+    attr:
+      pose: '[[105, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c10_r9:
+    attr:
+      pose: '[[105, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r0:
+    attr:
+      pose: '[[125, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r1:
+    attr:
+      pose: '[[115, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r10:
+    attr:
+      pose: '[[115, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r11:
+    attr:
+      pose: '[[115, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r12:
+    attr:
+      pose: '[[115, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r13:
+    attr:
+      pose: '[[115, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r14:
+    attr:
+      pose: '[[115, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r15:
+    attr:
+      pose: '[[115, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r16:
+    attr:
+      pose: '[[115, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r17:
+    attr:
+      pose: '[[115, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r18:
+    attr:
+      pose: '[[115, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r19:
+    attr:
+      pose: '[[115, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r2:
+    attr:
+      pose: '[[115, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r3:
+    attr:
+      pose: '[[115, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r4:
+    attr:
+      pose: '[[115, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r5:
+    attr:
+      pose: '[[115, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r6:
+    attr:
+      pose: '[[115, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r7:
+    attr:
+      pose: '[[115, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r8:
+    attr:
+      pose: '[[115, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c11_r9:
+    attr:
+      pose: '[[115, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r0:
+    attr:
+      pose: '[[135, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r1:
+    attr:
+      pose: '[[125, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r10:
+    attr:
+      pose: '[[125, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r11:
+    attr:
+      pose: '[[125, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r12:
+    attr:
+      pose: '[[125, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r13:
+    attr:
+      pose: '[[125, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r14:
+    attr:
+      pose: '[[125, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r15:
+    attr:
+      pose: '[[125, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r16:
+    attr:
+      pose: '[[125, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r17:
+    attr:
+      pose: '[[125, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r18:
+    attr:
+      pose: '[[125, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r19:
+    attr:
+      pose: '[[125, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r2:
+    attr:
+      pose: '[[125, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r3:
+    attr:
+      pose: '[[125, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r4:
+    attr:
+      pose: '[[125, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r5:
+    attr:
+      pose: '[[125, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r6:
+    attr:
+      pose: '[[125, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r7:
+    attr:
+      pose: '[[125, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r8:
+    attr:
+      pose: '[[125, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c12_r9:
+    attr:
+      pose: '[[125, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r0:
+    attr:
+      pose: '[[145, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r1:
+    attr:
+      pose: '[[135, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r10:
+    attr:
+      pose: '[[135, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r11:
+    attr:
+      pose: '[[135, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r12:
+    attr:
+      pose: '[[135, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r13:
+    attr:
+      pose: '[[135, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r14:
+    attr:
+      pose: '[[135, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r15:
+    attr:
+      pose: '[[135, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r16:
+    attr:
+      pose: '[[135, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r17:
+    attr:
+      pose: '[[135, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r18:
+    attr:
+      pose: '[[135, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r19:
+    attr:
+      pose: '[[135, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r2:
+    attr:
+      pose: '[[135, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r3:
+    attr:
+      pose: '[[135, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r4:
+    attr:
+      pose: '[[135, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r5:
+    attr:
+      pose: '[[135, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r6:
+    attr:
+      pose: '[[135, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r7:
+    attr:
+      pose: '[[135, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r8:
+    attr:
+      pose: '[[135, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c13_r9:
+    attr:
+      pose: '[[135, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r0:
+    attr:
+      pose: '[[155, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r1:
+    attr:
+      pose: '[[145, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r10:
+    attr:
+      pose: '[[145, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r11:
+    attr:
+      pose: '[[145, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r12:
+    attr:
+      pose: '[[145, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r13:
+    attr:
+      pose: '[[145, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r14:
+    attr:
+      pose: '[[145, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r15:
+    attr:
+      pose: '[[145, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r16:
+    attr:
+      pose: '[[145, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r17:
+    attr:
+      pose: '[[145, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r18:
+    attr:
+      pose: '[[145, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r19:
+    attr:
+      pose: '[[145, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r2:
+    attr:
+      pose: '[[145, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r3:
+    attr:
+      pose: '[[145, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r4:
+    attr:
+      pose: '[[145, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r5:
+    attr:
+      pose: '[[145, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r6:
+    attr:
+      pose: '[[145, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r7:
+    attr:
+      pose: '[[145, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r8:
+    attr:
+      pose: '[[145, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c14_r9:
+    attr:
+      pose: '[[145, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r0:
+    attr:
+      pose: '[[165, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r1:
+    attr:
+      pose: '[[155, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r10:
+    attr:
+      pose: '[[155, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r11:
+    attr:
+      pose: '[[155, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r12:
+    attr:
+      pose: '[[155, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r13:
+    attr:
+      pose: '[[155, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r14:
+    attr:
+      pose: '[[155, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r15:
+    attr:
+      pose: '[[155, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r16:
+    attr:
+      pose: '[[155, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r17:
+    attr:
+      pose: '[[155, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r18:
+    attr:
+      pose: '[[155, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r19:
+    attr:
+      pose: '[[155, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r2:
+    attr:
+      pose: '[[155, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r3:
+    attr:
+      pose: '[[155, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r4:
+    attr:
+      pose: '[[155, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r5:
+    attr:
+      pose: '[[155, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r6:
+    attr:
+      pose: '[[155, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r7:
+    attr:
+      pose: '[[155, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r8:
+    attr:
+      pose: '[[155, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c15_r9:
+    attr:
+      pose: '[[155, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r0:
+    attr:
+      pose: '[[175, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r1:
+    attr:
+      pose: '[[165, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r10:
+    attr:
+      pose: '[[165, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r11:
+    attr:
+      pose: '[[165, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r12:
+    attr:
+      pose: '[[165, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r13:
+    attr:
+      pose: '[[165, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r14:
+    attr:
+      pose: '[[165, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r15:
+    attr:
+      pose: '[[165, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r16:
+    attr:
+      pose: '[[165, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r17:
+    attr:
+      pose: '[[165, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r18:
+    attr:
+      pose: '[[165, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r19:
+    attr:
+      pose: '[[165, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r2:
+    attr:
+      pose: '[[165, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r3:
+    attr:
+      pose: '[[165, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r4:
+    attr:
+      pose: '[[165, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r5:
+    attr:
+      pose: '[[165, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r6:
+    attr:
+      pose: '[[165, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r7:
+    attr:
+      pose: '[[165, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r8:
+    attr:
+      pose: '[[165, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c16_r9:
+    attr:
+      pose: '[[165, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r0:
+    attr:
+      pose: '[[185, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r1:
+    attr:
+      pose: '[[175, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r10:
+    attr:
+      pose: '[[175, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r11:
+    attr:
+      pose: '[[175, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r12:
+    attr:
+      pose: '[[175, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r13:
+    attr:
+      pose: '[[175, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r14:
+    attr:
+      pose: '[[175, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r15:
+    attr:
+      pose: '[[175, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r16:
+    attr:
+      pose: '[[175, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r17:
+    attr:
+      pose: '[[175, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r18:
+    attr:
+      pose: '[[175, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r19:
+    attr:
+      pose: '[[175, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r2:
+    attr:
+      pose: '[[175, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r3:
+    attr:
+      pose: '[[175, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r4:
+    attr:
+      pose: '[[175, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r5:
+    attr:
+      pose: '[[175, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r6:
+    attr:
+      pose: '[[175, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r7:
+    attr:
+      pose: '[[175, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r8:
+    attr:
+      pose: '[[175, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c17_r9:
+    attr:
+      pose: '[[175, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r0:
+    attr:
+      pose: '[[195, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r1:
+    attr:
+      pose: '[[185, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r10:
+    attr:
+      pose: '[[185, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r11:
+    attr:
+      pose: '[[185, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r12:
+    attr:
+      pose: '[[185, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r13:
+    attr:
+      pose: '[[185, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r14:
+    attr:
+      pose: '[[185, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r15:
+    attr:
+      pose: '[[185, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r16:
+    attr:
+      pose: '[[185, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r17:
+    attr:
+      pose: '[[185, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r18:
+    attr:
+      pose: '[[185, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r19:
+    attr:
+      pose: '[[185, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r2:
+    attr:
+      pose: '[[185, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r3:
+    attr:
+      pose: '[[185, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r4:
+    attr:
+      pose: '[[185, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r5:
+    attr:
+      pose: '[[185, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r6:
+    attr:
+      pose: '[[185, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r7:
+    attr:
+      pose: '[[185, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r8:
+    attr:
+      pose: '[[185, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c18_r9:
+    attr:
+      pose: '[[185, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r0:
+    attr:
+      pose: '[[185, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r1:
+    attr:
+      pose: '[[195, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r10:
+    attr:
+      pose: '[[195, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r11:
+    attr:
+      pose: '[[195, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r12:
+    attr:
+      pose: '[[195, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r13:
+    attr:
+      pose: '[[195, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r14:
+    attr:
+      pose: '[[195, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r15:
+    attr:
+      pose: '[[195, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r16:
+    attr:
+      pose: '[[195, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r17:
+    attr:
+      pose: '[[195, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r18:
+    attr:
+      pose: '[[195, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r19:
+    attr:
+      pose: '[[195, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r2:
+    attr:
+      pose: '[[195, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r3:
+    attr:
+      pose: '[[195, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r4:
+    attr:
+      pose: '[[195, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r5:
+    attr:
+      pose: '[[195, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r6:
+    attr:
+      pose: '[[195, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r7:
+    attr:
+      pose: '[[195, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r8:
+    attr:
+      pose: '[[195, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c19_r9:
+    attr:
+      pose: '[[195, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r0:
+    attr:
+      pose: '[[25, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r1:
+    attr:
+      pose: '[[15, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r10:
+    attr:
+      pose: '[[15, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r11:
+    attr:
+      pose: '[[15, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r12:
+    attr:
+      pose: '[[15, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r13:
+    attr:
+      pose: '[[15, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r14:
+    attr:
+      pose: '[[15, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r15:
+    attr:
+      pose: '[[15, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r16:
+    attr:
+      pose: '[[15, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r17:
+    attr:
+      pose: '[[15, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r18:
+    attr:
+      pose: '[[15, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r19:
+    attr:
+      pose: '[[15, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r2:
+    attr:
+      pose: '[[15, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r3:
+    attr:
+      pose: '[[15, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r4:
+    attr:
+      pose: '[[15, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r5:
+    attr:
+      pose: '[[15, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r6:
+    attr:
+      pose: '[[15, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r7:
+    attr:
+      pose: '[[15, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r8:
+    attr:
+      pose: '[[15, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r9:
+    attr:
+      pose: '[[15, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r0:
+    attr:
+      pose: '[[35, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r1:
+    attr:
+      pose: '[[25, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r10:
+    attr:
+      pose: '[[25, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r11:
+    attr:
+      pose: '[[25, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r12:
+    attr:
+      pose: '[[25, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r13:
+    attr:
+      pose: '[[25, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r14:
+    attr:
+      pose: '[[25, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r15:
+    attr:
+      pose: '[[25, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r16:
+    attr:
+      pose: '[[25, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r17:
+    attr:
+      pose: '[[25, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r18:
+    attr:
+      pose: '[[25, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r19:
+    attr:
+      pose: '[[25, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r2:
+    attr:
+      pose: '[[25, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r3:
+    attr:
+      pose: '[[25, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r4:
+    attr:
+      pose: '[[25, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r5:
+    attr:
+      pose: '[[25, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r6:
+    attr:
+      pose: '[[25, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r7:
+    attr:
+      pose: '[[25, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r8:
+    attr:
+      pose: '[[25, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r9:
+    attr:
+      pose: '[[25, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r0:
+    attr:
+      pose: '[[45, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r1:
+    attr:
+      pose: '[[35, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r10:
+    attr:
+      pose: '[[35, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r11:
+    attr:
+      pose: '[[35, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r12:
+    attr:
+      pose: '[[35, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r13:
+    attr:
+      pose: '[[35, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r14:
+    attr:
+      pose: '[[35, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r15:
+    attr:
+      pose: '[[35, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r16:
+    attr:
+      pose: '[[35, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r17:
+    attr:
+      pose: '[[35, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r18:
+    attr:
+      pose: '[[35, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r19:
+    attr:
+      pose: '[[35, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r2:
+    attr:
+      pose: '[[35, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r3:
+    attr:
+      pose: '[[35, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r4:
+    attr:
+      pose: '[[35, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r5:
+    attr:
+      pose: '[[35, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r6:
+    attr:
+      pose: '[[35, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r7:
+    attr:
+      pose: '[[35, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r8:
+    attr:
+      pose: '[[35, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r9:
+    attr:
+      pose: '[[35, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r0:
+    attr:
+      pose: '[[55, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r1:
+    attr:
+      pose: '[[45, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r10:
+    attr:
+      pose: '[[45, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r11:
+    attr:
+      pose: '[[45, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r12:
+    attr:
+      pose: '[[45, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r13:
+    attr:
+      pose: '[[45, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r14:
+    attr:
+      pose: '[[45, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r15:
+    attr:
+      pose: '[[45, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r16:
+    attr:
+      pose: '[[45, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r17:
+    attr:
+      pose: '[[45, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r18:
+    attr:
+      pose: '[[45, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r19:
+    attr:
+      pose: '[[45, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r2:
+    attr:
+      pose: '[[45, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r3:
+    attr:
+      pose: '[[45, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r4:
+    attr:
+      pose: '[[45, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r5:
+    attr:
+      pose: '[[45, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r6:
+    attr:
+      pose: '[[45, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r7:
+    attr:
+      pose: '[[45, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r8:
+    attr:
+      pose: '[[45, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r9:
+    attr:
+      pose: '[[45, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r0:
+    attr:
+      pose: '[[65, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r1:
+    attr:
+      pose: '[[55, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r10:
+    attr:
+      pose: '[[55, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r11:
+    attr:
+      pose: '[[55, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r12:
+    attr:
+      pose: '[[55, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r13:
+    attr:
+      pose: '[[55, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r14:
+    attr:
+      pose: '[[55, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r15:
+    attr:
+      pose: '[[55, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r16:
+    attr:
+      pose: '[[55, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r17:
+    attr:
+      pose: '[[55, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r18:
+    attr:
+      pose: '[[55, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r19:
+    attr:
+      pose: '[[55, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r2:
+    attr:
+      pose: '[[55, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r3:
+    attr:
+      pose: '[[55, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r4:
+    attr:
+      pose: '[[55, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r5:
+    attr:
+      pose: '[[55, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r6:
+    attr:
+      pose: '[[55, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r7:
+    attr:
+      pose: '[[55, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r8:
+    attr:
+      pose: '[[55, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r9:
+    attr:
+      pose: '[[55, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r0:
+    attr:
+      pose: '[[75, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r1:
+    attr:
+      pose: '[[65, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r10:
+    attr:
+      pose: '[[65, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r11:
+    attr:
+      pose: '[[65, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r12:
+    attr:
+      pose: '[[65, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r13:
+    attr:
+      pose: '[[65, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r14:
+    attr:
+      pose: '[[65, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r15:
+    attr:
+      pose: '[[65, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r16:
+    attr:
+      pose: '[[65, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r17:
+    attr:
+      pose: '[[65, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r18:
+    attr:
+      pose: '[[65, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r19:
+    attr:
+      pose: '[[65, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r2:
+    attr:
+      pose: '[[65, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r3:
+    attr:
+      pose: '[[65, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r4:
+    attr:
+      pose: '[[65, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r5:
+    attr:
+      pose: '[[65, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r6:
+    attr:
+      pose: '[[65, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r7:
+    attr:
+      pose: '[[65, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r8:
+    attr:
+      pose: '[[65, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c6_r9:
+    attr:
+      pose: '[[65, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r0:
+    attr:
+      pose: '[[85, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r1:
+    attr:
+      pose: '[[75, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r10:
+    attr:
+      pose: '[[75, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r11:
+    attr:
+      pose: '[[75, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r12:
+    attr:
+      pose: '[[75, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r13:
+    attr:
+      pose: '[[75, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r14:
+    attr:
+      pose: '[[75, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r15:
+    attr:
+      pose: '[[75, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r16:
+    attr:
+      pose: '[[75, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r17:
+    attr:
+      pose: '[[75, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r18:
+    attr:
+      pose: '[[75, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r19:
+    attr:
+      pose: '[[75, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r2:
+    attr:
+      pose: '[[75, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r3:
+    attr:
+      pose: '[[75, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r4:
+    attr:
+      pose: '[[75, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r5:
+    attr:
+      pose: '[[75, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r6:
+    attr:
+      pose: '[[75, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r7:
+    attr:
+      pose: '[[75, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r8:
+    attr:
+      pose: '[[75, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c7_r9:
+    attr:
+      pose: '[[75, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r0:
+    attr:
+      pose: '[[95, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r1:
+    attr:
+      pose: '[[85, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r10:
+    attr:
+      pose: '[[85, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r11:
+    attr:
+      pose: '[[85, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r12:
+    attr:
+      pose: '[[85, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r13:
+    attr:
+      pose: '[[85, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r14:
+    attr:
+      pose: '[[85, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r15:
+    attr:
+      pose: '[[85, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r16:
+    attr:
+      pose: '[[85, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r17:
+    attr:
+      pose: '[[85, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r18:
+    attr:
+      pose: '[[85, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r19:
+    attr:
+      pose: '[[85, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r2:
+    attr:
+      pose: '[[85, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r3:
+    attr:
+      pose: '[[85, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r4:
+    attr:
+      pose: '[[85, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r5:
+    attr:
+      pose: '[[85, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r6:
+    attr:
+      pose: '[[85, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r7:
+    attr:
+      pose: '[[85, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r8:
+    attr:
+      pose: '[[85, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c8_r9:
+    attr:
+      pose: '[[85, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r0:
+    attr:
+      pose: '[[105, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r1:
+    attr:
+      pose: '[[95, 5, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r10:
+    attr:
+      pose: '[[95, 95, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r11:
+    attr:
+      pose: '[[95, 105, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r12:
+    attr:
+      pose: '[[95, 115, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r13:
+    attr:
+      pose: '[[95, 125, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r14:
+    attr:
+      pose: '[[95, 135, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r15:
+    attr:
+      pose: '[[95, 145, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r16:
+    attr:
+      pose: '[[95, 155, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r17:
+    attr:
+      pose: '[[95, 165, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r18:
+    attr:
+      pose: '[[95, 175, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r19:
+    attr:
+      pose: '[[95, 185, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r2:
+    attr:
+      pose: '[[95, 15, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r3:
+    attr:
+      pose: '[[95, 25, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r4:
+    attr:
+      pose: '[[95, 35, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r5:
+    attr:
+      pose: '[[95, 45, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r6:
+    attr:
+      pose: '[[95, 55, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r7:
+    attr:
+      pose: '[[95, 65, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r8:
+    attr:
+      pose: '[[95, 75, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c9_r9:
+    attr:
+      pose: '[[95, 85, 0], [0, 0, 0, 1]]'
+    guard: '1'
+    type: move
+    weight: 10
+  stay:
+    guard: '1'
+    type: stay
+    weight: 0.1
+state_dim:
+- 2d_pose_region
+- robot_state
+state_models:
+  2d_pose_region:
+    initial: c9_r9
+    nodes:
+      c0_r0:
+        attr:
+          labels: []
+          pose: '[[5, 5], [0]]'
+        connected_to:
+          c0_r0: stay
+          c0_r1: goto_c0_r1
+          c1_r0: goto_c1_r0
+      c0_r1:
+        attr:
+          labels: []
+          pose: '[[5, 15], [0]]'
+        connected_to:
+          c0_r0: goto_c0_r0
+          c0_r1: stay
+          c0_r2: goto_c0_r2
+          c1_r1: goto_c1_r1
+      c0_r10:
+        attr:
+          labels: []
+          pose: '[[5, 105], [0]]'
+        connected_to:
+          c0_r10: stay
+          c0_r11: goto_c0_r11
+          c0_r9: goto_c0_r9
+          c1_r10: goto_c1_r10
+      c0_r11:
+        attr:
+          labels: []
+          pose: '[[5, 115], [0]]'
+        connected_to:
+          c0_r10: goto_c0_r10
+          c0_r11: stay
+          c0_r12: goto_c0_r12
+          c1_r11: goto_c1_r11
+      c0_r12:
+        attr:
+          labels: []
+          pose: '[[5, 125], [0]]'
+        connected_to:
+          c0_r11: goto_c0_r11
+          c0_r12: stay
+          c0_r13: goto_c0_r13
+          c1_r12: goto_c1_r12
+      c0_r13:
+        attr:
+          labels: []
+          pose: '[[5, 135], [0]]'
+        connected_to:
+          c0_r12: goto_c0_r12
+          c0_r13: stay
+          c0_r14: goto_c0_r14
+          c1_r13: goto_c1_r13
+      c0_r14:
+        attr:
+          labels: []
+          pose: '[[5, 145], [0]]'
+        connected_to:
+          c0_r13: goto_c0_r13
+          c0_r14: stay
+          c0_r15: goto_c0_r15
+          c1_r14: goto_c1_r14
+      c0_r15:
+        attr:
+          labels: []
+          pose: '[[5, 155], [0]]'
+        connected_to:
+          c0_r14: goto_c0_r14
+          c0_r15: stay
+          c0_r16: goto_c0_r16
+          c1_r15: goto_c1_r15
+      c0_r16:
+        attr:
+          labels: []
+          pose: '[[5, 165], [0]]'
+        connected_to:
+          c0_r15: goto_c0_r15
+          c0_r16: stay
+          c0_r17: goto_c0_r17
+          c1_r16: goto_c1_r16
+      c0_r17:
+        attr:
+          labels: []
+          pose: '[[5, 175], [0]]'
+        connected_to:
+          c0_r16: goto_c0_r16
+          c0_r17: stay
+          c0_r18: goto_c0_r18
+          c1_r17: goto_c1_r17
+      c0_r18:
+        attr:
+          labels: []
+          pose: '[[5, 185], [0]]'
+        connected_to:
+          c0_r17: goto_c0_r17
+          c0_r18: stay
+          c0_r19: goto_c0_r19
+          c1_r18: goto_c1_r18
+      c0_r19:
+        attr:
+          labels: []
+          pose: '[[5, 195], [0]]'
+        connected_to:
+          c0_r18: goto_c0_r18
+          c0_r19: stay
+          c1_r19: goto_c1_r19
+      c0_r2:
+        attr:
+          labels: []
+          pose: '[[5, 25], [0]]'
+        connected_to:
+          c0_r1: goto_c0_r1
+          c0_r2: stay
+          c0_r3: goto_c0_r3
+          c1_r2: goto_c1_r2
+      c0_r3:
+        attr:
+          labels: []
+          pose: '[[5, 35], [0]]'
+        connected_to:
+          c0_r2: goto_c0_r2
+          c0_r3: stay
+          c0_r4: goto_c0_r4
+          c1_r3: goto_c1_r3
+      c0_r4:
+        attr:
+          labels: []
+          pose: '[[5, 45], [0]]'
+        connected_to:
+          c0_r3: goto_c0_r3
+          c0_r4: stay
+          c0_r5: goto_c0_r5
+          c1_r4: goto_c1_r4
+      c0_r5:
+        attr:
+          labels: []
+          pose: '[[5, 55], [0]]'
+        connected_to:
+          c0_r4: goto_c0_r4
+          c0_r5: stay
+          c0_r6: goto_c0_r6
+          c1_r5: goto_c1_r5
+      c0_r6:
+        attr:
+          labels: []
+          pose: '[[5, 65], [0]]'
+        connected_to:
+          c0_r5: goto_c0_r5
+          c0_r6: stay
+          c0_r7: goto_c0_r7
+          c1_r6: goto_c1_r6
+      c0_r7:
+        attr:
+          labels: []
+          pose: '[[5, 75], [0]]'
+        connected_to:
+          c0_r6: goto_c0_r6
+          c0_r7: stay
+          c0_r8: goto_c0_r8
+          c1_r7: goto_c1_r7
+      c0_r8:
+        attr:
+          labels: []
+          pose: '[[5, 85], [0]]'
+        connected_to:
+          c0_r7: goto_c0_r7
+          c0_r8: stay
+          c0_r9: goto_c0_r9
+          c1_r8: goto_c1_r8
+      c0_r9:
+        attr:
+          labels: []
+          pose: '[[5, 95], [0]]'
+        connected_to:
+          c0_r10: goto_c0_r10
+          c0_r8: goto_c0_r8
+          c0_r9: stay
+          c1_r9: goto_c1_r9
+      c10_r0:
+        attr:
+          labels: []
+          pose: '[[105, 5], [0]]'
+        connected_to:
+          c10_r0: stay
+          c10_r1: goto_c10_r1
+          c11_r0: goto_c11_r0
+          c9_r0: goto_c9_r0
+      c10_r1:
+        attr:
+          labels: []
+          pose: '[[105, 15], [0]]'
+        connected_to:
+          c10_r0: goto_c10_r0
+          c10_r1: stay
+          c10_r2: goto_c10_r2
+          c11_r1: goto_c11_r1
+      c10_r10:
+        attr:
+          labels:
+          - g
+          pose: '[[105, 105], [0]]'
+        connected_to:
+          c10_r10: stay
+          c10_r11: goto_c10_r11
+          c11_r10: goto_c11_r10
+      c10_r11:
+        attr:
+          labels:
+          - p
+          pose: '[[105, 115], [0]]'
+        connected_to:
+          c10_r10: goto_c10_r10
+          c10_r11: stay
+          c10_r12: goto_c10_r12
+          c11_r11: goto_c11_r11
+      c10_r12:
+        attr:
+          labels: []
+          pose: '[[105, 125], [0]]'
+        connected_to:
+          c10_r11: goto_c10_r11
+          c10_r12: stay
+          c10_r13: goto_c10_r13
+          c11_r12: goto_c11_r12
+      c10_r13:
+        attr:
+          labels: []
+          pose: '[[105, 135], [0]]'
+        connected_to:
+          c10_r12: goto_c10_r12
+          c10_r13: stay
+          c10_r14: goto_c10_r14
+          c11_r13: goto_c11_r13
+      c10_r14:
+        attr:
+          labels: []
+          pose: '[[105, 145], [0]]'
+        connected_to:
+          c10_r13: goto_c10_r13
+          c10_r14: stay
+          c10_r15: goto_c10_r15
+          c11_r14: goto_c11_r14
+      c10_r15:
+        attr:
+          labels: []
+          pose: '[[105, 155], [0]]'
+        connected_to:
+          c10_r14: goto_c10_r14
+          c10_r15: stay
+          c10_r16: goto_c10_r16
+          c11_r15: goto_c11_r15
+      c10_r16:
+        attr:
+          labels: []
+          pose: '[[105, 165], [0]]'
+        connected_to:
+          c10_r15: goto_c10_r15
+          c10_r16: stay
+          c10_r17: goto_c10_r17
+          c11_r16: goto_c11_r16
+      c10_r17:
+        attr:
+          labels: []
+          pose: '[[105, 175], [0]]'
+        connected_to:
+          c10_r16: goto_c10_r16
+          c10_r17: stay
+          c10_r18: goto_c10_r18
+          c11_r17: goto_c11_r17
+      c10_r18:
+        attr:
+          labels: []
+          pose: '[[105, 185], [0]]'
+        connected_to:
+          c10_r17: goto_c10_r17
+          c10_r18: stay
+          c10_r19: goto_c10_r19
+          c11_r18: goto_c11_r18
+      c10_r19:
+        attr:
+          labels: []
+          pose: '[[105, 195], [0]]'
+        connected_to:
+          c10_r18: goto_c10_r18
+          c10_r19: stay
+          c11_r19: goto_c11_r19
+          c9_r19: goto_c9_r19
+      c10_r2:
+        attr:
+          labels: []
+          pose: '[[105, 25], [0]]'
+        connected_to:
+          c10_r1: goto_c10_r1
+          c10_r2: stay
+          c10_r3: goto_c10_r3
+          c11_r2: goto_c11_r2
+      c10_r3:
+        attr:
+          labels: []
+          pose: '[[105, 35], [0]]'
+        connected_to:
+          c10_r2: goto_c10_r2
+          c10_r3: stay
+          c10_r4: goto_c10_r4
+          c11_r3: goto_c11_r3
+      c10_r4:
+        attr:
+          labels: []
+          pose: '[[105, 45], [0]]'
+        connected_to:
+          c10_r3: goto_c10_r3
+          c10_r4: stay
+          c10_r5: goto_c10_r5
+          c11_r4: goto_c11_r4
+      c10_r5:
+        attr:
+          labels: []
+          pose: '[[105, 55], [0]]'
+        connected_to:
+          c10_r4: goto_c10_r4
+          c10_r5: stay
+          c10_r6: goto_c10_r6
+          c11_r5: goto_c11_r5
+      c10_r6:
+        attr:
+          labels: []
+          pose: '[[105, 65], [0]]'
+        connected_to:
+          c10_r5: goto_c10_r5
+          c10_r6: stay
+          c10_r7: goto_c10_r7
+          c11_r6: goto_c11_r6
+      c10_r7:
+        attr:
+          labels: []
+          pose: '[[105, 75], [0]]'
+        connected_to:
+          c10_r6: goto_c10_r6
+          c10_r7: stay
+          c10_r8: goto_c10_r8
+          c11_r7: goto_c11_r7
+      c10_r8:
+        attr:
+          labels:
+          - p
+          pose: '[[105, 85], [0]]'
+        connected_to:
+          c10_r7: goto_c10_r7
+          c10_r8: stay
+          c10_r9: goto_c10_r9
+          c11_r8: goto_c11_r8
+      c10_r9:
+        attr:
+          labels:
+          - f
+          pose: '[[105, 95], [0]]'
+        connected_to:
+          c10_r8: goto_c10_r8
+          c10_r9: stay
+          c11_r9: goto_c11_r9
+      c11_r0:
+        attr:
+          labels: []
+          pose: '[[115, 5], [0]]'
+        connected_to:
+          c10_r0: goto_c10_r0
+          c11_r0: stay
+          c11_r1: goto_c11_r1
+          c12_r0: goto_c12_r0
+      c11_r1:
+        attr:
+          labels: []
+          pose: '[[115, 15], [0]]'
+        connected_to:
+          c10_r1: goto_c10_r1
+          c11_r0: goto_c11_r0
+          c11_r1: stay
+          c11_r2: goto_c11_r2
+          c12_r1: goto_c12_r1
+      c11_r10:
+        attr:
+          labels:
+          - p
+          pose: '[[115, 105], [0]]'
+        connected_to:
+          c10_r10: goto_c10_r10
+          c11_r10: stay
+          c11_r11: goto_c11_r11
+          c12_r10: goto_c12_r10
+      c11_r11:
+        attr:
+          labels: []
+          pose: '[[115, 115], [0]]'
+        connected_to:
+          c10_r11: goto_c10_r11
+          c11_r10: goto_c11_r10
+          c11_r11: stay
+          c11_r12: goto_c11_r12
+          c12_r11: goto_c12_r11
+      c11_r12:
+        attr:
+          labels: []
+          pose: '[[115, 125], [0]]'
+        connected_to:
+          c10_r12: goto_c10_r12
+          c11_r11: goto_c11_r11
+          c11_r12: stay
+          c11_r13: goto_c11_r13
+          c12_r12: goto_c12_r12
+      c11_r13:
+        attr:
+          labels: []
+          pose: '[[115, 135], [0]]'
+        connected_to:
+          c10_r13: goto_c10_r13
+          c11_r12: goto_c11_r12
+          c11_r13: stay
+          c11_r14: goto_c11_r14
+          c12_r13: goto_c12_r13
+      c11_r14:
+        attr:
+          labels: []
+          pose: '[[115, 145], [0]]'
+        connected_to:
+          c10_r14: goto_c10_r14
+          c11_r13: goto_c11_r13
+          c11_r14: stay
+          c11_r15: goto_c11_r15
+          c12_r14: goto_c12_r14
+      c11_r15:
+        attr:
+          labels: []
+          pose: '[[115, 155], [0]]'
+        connected_to:
+          c10_r15: goto_c10_r15
+          c11_r14: goto_c11_r14
+          c11_r15: stay
+          c11_r16: goto_c11_r16
+          c12_r15: goto_c12_r15
+      c11_r16:
+        attr:
+          labels: []
+          pose: '[[115, 165], [0]]'
+        connected_to:
+          c10_r16: goto_c10_r16
+          c11_r15: goto_c11_r15
+          c11_r16: stay
+          c11_r17: goto_c11_r17
+          c12_r16: goto_c12_r16
+      c11_r17:
+        attr:
+          labels: []
+          pose: '[[115, 175], [0]]'
+        connected_to:
+          c10_r17: goto_c10_r17
+          c11_r16: goto_c11_r16
+          c11_r17: stay
+          c11_r18: goto_c11_r18
+          c12_r17: goto_c12_r17
+      c11_r18:
+        attr:
+          labels: []
+          pose: '[[115, 185], [0]]'
+        connected_to:
+          c10_r18: goto_c10_r18
+          c11_r17: goto_c11_r17
+          c11_r18: stay
+          c11_r19: goto_c11_r19
+          c12_r18: goto_c12_r18
+      c11_r19:
+        attr:
+          labels: []
+          pose: '[[115, 195], [0]]'
+        connected_to:
+          c10_r19: goto_c10_r19
+          c11_r18: goto_c11_r18
+          c11_r19: stay
+          c12_r19: goto_c12_r19
+      c11_r2:
+        attr:
+          labels: []
+          pose: '[[115, 25], [0]]'
+        connected_to:
+          c10_r2: goto_c10_r2
+          c11_r1: goto_c11_r1
+          c11_r2: stay
+          c11_r3: goto_c11_r3
+          c12_r2: goto_c12_r2
+      c11_r3:
+        attr:
+          labels: []
+          pose: '[[115, 35], [0]]'
+        connected_to:
+          c10_r3: goto_c10_r3
+          c11_r2: goto_c11_r2
+          c11_r3: stay
+          c11_r4: goto_c11_r4
+          c12_r3: goto_c12_r3
+      c11_r4:
+        attr:
+          labels: []
+          pose: '[[115, 45], [0]]'
+        connected_to:
+          c10_r4: goto_c10_r4
+          c11_r3: goto_c11_r3
+          c11_r4: stay
+          c11_r5: goto_c11_r5
+          c12_r4: goto_c12_r4
+      c11_r5:
+        attr:
+          labels: []
+          pose: '[[115, 55], [0]]'
+        connected_to:
+          c10_r5: goto_c10_r5
+          c11_r4: goto_c11_r4
+          c11_r5: stay
+          c11_r6: goto_c11_r6
+          c12_r5: goto_c12_r5
+      c11_r6:
+        attr:
+          labels: []
+          pose: '[[115, 65], [0]]'
+        connected_to:
+          c10_r6: goto_c10_r6
+          c11_r5: goto_c11_r5
+          c11_r6: stay
+          c11_r7: goto_c11_r7
+          c12_r6: goto_c12_r6
+      c11_r7:
+        attr:
+          labels: []
+          pose: '[[115, 75], [0]]'
+        connected_to:
+          c10_r7: goto_c10_r7
+          c11_r6: goto_c11_r6
+          c11_r7: stay
+          c11_r8: goto_c11_r8
+          c12_r7: goto_c12_r7
+      c11_r8:
+        attr:
+          labels: []
+          pose: '[[115, 85], [0]]'
+        connected_to:
+          c10_r8: goto_c10_r8
+          c11_r7: goto_c11_r7
+          c11_r8: stay
+          c11_r9: goto_c11_r9
+          c12_r8: goto_c12_r8
+      c11_r9:
+        attr:
+          labels:
+          - p
+          pose: '[[115, 95], [0]]'
+        connected_to:
+          c10_r9: goto_c10_r9
+          c11_r8: goto_c11_r8
+          c11_r9: stay
+          c12_r9: goto_c12_r9
+      c12_r0:
+        attr:
+          labels: []
+          pose: '[[125, 5], [0]]'
+        connected_to:
+          c11_r0: goto_c11_r0
+          c12_r0: stay
+          c12_r1: goto_c12_r1
+          c13_r0: goto_c13_r0
+      c12_r1:
+        attr:
+          labels: []
+          pose: '[[125, 15], [0]]'
+        connected_to:
+          c11_r1: goto_c11_r1
+          c12_r0: goto_c12_r0
+          c12_r1: stay
+          c12_r2: goto_c12_r2
+          c13_r1: goto_c13_r1
+      c12_r10:
+        attr:
+          labels: []
+          pose: '[[125, 105], [0]]'
+        connected_to:
+          c11_r10: goto_c11_r10
+          c12_r10: stay
+          c12_r11: goto_c12_r11
+          c13_r10: goto_c13_r10
+      c12_r11:
+        attr:
+          labels: []
+          pose: '[[125, 115], [0]]'
+        connected_to:
+          c11_r11: goto_c11_r11
+          c12_r10: goto_c12_r10
+          c12_r11: stay
+          c12_r12: goto_c12_r12
+          c13_r11: goto_c13_r11
+      c12_r12:
+        attr:
+          labels: []
+          pose: '[[125, 125], [0]]'
+        connected_to:
+          c11_r12: goto_c11_r12
+          c12_r11: goto_c12_r11
+          c12_r12: stay
+          c12_r13: goto_c12_r13
+          c13_r12: goto_c13_r12
+      c12_r13:
+        attr:
+          labels: []
+          pose: '[[125, 135], [0]]'
+        connected_to:
+          c11_r13: goto_c11_r13
+          c12_r12: goto_c12_r12
+          c12_r13: stay
+          c12_r14: goto_c12_r14
+          c13_r13: goto_c13_r13
+      c12_r14:
+        attr:
+          labels: []
+          pose: '[[125, 145], [0]]'
+        connected_to:
+          c11_r14: goto_c11_r14
+          c12_r13: goto_c12_r13
+          c12_r14: stay
+          c12_r15: goto_c12_r15
+          c13_r14: goto_c13_r14
+      c12_r15:
+        attr:
+          labels: []
+          pose: '[[125, 155], [0]]'
+        connected_to:
+          c11_r15: goto_c11_r15
+          c12_r14: goto_c12_r14
+          c12_r15: stay
+          c12_r16: goto_c12_r16
+          c13_r15: goto_c13_r15
+      c12_r16:
+        attr:
+          labels: []
+          pose: '[[125, 165], [0]]'
+        connected_to:
+          c11_r16: goto_c11_r16
+          c12_r15: goto_c12_r15
+          c12_r16: stay
+          c12_r17: goto_c12_r17
+          c13_r16: goto_c13_r16
+      c12_r17:
+        attr:
+          labels: []
+          pose: '[[125, 175], [0]]'
+        connected_to:
+          c11_r17: goto_c11_r17
+          c12_r16: goto_c12_r16
+          c12_r17: stay
+          c12_r18: goto_c12_r18
+          c13_r17: goto_c13_r17
+      c12_r18:
+        attr:
+          labels: []
+          pose: '[[125, 185], [0]]'
+        connected_to:
+          c11_r18: goto_c11_r18
+          c12_r17: goto_c12_r17
+          c12_r18: stay
+          c12_r19: goto_c12_r19
+          c13_r18: goto_c13_r18
+      c12_r19:
+        attr:
+          labels: []
+          pose: '[[125, 195], [0]]'
+        connected_to:
+          c11_r19: goto_c11_r19
+          c12_r18: goto_c12_r18
+          c12_r19: stay
+          c13_r19: goto_c13_r19
+      c12_r2:
+        attr:
+          labels: []
+          pose: '[[125, 25], [0]]'
+        connected_to:
+          c11_r2: goto_c11_r2
+          c12_r1: goto_c12_r1
+          c12_r2: stay
+          c12_r3: goto_c12_r3
+          c13_r2: goto_c13_r2
+      c12_r3:
+        attr:
+          labels: []
+          pose: '[[125, 35], [0]]'
+        connected_to:
+          c11_r3: goto_c11_r3
+          c12_r2: goto_c12_r2
+          c12_r3: stay
+          c12_r4: goto_c12_r4
+          c13_r3: goto_c13_r3
+      c12_r4:
+        attr:
+          labels: []
+          pose: '[[125, 45], [0]]'
+        connected_to:
+          c11_r4: goto_c11_r4
+          c12_r3: goto_c12_r3
+          c12_r4: stay
+          c12_r5: goto_c12_r5
+          c13_r4: goto_c13_r4
+      c12_r5:
+        attr:
+          labels: []
+          pose: '[[125, 55], [0]]'
+        connected_to:
+          c11_r5: goto_c11_r5
+          c12_r4: goto_c12_r4
+          c12_r5: stay
+          c12_r6: goto_c12_r6
+          c13_r5: goto_c13_r5
+      c12_r6:
+        attr:
+          labels: []
+          pose: '[[125, 65], [0]]'
+        connected_to:
+          c11_r6: goto_c11_r6
+          c12_r5: goto_c12_r5
+          c12_r6: stay
+          c12_r7: goto_c12_r7
+          c13_r6: goto_c13_r6
+      c12_r7:
+        attr:
+          labels: []
+          pose: '[[125, 75], [0]]'
+        connected_to:
+          c11_r7: goto_c11_r7
+          c12_r6: goto_c12_r6
+          c12_r7: stay
+          c12_r8: goto_c12_r8
+          c13_r7: goto_c13_r7
+      c12_r8:
+        attr:
+          labels: []
+          pose: '[[125, 85], [0]]'
+        connected_to:
+          c11_r8: goto_c11_r8
+          c12_r7: goto_c12_r7
+          c12_r8: stay
+          c12_r9: goto_c12_r9
+          c13_r8: goto_c13_r8
+      c12_r9:
+        attr:
+          labels: []
+          pose: '[[125, 95], [0]]'
+        connected_to:
+          c11_r9: goto_c11_r9
+          c12_r8: goto_c12_r8
+          c12_r9: stay
+          c13_r9: goto_c13_r9
+      c13_r0:
+        attr:
+          labels: []
+          pose: '[[135, 5], [0]]'
+        connected_to:
+          c12_r0: goto_c12_r0
+          c13_r0: stay
+          c13_r1: goto_c13_r1
+          c14_r0: goto_c14_r0
+      c13_r1:
+        attr:
+          labels: []
+          pose: '[[135, 15], [0]]'
+        connected_to:
+          c12_r1: goto_c12_r1
+          c13_r0: goto_c13_r0
+          c13_r1: stay
+          c13_r2: goto_c13_r2
+          c14_r1: goto_c14_r1
+      c13_r10:
+        attr:
+          labels: []
+          pose: '[[135, 105], [0]]'
+        connected_to:
+          c12_r10: goto_c12_r10
+          c13_r10: stay
+          c13_r11: goto_c13_r11
+          c14_r10: goto_c14_r10
+      c13_r11:
+        attr:
+          labels: []
+          pose: '[[135, 115], [0]]'
+        connected_to:
+          c12_r11: goto_c12_r11
+          c13_r10: goto_c13_r10
+          c13_r11: stay
+          c13_r12: goto_c13_r12
+          c14_r11: goto_c14_r11
+      c13_r12:
+        attr:
+          labels: []
+          pose: '[[135, 125], [0]]'
+        connected_to:
+          c12_r12: goto_c12_r12
+          c13_r11: goto_c13_r11
+          c13_r12: stay
+          c13_r13: goto_c13_r13
+          c14_r12: goto_c14_r12
+      c13_r13:
+        attr:
+          labels: []
+          pose: '[[135, 135], [0]]'
+        connected_to:
+          c12_r13: goto_c12_r13
+          c13_r12: goto_c13_r12
+          c13_r13: stay
+          c13_r14: goto_c13_r14
+          c14_r13: goto_c14_r13
+      c13_r14:
+        attr:
+          labels: []
+          pose: '[[135, 145], [0]]'
+        connected_to:
+          c12_r14: goto_c12_r14
+          c13_r13: goto_c13_r13
+          c13_r14: stay
+          c13_r15: goto_c13_r15
+          c14_r14: goto_c14_r14
+      c13_r15:
+        attr:
+          labels: []
+          pose: '[[135, 155], [0]]'
+        connected_to:
+          c12_r15: goto_c12_r15
+          c13_r14: goto_c13_r14
+          c13_r15: stay
+          c13_r16: goto_c13_r16
+          c14_r15: goto_c14_r15
+      c13_r16:
+        attr:
+          labels: []
+          pose: '[[135, 165], [0]]'
+        connected_to:
+          c12_r16: goto_c12_r16
+          c13_r15: goto_c13_r15
+          c13_r16: stay
+          c13_r17: goto_c13_r17
+          c14_r16: goto_c14_r16
+      c13_r17:
+        attr:
+          labels: []
+          pose: '[[135, 175], [0]]'
+        connected_to:
+          c12_r17: goto_c12_r17
+          c13_r16: goto_c13_r16
+          c13_r17: stay
+          c13_r18: goto_c13_r18
+          c14_r17: goto_c14_r17
+      c13_r18:
+        attr:
+          labels: []
+          pose: '[[135, 185], [0]]'
+        connected_to:
+          c12_r18: goto_c12_r18
+          c13_r17: goto_c13_r17
+          c13_r18: stay
+          c13_r19: goto_c13_r19
+          c14_r18: goto_c14_r18
+      c13_r19:
+        attr:
+          labels: []
+          pose: '[[135, 195], [0]]'
+        connected_to:
+          c12_r19: goto_c12_r19
+          c13_r18: goto_c13_r18
+          c13_r19: stay
+          c14_r19: goto_c14_r19
+      c13_r2:
+        attr:
+          labels: []
+          pose: '[[135, 25], [0]]'
+        connected_to:
+          c12_r2: goto_c12_r2
+          c13_r1: goto_c13_r1
+          c13_r2: stay
+          c13_r3: goto_c13_r3
+          c14_r2: goto_c14_r2
+      c13_r3:
+        attr:
+          labels: []
+          pose: '[[135, 35], [0]]'
+        connected_to:
+          c12_r3: goto_c12_r3
+          c13_r2: goto_c13_r2
+          c13_r3: stay
+          c13_r4: goto_c13_r4
+          c14_r3: goto_c14_r3
+      c13_r4:
+        attr:
+          labels: []
+          pose: '[[135, 45], [0]]'
+        connected_to:
+          c12_r4: goto_c12_r4
+          c13_r3: goto_c13_r3
+          c13_r4: stay
+          c13_r5: goto_c13_r5
+          c14_r4: goto_c14_r4
+      c13_r5:
+        attr:
+          labels: []
+          pose: '[[135, 55], [0]]'
+        connected_to:
+          c12_r5: goto_c12_r5
+          c13_r4: goto_c13_r4
+          c13_r5: stay
+          c13_r6: goto_c13_r6
+          c14_r5: goto_c14_r5
+      c13_r6:
+        attr:
+          labels: []
+          pose: '[[135, 65], [0]]'
+        connected_to:
+          c12_r6: goto_c12_r6
+          c13_r5: goto_c13_r5
+          c13_r6: stay
+          c13_r7: goto_c13_r7
+          c14_r6: goto_c14_r6
+      c13_r7:
+        attr:
+          labels: []
+          pose: '[[135, 75], [0]]'
+        connected_to:
+          c12_r7: goto_c12_r7
+          c13_r6: goto_c13_r6
+          c13_r7: stay
+          c13_r8: goto_c13_r8
+          c14_r7: goto_c14_r7
+      c13_r8:
+        attr:
+          labels: []
+          pose: '[[135, 85], [0]]'
+        connected_to:
+          c12_r8: goto_c12_r8
+          c13_r7: goto_c13_r7
+          c13_r8: stay
+          c13_r9: goto_c13_r9
+          c14_r8: goto_c14_r8
+      c13_r9:
+        attr:
+          labels: []
+          pose: '[[135, 95], [0]]'
+        connected_to:
+          c12_r9: goto_c12_r9
+          c13_r8: goto_c13_r8
+          c13_r9: stay
+          c14_r9: goto_c14_r9
+      c14_r0:
+        attr:
+          labels: []
+          pose: '[[145, 5], [0]]'
+        connected_to:
+          c13_r0: goto_c13_r0
+          c14_r0: stay
+          c14_r1: goto_c14_r1
+          c15_r0: goto_c15_r0
+      c14_r1:
+        attr:
+          labels: []
+          pose: '[[145, 15], [0]]'
+        connected_to:
+          c13_r1: goto_c13_r1
+          c14_r0: goto_c14_r0
+          c14_r1: stay
+          c14_r2: goto_c14_r2
+          c15_r1: goto_c15_r1
+      c14_r10:
+        attr:
+          labels: []
+          pose: '[[145, 105], [0]]'
+        connected_to:
+          c13_r10: goto_c13_r10
+          c14_r10: stay
+          c14_r11: goto_c14_r11
+          c15_r10: goto_c15_r10
+      c14_r11:
+        attr:
+          labels: []
+          pose: '[[145, 115], [0]]'
+        connected_to:
+          c13_r11: goto_c13_r11
+          c14_r10: goto_c14_r10
+          c14_r11: stay
+          c14_r12: goto_c14_r12
+          c15_r11: goto_c15_r11
+      c14_r12:
+        attr:
+          labels: []
+          pose: '[[145, 125], [0]]'
+        connected_to:
+          c13_r12: goto_c13_r12
+          c14_r11: goto_c14_r11
+          c14_r12: stay
+          c14_r13: goto_c14_r13
+          c15_r12: goto_c15_r12
+      c14_r13:
+        attr:
+          labels: []
+          pose: '[[145, 135], [0]]'
+        connected_to:
+          c13_r13: goto_c13_r13
+          c14_r12: goto_c14_r12
+          c14_r13: stay
+          c14_r14: goto_c14_r14
+          c15_r13: goto_c15_r13
+      c14_r14:
+        attr:
+          labels: []
+          pose: '[[145, 145], [0]]'
+        connected_to:
+          c13_r14: goto_c13_r14
+          c14_r13: goto_c14_r13
+          c14_r14: stay
+          c14_r15: goto_c14_r15
+          c15_r14: goto_c15_r14
+      c14_r15:
+        attr:
+          labels: []
+          pose: '[[145, 155], [0]]'
+        connected_to:
+          c13_r15: goto_c13_r15
+          c14_r14: goto_c14_r14
+          c14_r15: stay
+          c14_r16: goto_c14_r16
+          c15_r15: goto_c15_r15
+      c14_r16:
+        attr:
+          labels: []
+          pose: '[[145, 165], [0]]'
+        connected_to:
+          c13_r16: goto_c13_r16
+          c14_r15: goto_c14_r15
+          c14_r16: stay
+          c14_r17: goto_c14_r17
+          c15_r16: goto_c15_r16
+      c14_r17:
+        attr:
+          labels: []
+          pose: '[[145, 175], [0]]'
+        connected_to:
+          c13_r17: goto_c13_r17
+          c14_r16: goto_c14_r16
+          c14_r17: stay
+          c14_r18: goto_c14_r18
+          c15_r17: goto_c15_r17
+      c14_r18:
+        attr:
+          labels: []
+          pose: '[[145, 185], [0]]'
+        connected_to:
+          c13_r18: goto_c13_r18
+          c14_r17: goto_c14_r17
+          c14_r18: stay
+          c14_r19: goto_c14_r19
+          c15_r18: goto_c15_r18
+      c14_r19:
+        attr:
+          labels: []
+          pose: '[[145, 195], [0]]'
+        connected_to:
+          c13_r19: goto_c13_r19
+          c14_r18: goto_c14_r18
+          c14_r19: stay
+          c15_r19: goto_c15_r19
+      c14_r2:
+        attr:
+          labels: []
+          pose: '[[145, 25], [0]]'
+        connected_to:
+          c13_r2: goto_c13_r2
+          c14_r1: goto_c14_r1
+          c14_r2: stay
+          c14_r3: goto_c14_r3
+          c15_r2: goto_c15_r2
+      c14_r3:
+        attr:
+          labels: []
+          pose: '[[145, 35], [0]]'
+        connected_to:
+          c13_r3: goto_c13_r3
+          c14_r2: goto_c14_r2
+          c14_r3: stay
+          c14_r4: goto_c14_r4
+          c15_r3: goto_c15_r3
+      c14_r4:
+        attr:
+          labels: []
+          pose: '[[145, 45], [0]]'
+        connected_to:
+          c13_r4: goto_c13_r4
+          c14_r3: goto_c14_r3
+          c14_r4: stay
+          c14_r5: goto_c14_r5
+          c15_r4: goto_c15_r4
+      c14_r5:
+        attr:
+          labels: []
+          pose: '[[145, 55], [0]]'
+        connected_to:
+          c13_r5: goto_c13_r5
+          c14_r4: goto_c14_r4
+          c14_r5: stay
+          c14_r6: goto_c14_r6
+          c15_r5: goto_c15_r5
+      c14_r6:
+        attr:
+          labels: []
+          pose: '[[145, 65], [0]]'
+        connected_to:
+          c13_r6: goto_c13_r6
+          c14_r5: goto_c14_r5
+          c14_r6: stay
+          c14_r7: goto_c14_r7
+          c15_r6: goto_c15_r6
+      c14_r7:
+        attr:
+          labels: []
+          pose: '[[145, 75], [0]]'
+        connected_to:
+          c13_r7: goto_c13_r7
+          c14_r6: goto_c14_r6
+          c14_r7: stay
+          c14_r8: goto_c14_r8
+          c15_r7: goto_c15_r7
+      c14_r8:
+        attr:
+          labels: []
+          pose: '[[145, 85], [0]]'
+        connected_to:
+          c13_r8: goto_c13_r8
+          c14_r7: goto_c14_r7
+          c14_r8: stay
+          c14_r9: goto_c14_r9
+          c15_r8: goto_c15_r8
+      c14_r9:
+        attr:
+          labels: []
+          pose: '[[145, 95], [0]]'
+        connected_to:
+          c13_r9: goto_c13_r9
+          c14_r8: goto_c14_r8
+          c14_r9: stay
+          c15_r9: goto_c15_r9
+      c15_r0:
+        attr:
+          labels: []
+          pose: '[[155, 5], [0]]'
+        connected_to:
+          c14_r0: goto_c14_r0
+          c15_r0: stay
+          c15_r1: goto_c15_r1
+          c16_r0: goto_c16_r0
+      c15_r1:
+        attr:
+          labels: []
+          pose: '[[155, 15], [0]]'
+        connected_to:
+          c14_r1: goto_c14_r1
+          c15_r0: goto_c15_r0
+          c15_r1: stay
+          c15_r2: goto_c15_r2
+          c16_r1: goto_c16_r1
+      c15_r10:
+        attr:
+          labels: []
+          pose: '[[155, 105], [0]]'
+        connected_to:
+          c14_r10: goto_c14_r10
+          c15_r10: stay
+          c15_r11: goto_c15_r11
+          c16_r10: goto_c16_r10
+      c15_r11:
+        attr:
+          labels: []
+          pose: '[[155, 115], [0]]'
+        connected_to:
+          c14_r11: goto_c14_r11
+          c15_r10: goto_c15_r10
+          c15_r11: stay
+          c15_r12: goto_c15_r12
+          c16_r11: goto_c16_r11
+      c15_r12:
+        attr:
+          labels: []
+          pose: '[[155, 125], [0]]'
+        connected_to:
+          c14_r12: goto_c14_r12
+          c15_r11: goto_c15_r11
+          c15_r12: stay
+          c15_r13: goto_c15_r13
+          c16_r12: goto_c16_r12
+      c15_r13:
+        attr:
+          labels: []
+          pose: '[[155, 135], [0]]'
+        connected_to:
+          c14_r13: goto_c14_r13
+          c15_r12: goto_c15_r12
+          c15_r13: stay
+          c15_r14: goto_c15_r14
+          c16_r13: goto_c16_r13
+      c15_r14:
+        attr:
+          labels: []
+          pose: '[[155, 145], [0]]'
+        connected_to:
+          c14_r14: goto_c14_r14
+          c15_r13: goto_c15_r13
+          c15_r14: stay
+          c15_r15: goto_c15_r15
+          c16_r14: goto_c16_r14
+      c15_r15:
+        attr:
+          labels: []
+          pose: '[[155, 155], [0]]'
+        connected_to:
+          c14_r15: goto_c14_r15
+          c15_r14: goto_c15_r14
+          c15_r15: stay
+          c15_r16: goto_c15_r16
+          c16_r15: goto_c16_r15
+      c15_r16:
+        attr:
+          labels: []
+          pose: '[[155, 165], [0]]'
+        connected_to:
+          c14_r16: goto_c14_r16
+          c15_r15: goto_c15_r15
+          c15_r16: stay
+          c15_r17: goto_c15_r17
+          c16_r16: goto_c16_r16
+      c15_r17:
+        attr:
+          labels: []
+          pose: '[[155, 175], [0]]'
+        connected_to:
+          c14_r17: goto_c14_r17
+          c15_r16: goto_c15_r16
+          c15_r17: stay
+          c15_r18: goto_c15_r18
+          c16_r17: goto_c16_r17
+      c15_r18:
+        attr:
+          labels: []
+          pose: '[[155, 185], [0]]'
+        connected_to:
+          c14_r18: goto_c14_r18
+          c15_r17: goto_c15_r17
+          c15_r18: stay
+          c15_r19: goto_c15_r19
+          c16_r18: goto_c16_r18
+      c15_r19:
+        attr:
+          labels: []
+          pose: '[[155, 195], [0]]'
+        connected_to:
+          c14_r19: goto_c14_r19
+          c15_r18: goto_c15_r18
+          c15_r19: stay
+          c16_r19: goto_c16_r19
+      c15_r2:
+        attr:
+          labels: []
+          pose: '[[155, 25], [0]]'
+        connected_to:
+          c14_r2: goto_c14_r2
+          c15_r1: goto_c15_r1
+          c15_r2: stay
+          c15_r3: goto_c15_r3
+          c16_r2: goto_c16_r2
+      c15_r3:
+        attr:
+          labels: []
+          pose: '[[155, 35], [0]]'
+        connected_to:
+          c14_r3: goto_c14_r3
+          c15_r2: goto_c15_r2
+          c15_r3: stay
+          c15_r4: goto_c15_r4
+          c16_r3: goto_c16_r3
+      c15_r4:
+        attr:
+          labels: []
+          pose: '[[155, 45], [0]]'
+        connected_to:
+          c14_r4: goto_c14_r4
+          c15_r3: goto_c15_r3
+          c15_r4: stay
+          c15_r5: goto_c15_r5
+          c16_r4: goto_c16_r4
+      c15_r5:
+        attr:
+          labels: []
+          pose: '[[155, 55], [0]]'
+        connected_to:
+          c14_r5: goto_c14_r5
+          c15_r4: goto_c15_r4
+          c15_r5: stay
+          c15_r6: goto_c15_r6
+          c16_r5: goto_c16_r5
+      c15_r6:
+        attr:
+          labels: []
+          pose: '[[155, 65], [0]]'
+        connected_to:
+          c14_r6: goto_c14_r6
+          c15_r5: goto_c15_r5
+          c15_r6: stay
+          c15_r7: goto_c15_r7
+          c16_r6: goto_c16_r6
+      c15_r7:
+        attr:
+          labels: []
+          pose: '[[155, 75], [0]]'
+        connected_to:
+          c14_r7: goto_c14_r7
+          c15_r6: goto_c15_r6
+          c15_r7: stay
+          c15_r8: goto_c15_r8
+          c16_r7: goto_c16_r7
+      c15_r8:
+        attr:
+          labels: []
+          pose: '[[155, 85], [0]]'
+        connected_to:
+          c14_r8: goto_c14_r8
+          c15_r7: goto_c15_r7
+          c15_r8: stay
+          c15_r9: goto_c15_r9
+          c16_r8: goto_c16_r8
+      c15_r9:
+        attr:
+          labels: []
+          pose: '[[155, 95], [0]]'
+        connected_to:
+          c14_r9: goto_c14_r9
+          c15_r8: goto_c15_r8
+          c15_r9: stay
+          c16_r9: goto_c16_r9
+      c16_r0:
+        attr:
+          labels: []
+          pose: '[[165, 5], [0]]'
+        connected_to:
+          c15_r0: goto_c15_r0
+          c16_r0: stay
+          c16_r1: goto_c16_r1
+          c17_r0: goto_c17_r0
+      c16_r1:
+        attr:
+          labels: []
+          pose: '[[165, 15], [0]]'
+        connected_to:
+          c15_r1: goto_c15_r1
+          c16_r0: goto_c16_r0
+          c16_r1: stay
+          c16_r2: goto_c16_r2
+          c17_r1: goto_c17_r1
+      c16_r10:
+        attr:
+          labels: []
+          pose: '[[165, 105], [0]]'
+        connected_to:
+          c15_r10: goto_c15_r10
+          c16_r10: stay
+          c16_r11: goto_c16_r11
+          c17_r10: goto_c17_r10
+      c16_r11:
+        attr:
+          labels: []
+          pose: '[[165, 115], [0]]'
+        connected_to:
+          c15_r11: goto_c15_r11
+          c16_r10: goto_c16_r10
+          c16_r11: stay
+          c16_r12: goto_c16_r12
+          c17_r11: goto_c17_r11
+      c16_r12:
+        attr:
+          labels: []
+          pose: '[[165, 125], [0]]'
+        connected_to:
+          c15_r12: goto_c15_r12
+          c16_r11: goto_c16_r11
+          c16_r12: stay
+          c16_r13: goto_c16_r13
+          c17_r12: goto_c17_r12
+      c16_r13:
+        attr:
+          labels: []
+          pose: '[[165, 135], [0]]'
+        connected_to:
+          c15_r13: goto_c15_r13
+          c16_r12: goto_c16_r12
+          c16_r13: stay
+          c16_r14: goto_c16_r14
+          c17_r13: goto_c17_r13
+      c16_r14:
+        attr:
+          labels: []
+          pose: '[[165, 145], [0]]'
+        connected_to:
+          c15_r14: goto_c15_r14
+          c16_r13: goto_c16_r13
+          c16_r14: stay
+          c16_r15: goto_c16_r15
+          c17_r14: goto_c17_r14
+      c16_r15:
+        attr:
+          labels: []
+          pose: '[[165, 155], [0]]'
+        connected_to:
+          c15_r15: goto_c15_r15
+          c16_r14: goto_c16_r14
+          c16_r15: stay
+          c16_r16: goto_c16_r16
+          c17_r15: goto_c17_r15
+      c16_r16:
+        attr:
+          labels: []
+          pose: '[[165, 165], [0]]'
+        connected_to:
+          c15_r16: goto_c15_r16
+          c16_r15: goto_c16_r15
+          c16_r16: stay
+          c16_r17: goto_c16_r17
+          c17_r16: goto_c17_r16
+      c16_r17:
+        attr:
+          labels: []
+          pose: '[[165, 175], [0]]'
+        connected_to:
+          c15_r17: goto_c15_r17
+          c16_r16: goto_c16_r16
+          c16_r17: stay
+          c16_r18: goto_c16_r18
+          c17_r17: goto_c17_r17
+      c16_r18:
+        attr:
+          labels: []
+          pose: '[[165, 185], [0]]'
+        connected_to:
+          c15_r18: goto_c15_r18
+          c16_r17: goto_c16_r17
+          c16_r18: stay
+          c16_r19: goto_c16_r19
+          c17_r18: goto_c17_r18
+      c16_r19:
+        attr:
+          labels: []
+          pose: '[[165, 195], [0]]'
+        connected_to:
+          c15_r19: goto_c15_r19
+          c16_r18: goto_c16_r18
+          c16_r19: stay
+          c17_r19: goto_c17_r19
+      c16_r2:
+        attr:
+          labels: []
+          pose: '[[165, 25], [0]]'
+        connected_to:
+          c15_r2: goto_c15_r2
+          c16_r1: goto_c16_r1
+          c16_r2: stay
+          c16_r3: goto_c16_r3
+          c17_r2: goto_c17_r2
+      c16_r3:
+        attr:
+          labels: []
+          pose: '[[165, 35], [0]]'
+        connected_to:
+          c15_r3: goto_c15_r3
+          c16_r2: goto_c16_r2
+          c16_r3: stay
+          c16_r4: goto_c16_r4
+          c17_r3: goto_c17_r3
+      c16_r4:
+        attr:
+          labels: []
+          pose: '[[165, 45], [0]]'
+        connected_to:
+          c15_r4: goto_c15_r4
+          c16_r3: goto_c16_r3
+          c16_r4: stay
+          c16_r5: goto_c16_r5
+          c17_r4: goto_c17_r4
+      c16_r5:
+        attr:
+          labels: []
+          pose: '[[165, 55], [0]]'
+        connected_to:
+          c15_r5: goto_c15_r5
+          c16_r4: goto_c16_r4
+          c16_r5: stay
+          c16_r6: goto_c16_r6
+          c17_r5: goto_c17_r5
+      c16_r6:
+        attr:
+          labels: []
+          pose: '[[165, 65], [0]]'
+        connected_to:
+          c15_r6: goto_c15_r6
+          c16_r5: goto_c16_r5
+          c16_r6: stay
+          c16_r7: goto_c16_r7
+          c17_r6: goto_c17_r6
+      c16_r7:
+        attr:
+          labels: []
+          pose: '[[165, 75], [0]]'
+        connected_to:
+          c15_r7: goto_c15_r7
+          c16_r6: goto_c16_r6
+          c16_r7: stay
+          c16_r8: goto_c16_r8
+          c17_r7: goto_c17_r7
+      c16_r8:
+        attr:
+          labels: []
+          pose: '[[165, 85], [0]]'
+        connected_to:
+          c15_r8: goto_c15_r8
+          c16_r7: goto_c16_r7
+          c16_r8: stay
+          c16_r9: goto_c16_r9
+          c17_r8: goto_c17_r8
+      c16_r9:
+        attr:
+          labels: []
+          pose: '[[165, 95], [0]]'
+        connected_to:
+          c15_r9: goto_c15_r9
+          c16_r8: goto_c16_r8
+          c16_r9: stay
+          c17_r9: goto_c17_r9
+      c17_r0:
+        attr:
+          labels: []
+          pose: '[[175, 5], [0]]'
+        connected_to:
+          c16_r0: goto_c16_r0
+          c17_r0: stay
+          c17_r1: goto_c17_r1
+          c18_r0: goto_c18_r0
+      c17_r1:
+        attr:
+          labels: []
+          pose: '[[175, 15], [0]]'
+        connected_to:
+          c16_r1: goto_c16_r1
+          c17_r0: goto_c17_r0
+          c17_r1: stay
+          c17_r2: goto_c17_r2
+          c18_r1: goto_c18_r1
+      c17_r10:
+        attr:
+          labels: []
+          pose: '[[175, 105], [0]]'
+        connected_to:
+          c16_r10: goto_c16_r10
+          c17_r10: stay
+          c17_r11: goto_c17_r11
+          c18_r10: goto_c18_r10
+      c17_r11:
+        attr:
+          labels: []
+          pose: '[[175, 115], [0]]'
+        connected_to:
+          c16_r11: goto_c16_r11
+          c17_r10: goto_c17_r10
+          c17_r11: stay
+          c17_r12: goto_c17_r12
+          c18_r11: goto_c18_r11
+      c17_r12:
+        attr:
+          labels: []
+          pose: '[[175, 125], [0]]'
+        connected_to:
+          c16_r12: goto_c16_r12
+          c17_r11: goto_c17_r11
+          c17_r12: stay
+          c17_r13: goto_c17_r13
+          c18_r12: goto_c18_r12
+      c17_r13:
+        attr:
+          labels: []
+          pose: '[[175, 135], [0]]'
+        connected_to:
+          c16_r13: goto_c16_r13
+          c17_r12: goto_c17_r12
+          c17_r13: stay
+          c17_r14: goto_c17_r14
+          c18_r13: goto_c18_r13
+      c17_r14:
+        attr:
+          labels: []
+          pose: '[[175, 145], [0]]'
+        connected_to:
+          c16_r14: goto_c16_r14
+          c17_r13: goto_c17_r13
+          c17_r14: stay
+          c17_r15: goto_c17_r15
+          c18_r14: goto_c18_r14
+      c17_r15:
+        attr:
+          labels: []
+          pose: '[[175, 155], [0]]'
+        connected_to:
+          c16_r15: goto_c16_r15
+          c17_r14: goto_c17_r14
+          c17_r15: stay
+          c17_r16: goto_c17_r16
+          c18_r15: goto_c18_r15
+      c17_r16:
+        attr:
+          labels: []
+          pose: '[[175, 165], [0]]'
+        connected_to:
+          c16_r16: goto_c16_r16
+          c17_r15: goto_c17_r15
+          c17_r16: stay
+          c17_r17: goto_c17_r17
+          c18_r16: goto_c18_r16
+      c17_r17:
+        attr:
+          labels: []
+          pose: '[[175, 175], [0]]'
+        connected_to:
+          c16_r17: goto_c16_r17
+          c17_r16: goto_c17_r16
+          c17_r17: stay
+          c17_r18: goto_c17_r18
+          c18_r17: goto_c18_r17
+      c17_r18:
+        attr:
+          labels: []
+          pose: '[[175, 185], [0]]'
+        connected_to:
+          c16_r18: goto_c16_r18
+          c17_r17: goto_c17_r17
+          c17_r18: stay
+          c17_r19: goto_c17_r19
+          c18_r18: goto_c18_r18
+      c17_r19:
+        attr:
+          labels: []
+          pose: '[[175, 195], [0]]'
+        connected_to:
+          c16_r19: goto_c16_r19
+          c17_r18: goto_c17_r18
+          c17_r19: stay
+          c18_r19: goto_c18_r19
+      c17_r2:
+        attr:
+          labels: []
+          pose: '[[175, 25], [0]]'
+        connected_to:
+          c16_r2: goto_c16_r2
+          c17_r1: goto_c17_r1
+          c17_r2: stay
+          c17_r3: goto_c17_r3
+          c18_r2: goto_c18_r2
+      c17_r3:
+        attr:
+          labels: []
+          pose: '[[175, 35], [0]]'
+        connected_to:
+          c16_r3: goto_c16_r3
+          c17_r2: goto_c17_r2
+          c17_r3: stay
+          c17_r4: goto_c17_r4
+          c18_r3: goto_c18_r3
+      c17_r4:
+        attr:
+          labels: []
+          pose: '[[175, 45], [0]]'
+        connected_to:
+          c16_r4: goto_c16_r4
+          c17_r3: goto_c17_r3
+          c17_r4: stay
+          c17_r5: goto_c17_r5
+          c18_r4: goto_c18_r4
+      c17_r5:
+        attr:
+          labels: []
+          pose: '[[175, 55], [0]]'
+        connected_to:
+          c16_r5: goto_c16_r5
+          c17_r4: goto_c17_r4
+          c17_r5: stay
+          c17_r6: goto_c17_r6
+          c18_r5: goto_c18_r5
+      c17_r6:
+        attr:
+          labels: []
+          pose: '[[175, 65], [0]]'
+        connected_to:
+          c16_r6: goto_c16_r6
+          c17_r5: goto_c17_r5
+          c17_r6: stay
+          c17_r7: goto_c17_r7
+          c18_r6: goto_c18_r6
+      c17_r7:
+        attr:
+          labels: []
+          pose: '[[175, 75], [0]]'
+        connected_to:
+          c16_r7: goto_c16_r7
+          c17_r6: goto_c17_r6
+          c17_r7: stay
+          c17_r8: goto_c17_r8
+          c18_r7: goto_c18_r7
+      c17_r8:
+        attr:
+          labels: []
+          pose: '[[175, 85], [0]]'
+        connected_to:
+          c16_r8: goto_c16_r8
+          c17_r7: goto_c17_r7
+          c17_r8: stay
+          c17_r9: goto_c17_r9
+          c18_r8: goto_c18_r8
+      c17_r9:
+        attr:
+          labels: []
+          pose: '[[175, 95], [0]]'
+        connected_to:
+          c16_r9: goto_c16_r9
+          c17_r8: goto_c17_r8
+          c17_r9: stay
+          c18_r9: goto_c18_r9
+      c18_r0:
+        attr:
+          labels: []
+          pose: '[[185, 5], [0]]'
+        connected_to:
+          c17_r0: goto_c17_r0
+          c18_r0: stay
+          c18_r1: goto_c18_r1
+          c19_r0: goto_c19_r0
+      c18_r1:
+        attr:
+          labels: []
+          pose: '[[185, 15], [0]]'
+        connected_to:
+          c17_r1: goto_c17_r1
+          c18_r0: goto_c18_r0
+          c18_r1: stay
+          c18_r2: goto_c18_r2
+          c19_r1: goto_c19_r1
+      c18_r10:
+        attr:
+          labels: []
+          pose: '[[185, 105], [0]]'
+        connected_to:
+          c17_r10: goto_c17_r10
+          c18_r10: stay
+          c18_r11: goto_c18_r11
+          c19_r10: goto_c19_r10
+      c18_r11:
+        attr:
+          labels: []
+          pose: '[[185, 115], [0]]'
+        connected_to:
+          c17_r11: goto_c17_r11
+          c18_r10: goto_c18_r10
+          c18_r11: stay
+          c18_r12: goto_c18_r12
+          c19_r11: goto_c19_r11
+      c18_r12:
+        attr:
+          labels: []
+          pose: '[[185, 125], [0]]'
+        connected_to:
+          c17_r12: goto_c17_r12
+          c18_r11: goto_c18_r11
+          c18_r12: stay
+          c18_r13: goto_c18_r13
+          c19_r12: goto_c19_r12
+      c18_r13:
+        attr:
+          labels: []
+          pose: '[[185, 135], [0]]'
+        connected_to:
+          c17_r13: goto_c17_r13
+          c18_r12: goto_c18_r12
+          c18_r13: stay
+          c18_r14: goto_c18_r14
+          c19_r13: goto_c19_r13
+      c18_r14:
+        attr:
+          labels: []
+          pose: '[[185, 145], [0]]'
+        connected_to:
+          c17_r14: goto_c17_r14
+          c18_r13: goto_c18_r13
+          c18_r14: stay
+          c18_r15: goto_c18_r15
+          c19_r14: goto_c19_r14
+      c18_r15:
+        attr:
+          labels: []
+          pose: '[[185, 155], [0]]'
+        connected_to:
+          c17_r15: goto_c17_r15
+          c18_r14: goto_c18_r14
+          c18_r15: stay
+          c18_r16: goto_c18_r16
+          c19_r15: goto_c19_r15
+      c18_r16:
+        attr:
+          labels: []
+          pose: '[[185, 165], [0]]'
+        connected_to:
+          c17_r16: goto_c17_r16
+          c18_r15: goto_c18_r15
+          c18_r16: stay
+          c18_r17: goto_c18_r17
+          c19_r16: goto_c19_r16
+      c18_r17:
+        attr:
+          labels: []
+          pose: '[[185, 175], [0]]'
+        connected_to:
+          c17_r17: goto_c17_r17
+          c18_r16: goto_c18_r16
+          c18_r17: stay
+          c18_r18: goto_c18_r18
+          c19_r17: goto_c19_r17
+      c18_r18:
+        attr:
+          labels: []
+          pose: '[[185, 185], [0]]'
+        connected_to:
+          c17_r18: goto_c17_r18
+          c18_r17: goto_c18_r17
+          c18_r18: stay
+          c18_r19: goto_c18_r19
+          c19_r18: goto_c19_r18
+      c18_r19:
+        attr:
+          labels: []
+          pose: '[[185, 195], [0]]'
+        connected_to:
+          c17_r19: goto_c17_r19
+          c18_r18: goto_c18_r18
+          c18_r19: stay
+          c19_r19: goto_c19_r19
+      c18_r2:
+        attr:
+          labels: []
+          pose: '[[185, 25], [0]]'
+        connected_to:
+          c17_r2: goto_c17_r2
+          c18_r1: goto_c18_r1
+          c18_r2: stay
+          c18_r3: goto_c18_r3
+          c19_r2: goto_c19_r2
+      c18_r3:
+        attr:
+          labels: []
+          pose: '[[185, 35], [0]]'
+        connected_to:
+          c17_r3: goto_c17_r3
+          c18_r2: goto_c18_r2
+          c18_r3: stay
+          c18_r4: goto_c18_r4
+          c19_r3: goto_c19_r3
+      c18_r4:
+        attr:
+          labels: []
+          pose: '[[185, 45], [0]]'
+        connected_to:
+          c17_r4: goto_c17_r4
+          c18_r3: goto_c18_r3
+          c18_r4: stay
+          c18_r5: goto_c18_r5
+          c19_r4: goto_c19_r4
+      c18_r5:
+        attr:
+          labels: []
+          pose: '[[185, 55], [0]]'
+        connected_to:
+          c17_r5: goto_c17_r5
+          c18_r4: goto_c18_r4
+          c18_r5: stay
+          c18_r6: goto_c18_r6
+          c19_r5: goto_c19_r5
+      c18_r6:
+        attr:
+          labels: []
+          pose: '[[185, 65], [0]]'
+        connected_to:
+          c17_r6: goto_c17_r6
+          c18_r5: goto_c18_r5
+          c18_r6: stay
+          c18_r7: goto_c18_r7
+          c19_r6: goto_c19_r6
+      c18_r7:
+        attr:
+          labels: []
+          pose: '[[185, 75], [0]]'
+        connected_to:
+          c17_r7: goto_c17_r7
+          c18_r6: goto_c18_r6
+          c18_r7: stay
+          c18_r8: goto_c18_r8
+          c19_r7: goto_c19_r7
+      c18_r8:
+        attr:
+          labels: []
+          pose: '[[185, 85], [0]]'
+        connected_to:
+          c17_r8: goto_c17_r8
+          c18_r7: goto_c18_r7
+          c18_r8: stay
+          c18_r9: goto_c18_r9
+          c19_r8: goto_c19_r8
+      c18_r9:
+        attr:
+          labels: []
+          pose: '[[185, 95], [0]]'
+        connected_to:
+          c17_r9: goto_c17_r9
+          c18_r8: goto_c18_r8
+          c18_r9: stay
+          c19_r9: goto_c19_r9
+      c19_r0:
+        attr:
+          labels: []
+          pose: '[[195, 5], [0]]'
+        connected_to:
+          c18_r0: goto_c18_r0
+          c19_r0: stay
+          c19_r1: goto_c19_r1
+      c19_r1:
+        attr:
+          labels: []
+          pose: '[[195, 15], [0]]'
+        connected_to:
+          c18_r1: goto_c18_r1
+          c19_r0: goto_c19_r0
+          c19_r1: stay
+          c19_r2: goto_c19_r2
+      c19_r10:
+        attr:
+          labels: []
+          pose: '[[195, 105], [0]]'
+        connected_to:
+          c18_r10: goto_c18_r10
+          c19_r10: stay
+          c19_r11: goto_c19_r11
+          c19_r9: goto_c19_r9
+      c19_r11:
+        attr:
+          labels: []
+          pose: '[[195, 115], [0]]'
+        connected_to:
+          c18_r11: goto_c18_r11
+          c19_r10: goto_c19_r10
+          c19_r11: stay
+          c19_r12: goto_c19_r12
+      c19_r12:
+        attr:
+          labels: []
+          pose: '[[195, 125], [0]]'
+        connected_to:
+          c18_r12: goto_c18_r12
+          c19_r11: goto_c19_r11
+          c19_r12: stay
+          c19_r13: goto_c19_r13
+      c19_r13:
+        attr:
+          labels: []
+          pose: '[[195, 135], [0]]'
+        connected_to:
+          c18_r13: goto_c18_r13
+          c19_r12: goto_c19_r12
+          c19_r13: stay
+          c19_r14: goto_c19_r14
+      c19_r14:
+        attr:
+          labels: []
+          pose: '[[195, 145], [0]]'
+        connected_to:
+          c18_r14: goto_c18_r14
+          c19_r13: goto_c19_r13
+          c19_r14: stay
+          c19_r15: goto_c19_r15
+      c19_r15:
+        attr:
+          labels: []
+          pose: '[[195, 155], [0]]'
+        connected_to:
+          c18_r15: goto_c18_r15
+          c19_r14: goto_c19_r14
+          c19_r15: stay
+          c19_r16: goto_c19_r16
+      c19_r16:
+        attr:
+          labels: []
+          pose: '[[195, 165], [0]]'
+        connected_to:
+          c18_r16: goto_c18_r16
+          c19_r15: goto_c19_r15
+          c19_r16: stay
+          c19_r17: goto_c19_r17
+      c19_r17:
+        attr:
+          labels: []
+          pose: '[[195, 175], [0]]'
+        connected_to:
+          c18_r17: goto_c18_r17
+          c19_r16: goto_c19_r16
+          c19_r17: stay
+          c19_r18: goto_c19_r18
+      c19_r18:
+        attr:
+          labels: []
+          pose: '[[195, 185], [0]]'
+        connected_to:
+          c18_r18: goto_c18_r18
+          c19_r17: goto_c19_r17
+          c19_r18: stay
+          c19_r19: goto_c19_r19
+      c19_r19:
+        attr:
+          labels: []
+          pose: '[[195, 195], [0]]'
+        connected_to:
+          c18_r19: goto_c18_r19
+          c19_r18: goto_c19_r18
+          c19_r19: stay
+      c19_r2:
+        attr:
+          labels: []
+          pose: '[[195, 25], [0]]'
+        connected_to:
+          c18_r2: goto_c18_r2
+          c19_r1: goto_c19_r1
+          c19_r2: stay
+          c19_r3: goto_c19_r3
+      c19_r3:
+        attr:
+          labels: []
+          pose: '[[195, 35], [0]]'
+        connected_to:
+          c18_r3: goto_c18_r3
+          c19_r2: goto_c19_r2
+          c19_r3: stay
+          c19_r4: goto_c19_r4
+      c19_r4:
+        attr:
+          labels: []
+          pose: '[[195, 45], [0]]'
+        connected_to:
+          c18_r4: goto_c18_r4
+          c19_r3: goto_c19_r3
+          c19_r4: stay
+          c19_r5: goto_c19_r5
+      c19_r5:
+        attr:
+          labels: []
+          pose: '[[195, 55], [0]]'
+        connected_to:
+          c18_r5: goto_c18_r5
+          c19_r4: goto_c19_r4
+          c19_r5: stay
+          c19_r6: goto_c19_r6
+      c19_r6:
+        attr:
+          labels: []
+          pose: '[[195, 65], [0]]'
+        connected_to:
+          c18_r6: goto_c18_r6
+          c19_r5: goto_c19_r5
+          c19_r6: stay
+          c19_r7: goto_c19_r7
+      c19_r7:
+        attr:
+          labels: []
+          pose: '[[195, 75], [0]]'
+        connected_to:
+          c18_r7: goto_c18_r7
+          c19_r6: goto_c19_r6
+          c19_r7: stay
+          c19_r8: goto_c19_r8
+      c19_r8:
+        attr:
+          labels: []
+          pose: '[[195, 85], [0]]'
+        connected_to:
+          c18_r8: goto_c18_r8
+          c19_r7: goto_c19_r7
+          c19_r8: stay
+          c19_r9: goto_c19_r9
+      c19_r9:
+        attr:
+          labels: []
+          pose: '[[195, 95], [0]]'
+        connected_to:
+          c18_r9: goto_c18_r9
+          c19_r10: goto_c19_r10
+          c19_r8: goto_c19_r8
+          c19_r9: stay
+      c1_r0:
+        attr:
+          labels: []
+          pose: '[[15, 5], [0]]'
+        connected_to:
+          c0_r0: goto_c0_r0
+          c1_r0: stay
+          c1_r1: goto_c1_r1
+          c2_r0: goto_c2_r0
+      c1_r1:
+        attr:
+          labels: []
+          pose: '[[15, 15], [0]]'
+        connected_to:
+          c0_r1: goto_c0_r1
+          c1_r0: goto_c1_r0
+          c1_r1: stay
+          c1_r2: goto_c1_r2
+          c2_r1: goto_c2_r1
+      c1_r10:
+        attr:
+          labels: []
+          pose: '[[15, 105], [0]]'
+        connected_to:
+          c0_r10: goto_c0_r10
+          c1_r10: stay
+          c1_r11: goto_c1_r11
+          c2_r10: goto_c2_r10
+      c1_r11:
+        attr:
+          labels: []
+          pose: '[[15, 115], [0]]'
+        connected_to:
+          c0_r11: goto_c0_r11
+          c1_r10: goto_c1_r10
+          c1_r11: stay
+          c1_r12: goto_c1_r12
+          c2_r11: goto_c2_r11
+      c1_r12:
+        attr:
+          labels: []
+          pose: '[[15, 125], [0]]'
+        connected_to:
+          c0_r12: goto_c0_r12
+          c1_r11: goto_c1_r11
+          c1_r12: stay
+          c1_r13: goto_c1_r13
+          c2_r12: goto_c2_r12
+      c1_r13:
+        attr:
+          labels: []
+          pose: '[[15, 135], [0]]'
+        connected_to:
+          c0_r13: goto_c0_r13
+          c1_r12: goto_c1_r12
+          c1_r13: stay
+          c1_r14: goto_c1_r14
+          c2_r13: goto_c2_r13
+      c1_r14:
+        attr:
+          labels: []
+          pose: '[[15, 145], [0]]'
+        connected_to:
+          c0_r14: goto_c0_r14
+          c1_r13: goto_c1_r13
+          c1_r14: stay
+          c1_r15: goto_c1_r15
+          c2_r14: goto_c2_r14
+      c1_r15:
+        attr:
+          labels: []
+          pose: '[[15, 155], [0]]'
+        connected_to:
+          c0_r15: goto_c0_r15
+          c1_r14: goto_c1_r14
+          c1_r15: stay
+          c1_r16: goto_c1_r16
+          c2_r15: goto_c2_r15
+      c1_r16:
+        attr:
+          labels: []
+          pose: '[[15, 165], [0]]'
+        connected_to:
+          c0_r16: goto_c0_r16
+          c1_r15: goto_c1_r15
+          c1_r16: stay
+          c1_r17: goto_c1_r17
+          c2_r16: goto_c2_r16
+      c1_r17:
+        attr:
+          labels: []
+          pose: '[[15, 175], [0]]'
+        connected_to:
+          c0_r17: goto_c0_r17
+          c1_r16: goto_c1_r16
+          c1_r17: stay
+          c1_r18: goto_c1_r18
+          c2_r17: goto_c2_r17
+      c1_r18:
+        attr:
+          labels: []
+          pose: '[[15, 185], [0]]'
+        connected_to:
+          c0_r18: goto_c0_r18
+          c1_r17: goto_c1_r17
+          c1_r18: stay
+          c1_r19: goto_c1_r19
+          c2_r18: goto_c2_r18
+      c1_r19:
+        attr:
+          labels: []
+          pose: '[[15, 195], [0]]'
+        connected_to:
+          c0_r19: goto_c0_r19
+          c1_r18: goto_c1_r18
+          c1_r19: stay
+          c2_r19: goto_c2_r19
+      c1_r2:
+        attr:
+          labels: []
+          pose: '[[15, 25], [0]]'
+        connected_to:
+          c0_r2: goto_c0_r2
+          c1_r1: goto_c1_r1
+          c1_r2: stay
+          c1_r3: goto_c1_r3
+          c2_r2: goto_c2_r2
+      c1_r3:
+        attr:
+          labels: []
+          pose: '[[15, 35], [0]]'
+        connected_to:
+          c0_r3: goto_c0_r3
+          c1_r2: goto_c1_r2
+          c1_r3: stay
+          c1_r4: goto_c1_r4
+          c2_r3: goto_c2_r3
+      c1_r4:
+        attr:
+          labels: []
+          pose: '[[15, 45], [0]]'
+        connected_to:
+          c0_r4: goto_c0_r4
+          c1_r3: goto_c1_r3
+          c1_r4: stay
+          c1_r5: goto_c1_r5
+          c2_r4: goto_c2_r4
+      c1_r5:
+        attr:
+          labels: []
+          pose: '[[15, 55], [0]]'
+        connected_to:
+          c0_r5: goto_c0_r5
+          c1_r4: goto_c1_r4
+          c1_r5: stay
+          c1_r6: goto_c1_r6
+          c2_r5: goto_c2_r5
+      c1_r6:
+        attr:
+          labels: []
+          pose: '[[15, 65], [0]]'
+        connected_to:
+          c0_r6: goto_c0_r6
+          c1_r5: goto_c1_r5
+          c1_r6: stay
+          c1_r7: goto_c1_r7
+          c2_r6: goto_c2_r6
+      c1_r7:
+        attr:
+          labels: []
+          pose: '[[15, 75], [0]]'
+        connected_to:
+          c0_r7: goto_c0_r7
+          c1_r6: goto_c1_r6
+          c1_r7: stay
+          c1_r8: goto_c1_r8
+          c2_r7: goto_c2_r7
+      c1_r8:
+        attr:
+          labels: []
+          pose: '[[15, 85], [0]]'
+        connected_to:
+          c0_r8: goto_c0_r8
+          c1_r7: goto_c1_r7
+          c1_r8: stay
+          c1_r9: goto_c1_r9
+          c2_r8: goto_c2_r8
+      c1_r9:
+        attr:
+          labels: []
+          pose: '[[15, 95], [0]]'
+        connected_to:
+          c0_r9: goto_c0_r9
+          c1_r8: goto_c1_r8
+          c1_r9: stay
+          c2_r9: goto_c2_r9
+      c2_r0:
+        attr:
+          labels: []
+          pose: '[[25, 5], [0]]'
+        connected_to:
+          c1_r0: goto_c1_r0
+          c2_r0: stay
+          c2_r1: goto_c2_r1
+          c3_r0: goto_c3_r0
+      c2_r1:
+        attr:
+          labels: []
+          pose: '[[25, 15], [0]]'
+        connected_to:
+          c1_r1: goto_c1_r1
+          c2_r0: goto_c2_r0
+          c2_r1: stay
+          c2_r2: goto_c2_r2
+          c3_r1: goto_c3_r1
+      c2_r10:
+        attr:
+          labels: []
+          pose: '[[25, 105], [0]]'
+        connected_to:
+          c1_r10: goto_c1_r10
+          c2_r10: stay
+          c2_r11: goto_c2_r11
+          c3_r10: goto_c3_r10
+      c2_r11:
+        attr:
+          labels: []
+          pose: '[[25, 115], [0]]'
+        connected_to:
+          c1_r11: goto_c1_r11
+          c2_r10: goto_c2_r10
+          c2_r11: stay
+          c2_r12: goto_c2_r12
+          c3_r11: goto_c3_r11
+      c2_r12:
+        attr:
+          labels: []
+          pose: '[[25, 125], [0]]'
+        connected_to:
+          c1_r12: goto_c1_r12
+          c2_r11: goto_c2_r11
+          c2_r12: stay
+          c2_r13: goto_c2_r13
+          c3_r12: goto_c3_r12
+      c2_r13:
+        attr:
+          labels: []
+          pose: '[[25, 135], [0]]'
+        connected_to:
+          c1_r13: goto_c1_r13
+          c2_r12: goto_c2_r12
+          c2_r13: stay
+          c2_r14: goto_c2_r14
+          c3_r13: goto_c3_r13
+      c2_r14:
+        attr:
+          labels: []
+          pose: '[[25, 145], [0]]'
+        connected_to:
+          c1_r14: goto_c1_r14
+          c2_r13: goto_c2_r13
+          c2_r14: stay
+          c2_r15: goto_c2_r15
+          c3_r14: goto_c3_r14
+      c2_r15:
+        attr:
+          labels: []
+          pose: '[[25, 155], [0]]'
+        connected_to:
+          c1_r15: goto_c1_r15
+          c2_r14: goto_c2_r14
+          c2_r15: stay
+          c2_r16: goto_c2_r16
+          c3_r15: goto_c3_r15
+      c2_r16:
+        attr:
+          labels: []
+          pose: '[[25, 165], [0]]'
+        connected_to:
+          c1_r16: goto_c1_r16
+          c2_r15: goto_c2_r15
+          c2_r16: stay
+          c2_r17: goto_c2_r17
+          c3_r16: goto_c3_r16
+      c2_r17:
+        attr:
+          labels: []
+          pose: '[[25, 175], [0]]'
+        connected_to:
+          c1_r17: goto_c1_r17
+          c2_r16: goto_c2_r16
+          c2_r17: stay
+          c2_r18: goto_c2_r18
+          c3_r17: goto_c3_r17
+      c2_r18:
+        attr:
+          labels: []
+          pose: '[[25, 185], [0]]'
+        connected_to:
+          c1_r18: goto_c1_r18
+          c2_r17: goto_c2_r17
+          c2_r18: stay
+          c2_r19: goto_c2_r19
+          c3_r18: goto_c3_r18
+      c2_r19:
+        attr:
+          labels: []
+          pose: '[[25, 195], [0]]'
+        connected_to:
+          c1_r19: goto_c1_r19
+          c2_r18: goto_c2_r18
+          c2_r19: stay
+          c3_r19: goto_c3_r19
+      c2_r2:
+        attr:
+          labels: []
+          pose: '[[25, 25], [0]]'
+        connected_to:
+          c1_r2: goto_c1_r2
+          c2_r1: goto_c2_r1
+          c2_r2: stay
+          c2_r3: goto_c2_r3
+          c3_r2: goto_c3_r2
+      c2_r3:
+        attr:
+          labels: []
+          pose: '[[25, 35], [0]]'
+        connected_to:
+          c1_r3: goto_c1_r3
+          c2_r2: goto_c2_r2
+          c2_r3: stay
+          c2_r4: goto_c2_r4
+          c3_r3: goto_c3_r3
+      c2_r4:
+        attr:
+          labels: []
+          pose: '[[25, 45], [0]]'
+        connected_to:
+          c1_r4: goto_c1_r4
+          c2_r3: goto_c2_r3
+          c2_r4: stay
+          c2_r5: goto_c2_r5
+          c3_r4: goto_c3_r4
+      c2_r5:
+        attr:
+          labels: []
+          pose: '[[25, 55], [0]]'
+        connected_to:
+          c1_r5: goto_c1_r5
+          c2_r4: goto_c2_r4
+          c2_r5: stay
+          c2_r6: goto_c2_r6
+          c3_r5: goto_c3_r5
+      c2_r6:
+        attr:
+          labels: []
+          pose: '[[25, 65], [0]]'
+        connected_to:
+          c1_r6: goto_c1_r6
+          c2_r5: goto_c2_r5
+          c2_r6: stay
+          c2_r7: goto_c2_r7
+          c3_r6: goto_c3_r6
+      c2_r7:
+        attr:
+          labels: []
+          pose: '[[25, 75], [0]]'
+        connected_to:
+          c1_r7: goto_c1_r7
+          c2_r6: goto_c2_r6
+          c2_r7: stay
+          c2_r8: goto_c2_r8
+          c3_r7: goto_c3_r7
+      c2_r8:
+        attr:
+          labels: []
+          pose: '[[25, 85], [0]]'
+        connected_to:
+          c1_r8: goto_c1_r8
+          c2_r7: goto_c2_r7
+          c2_r8: stay
+          c2_r9: goto_c2_r9
+          c3_r8: goto_c3_r8
+      c2_r9:
+        attr:
+          labels: []
+          pose: '[[25, 95], [0]]'
+        connected_to:
+          c1_r9: goto_c1_r9
+          c2_r8: goto_c2_r8
+          c2_r9: stay
+          c3_r9: goto_c3_r9
+      c3_r0:
+        attr:
+          labels: []
+          pose: '[[35, 5], [0]]'
+        connected_to:
+          c2_r0: goto_c2_r0
+          c3_r0: stay
+          c3_r1: goto_c3_r1
+          c4_r0: goto_c4_r0
+      c3_r1:
+        attr:
+          labels: []
+          pose: '[[35, 15], [0]]'
+        connected_to:
+          c2_r1: goto_c2_r1
+          c3_r0: goto_c3_r0
+          c3_r1: stay
+          c3_r2: goto_c3_r2
+          c4_r1: goto_c4_r1
+      c3_r10:
+        attr:
+          labels: []
+          pose: '[[35, 105], [0]]'
+        connected_to:
+          c2_r10: goto_c2_r10
+          c3_r10: stay
+          c3_r11: goto_c3_r11
+          c4_r10: goto_c4_r10
+      c3_r11:
+        attr:
+          labels: []
+          pose: '[[35, 115], [0]]'
+        connected_to:
+          c2_r11: goto_c2_r11
+          c3_r10: goto_c3_r10
+          c3_r11: stay
+          c3_r12: goto_c3_r12
+          c4_r11: goto_c4_r11
+      c3_r12:
+        attr:
+          labels: []
+          pose: '[[35, 125], [0]]'
+        connected_to:
+          c2_r12: goto_c2_r12
+          c3_r11: goto_c3_r11
+          c3_r12: stay
+          c3_r13: goto_c3_r13
+          c4_r12: goto_c4_r12
+      c3_r13:
+        attr:
+          labels: []
+          pose: '[[35, 135], [0]]'
+        connected_to:
+          c2_r13: goto_c2_r13
+          c3_r12: goto_c3_r12
+          c3_r13: stay
+          c3_r14: goto_c3_r14
+          c4_r13: goto_c4_r13
+      c3_r14:
+        attr:
+          labels: []
+          pose: '[[35, 145], [0]]'
+        connected_to:
+          c2_r14: goto_c2_r14
+          c3_r13: goto_c3_r13
+          c3_r14: stay
+          c3_r15: goto_c3_r15
+          c4_r14: goto_c4_r14
+      c3_r15:
+        attr:
+          labels: []
+          pose: '[[35, 155], [0]]'
+        connected_to:
+          c2_r15: goto_c2_r15
+          c3_r14: goto_c3_r14
+          c3_r15: stay
+          c3_r16: goto_c3_r16
+          c4_r15: goto_c4_r15
+      c3_r16:
+        attr:
+          labels: []
+          pose: '[[35, 165], [0]]'
+        connected_to:
+          c2_r16: goto_c2_r16
+          c3_r15: goto_c3_r15
+          c3_r16: stay
+          c3_r17: goto_c3_r17
+          c4_r16: goto_c4_r16
+      c3_r17:
+        attr:
+          labels: []
+          pose: '[[35, 175], [0]]'
+        connected_to:
+          c2_r17: goto_c2_r17
+          c3_r16: goto_c3_r16
+          c3_r17: stay
+          c3_r18: goto_c3_r18
+          c4_r17: goto_c4_r17
+      c3_r18:
+        attr:
+          labels: []
+          pose: '[[35, 185], [0]]'
+        connected_to:
+          c2_r18: goto_c2_r18
+          c3_r17: goto_c3_r17
+          c3_r18: stay
+          c3_r19: goto_c3_r19
+          c4_r18: goto_c4_r18
+      c3_r19:
+        attr:
+          labels: []
+          pose: '[[35, 195], [0]]'
+        connected_to:
+          c2_r19: goto_c2_r19
+          c3_r18: goto_c3_r18
+          c3_r19: stay
+          c4_r19: goto_c4_r19
+      c3_r2:
+        attr:
+          labels: []
+          pose: '[[35, 25], [0]]'
+        connected_to:
+          c2_r2: goto_c2_r2
+          c3_r1: goto_c3_r1
+          c3_r2: stay
+          c3_r3: goto_c3_r3
+          c4_r2: goto_c4_r2
+      c3_r3:
+        attr:
+          labels: []
+          pose: '[[35, 35], [0]]'
+        connected_to:
+          c2_r3: goto_c2_r3
+          c3_r2: goto_c3_r2
+          c3_r3: stay
+          c3_r4: goto_c3_r4
+          c4_r3: goto_c4_r3
+      c3_r4:
+        attr:
+          labels: []
+          pose: '[[35, 45], [0]]'
+        connected_to:
+          c2_r4: goto_c2_r4
+          c3_r3: goto_c3_r3
+          c3_r4: stay
+          c3_r5: goto_c3_r5
+          c4_r4: goto_c4_r4
+      c3_r5:
+        attr:
+          labels: []
+          pose: '[[35, 55], [0]]'
+        connected_to:
+          c2_r5: goto_c2_r5
+          c3_r4: goto_c3_r4
+          c3_r5: stay
+          c3_r6: goto_c3_r6
+          c4_r5: goto_c4_r5
+      c3_r6:
+        attr:
+          labels: []
+          pose: '[[35, 65], [0]]'
+        connected_to:
+          c2_r6: goto_c2_r6
+          c3_r5: goto_c3_r5
+          c3_r6: stay
+          c3_r7: goto_c3_r7
+          c4_r6: goto_c4_r6
+      c3_r7:
+        attr:
+          labels: []
+          pose: '[[35, 75], [0]]'
+        connected_to:
+          c2_r7: goto_c2_r7
+          c3_r6: goto_c3_r6
+          c3_r7: stay
+          c3_r8: goto_c3_r8
+          c4_r7: goto_c4_r7
+      c3_r8:
+        attr:
+          labels: []
+          pose: '[[35, 85], [0]]'
+        connected_to:
+          c2_r8: goto_c2_r8
+          c3_r7: goto_c3_r7
+          c3_r8: stay
+          c3_r9: goto_c3_r9
+          c4_r8: goto_c4_r8
+      c3_r9:
+        attr:
+          labels: []
+          pose: '[[35, 95], [0]]'
+        connected_to:
+          c2_r9: goto_c2_r9
+          c3_r8: goto_c3_r8
+          c3_r9: stay
+          c4_r9: goto_c4_r9
+      c4_r0:
+        attr:
+          labels: []
+          pose: '[[45, 5], [0]]'
+        connected_to:
+          c3_r0: goto_c3_r0
+          c4_r0: stay
+          c4_r1: goto_c4_r1
+          c5_r0: goto_c5_r0
+      c4_r1:
+        attr:
+          labels: []
+          pose: '[[45, 15], [0]]'
+        connected_to:
+          c3_r1: goto_c3_r1
+          c4_r0: goto_c4_r0
+          c4_r1: stay
+          c4_r2: goto_c4_r2
+          c5_r1: goto_c5_r1
+      c4_r10:
+        attr:
+          labels: []
+          pose: '[[45, 105], [0]]'
+        connected_to:
+          c3_r10: goto_c3_r10
+          c4_r10: stay
+          c4_r11: goto_c4_r11
+          c5_r10: goto_c5_r10
+      c4_r11:
+        attr:
+          labels: []
+          pose: '[[45, 115], [0]]'
+        connected_to:
+          c3_r11: goto_c3_r11
+          c4_r10: goto_c4_r10
+          c4_r11: stay
+          c4_r12: goto_c4_r12
+          c5_r11: goto_c5_r11
+      c4_r12:
+        attr:
+          labels: []
+          pose: '[[45, 125], [0]]'
+        connected_to:
+          c3_r12: goto_c3_r12
+          c4_r11: goto_c4_r11
+          c4_r12: stay
+          c4_r13: goto_c4_r13
+          c5_r12: goto_c5_r12
+      c4_r13:
+        attr:
+          labels: []
+          pose: '[[45, 135], [0]]'
+        connected_to:
+          c3_r13: goto_c3_r13
+          c4_r12: goto_c4_r12
+          c4_r13: stay
+          c4_r14: goto_c4_r14
+          c5_r13: goto_c5_r13
+      c4_r14:
+        attr:
+          labels: []
+          pose: '[[45, 145], [0]]'
+        connected_to:
+          c3_r14: goto_c3_r14
+          c4_r13: goto_c4_r13
+          c4_r14: stay
+          c4_r15: goto_c4_r15
+          c5_r14: goto_c5_r14
+      c4_r15:
+        attr:
+          labels: []
+          pose: '[[45, 155], [0]]'
+        connected_to:
+          c3_r15: goto_c3_r15
+          c4_r14: goto_c4_r14
+          c4_r15: stay
+          c4_r16: goto_c4_r16
+          c5_r15: goto_c5_r15
+      c4_r16:
+        attr:
+          labels: []
+          pose: '[[45, 165], [0]]'
+        connected_to:
+          c3_r16: goto_c3_r16
+          c4_r15: goto_c4_r15
+          c4_r16: stay
+          c4_r17: goto_c4_r17
+          c5_r16: goto_c5_r16
+      c4_r17:
+        attr:
+          labels: []
+          pose: '[[45, 175], [0]]'
+        connected_to:
+          c3_r17: goto_c3_r17
+          c4_r16: goto_c4_r16
+          c4_r17: stay
+          c4_r18: goto_c4_r18
+          c5_r17: goto_c5_r17
+      c4_r18:
+        attr:
+          labels: []
+          pose: '[[45, 185], [0]]'
+        connected_to:
+          c3_r18: goto_c3_r18
+          c4_r17: goto_c4_r17
+          c4_r18: stay
+          c4_r19: goto_c4_r19
+          c5_r18: goto_c5_r18
+      c4_r19:
+        attr:
+          labels: []
+          pose: '[[45, 195], [0]]'
+        connected_to:
+          c3_r19: goto_c3_r19
+          c4_r18: goto_c4_r18
+          c4_r19: stay
+          c5_r19: goto_c5_r19
+      c4_r2:
+        attr:
+          labels: []
+          pose: '[[45, 25], [0]]'
+        connected_to:
+          c3_r2: goto_c3_r2
+          c4_r1: goto_c4_r1
+          c4_r2: stay
+          c4_r3: goto_c4_r3
+          c5_r2: goto_c5_r2
+      c4_r3:
+        attr:
+          labels: []
+          pose: '[[45, 35], [0]]'
+        connected_to:
+          c3_r3: goto_c3_r3
+          c4_r2: goto_c4_r2
+          c4_r3: stay
+          c4_r4: goto_c4_r4
+          c5_r3: goto_c5_r3
+      c4_r4:
+        attr:
+          labels: []
+          pose: '[[45, 45], [0]]'
+        connected_to:
+          c3_r4: goto_c3_r4
+          c4_r3: goto_c4_r3
+          c4_r4: stay
+          c4_r5: goto_c4_r5
+          c5_r4: goto_c5_r4
+      c4_r5:
+        attr:
+          labels: []
+          pose: '[[45, 55], [0]]'
+        connected_to:
+          c3_r5: goto_c3_r5
+          c4_r4: goto_c4_r4
+          c4_r5: stay
+          c4_r6: goto_c4_r6
+          c5_r5: goto_c5_r5
+      c4_r6:
+        attr:
+          labels: []
+          pose: '[[45, 65], [0]]'
+        connected_to:
+          c3_r6: goto_c3_r6
+          c4_r5: goto_c4_r5
+          c4_r6: stay
+          c4_r7: goto_c4_r7
+          c5_r6: goto_c5_r6
+      c4_r7:
+        attr:
+          labels: []
+          pose: '[[45, 75], [0]]'
+        connected_to:
+          c3_r7: goto_c3_r7
+          c4_r6: goto_c4_r6
+          c4_r7: stay
+          c4_r8: goto_c4_r8
+          c5_r7: goto_c5_r7
+      c4_r8:
+        attr:
+          labels: []
+          pose: '[[45, 85], [0]]'
+        connected_to:
+          c3_r8: goto_c3_r8
+          c4_r7: goto_c4_r7
+          c4_r8: stay
+          c4_r9: goto_c4_r9
+          c5_r8: goto_c5_r8
+      c4_r9:
+        attr:
+          labels: []
+          pose: '[[45, 95], [0]]'
+        connected_to:
+          c3_r9: goto_c3_r9
+          c4_r8: goto_c4_r8
+          c4_r9: stay
+          c5_r9: goto_c5_r9
+      c5_r0:
+        attr:
+          labels: []
+          pose: '[[55, 5], [0]]'
+        connected_to:
+          c4_r0: goto_c4_r0
+          c5_r0: stay
+          c5_r1: goto_c5_r1
+          c6_r0: goto_c6_r0
+      c5_r1:
+        attr:
+          labels: []
+          pose: '[[55, 15], [0]]'
+        connected_to:
+          c4_r1: goto_c4_r1
+          c5_r0: goto_c5_r0
+          c5_r1: stay
+          c5_r2: goto_c5_r2
+          c6_r1: goto_c6_r1
+      c5_r10:
+        attr:
+          labels: []
+          pose: '[[55, 105], [0]]'
+        connected_to:
+          c4_r10: goto_c4_r10
+          c5_r10: stay
+          c5_r11: goto_c5_r11
+          c6_r10: goto_c6_r10
+      c5_r11:
+        attr:
+          labels: []
+          pose: '[[55, 115], [0]]'
+        connected_to:
+          c4_r11: goto_c4_r11
+          c5_r10: goto_c5_r10
+          c5_r11: stay
+          c5_r12: goto_c5_r12
+          c6_r11: goto_c6_r11
+      c5_r12:
+        attr:
+          labels: []
+          pose: '[[55, 125], [0]]'
+        connected_to:
+          c4_r12: goto_c4_r12
+          c5_r11: goto_c5_r11
+          c5_r12: stay
+          c5_r13: goto_c5_r13
+          c6_r12: goto_c6_r12
+      c5_r13:
+        attr:
+          labels: []
+          pose: '[[55, 135], [0]]'
+        connected_to:
+          c4_r13: goto_c4_r13
+          c5_r12: goto_c5_r12
+          c5_r13: stay
+          c5_r14: goto_c5_r14
+          c6_r13: goto_c6_r13
+      c5_r14:
+        attr:
+          labels: []
+          pose: '[[55, 145], [0]]'
+        connected_to:
+          c4_r14: goto_c4_r14
+          c5_r13: goto_c5_r13
+          c5_r14: stay
+          c5_r15: goto_c5_r15
+          c6_r14: goto_c6_r14
+      c5_r15:
+        attr:
+          labels: []
+          pose: '[[55, 155], [0]]'
+        connected_to:
+          c4_r15: goto_c4_r15
+          c5_r14: goto_c5_r14
+          c5_r15: stay
+          c5_r16: goto_c5_r16
+          c6_r15: goto_c6_r15
+      c5_r16:
+        attr:
+          labels: []
+          pose: '[[55, 165], [0]]'
+        connected_to:
+          c4_r16: goto_c4_r16
+          c5_r15: goto_c5_r15
+          c5_r16: stay
+          c5_r17: goto_c5_r17
+          c6_r16: goto_c6_r16
+      c5_r17:
+        attr:
+          labels: []
+          pose: '[[55, 175], [0]]'
+        connected_to:
+          c4_r17: goto_c4_r17
+          c5_r16: goto_c5_r16
+          c5_r17: stay
+          c5_r18: goto_c5_r18
+          c6_r17: goto_c6_r17
+      c5_r18:
+        attr:
+          labels: []
+          pose: '[[55, 185], [0]]'
+        connected_to:
+          c4_r18: goto_c4_r18
+          c5_r17: goto_c5_r17
+          c5_r18: stay
+          c5_r19: goto_c5_r19
+          c6_r18: goto_c6_r18
+      c5_r19:
+        attr:
+          labels: []
+          pose: '[[55, 195], [0]]'
+        connected_to:
+          c4_r19: goto_c4_r19
+          c5_r18: goto_c5_r18
+          c5_r19: stay
+          c6_r19: goto_c6_r19
+      c5_r2:
+        attr:
+          labels: []
+          pose: '[[55, 25], [0]]'
+        connected_to:
+          c4_r2: goto_c4_r2
+          c5_r1: goto_c5_r1
+          c5_r2: stay
+          c5_r3: goto_c5_r3
+          c6_r2: goto_c6_r2
+      c5_r3:
+        attr:
+          labels: []
+          pose: '[[55, 35], [0]]'
+        connected_to:
+          c4_r3: goto_c4_r3
+          c5_r2: goto_c5_r2
+          c5_r3: stay
+          c5_r4: goto_c5_r4
+          c6_r3: goto_c6_r3
+      c5_r4:
+        attr:
+          labels: []
+          pose: '[[55, 45], [0]]'
+        connected_to:
+          c4_r4: goto_c4_r4
+          c5_r3: goto_c5_r3
+          c5_r4: stay
+          c5_r5: goto_c5_r5
+          c6_r4: goto_c6_r4
+      c5_r5:
+        attr:
+          labels: []
+          pose: '[[55, 55], [0]]'
+        connected_to:
+          c4_r5: goto_c4_r5
+          c5_r4: goto_c5_r4
+          c5_r5: stay
+          c5_r6: goto_c5_r6
+          c6_r5: goto_c6_r5
+      c5_r6:
+        attr:
+          labels: []
+          pose: '[[55, 65], [0]]'
+        connected_to:
+          c4_r6: goto_c4_r6
+          c5_r5: goto_c5_r5
+          c5_r6: stay
+          c5_r7: goto_c5_r7
+          c6_r6: goto_c6_r6
+      c5_r7:
+        attr:
+          labels: []
+          pose: '[[55, 75], [0]]'
+        connected_to:
+          c4_r7: goto_c4_r7
+          c5_r6: goto_c5_r6
+          c5_r7: stay
+          c5_r8: goto_c5_r8
+          c6_r7: goto_c6_r7
+      c5_r8:
+        attr:
+          labels: []
+          pose: '[[55, 85], [0]]'
+        connected_to:
+          c4_r8: goto_c4_r8
+          c5_r7: goto_c5_r7
+          c5_r8: stay
+          c5_r9: goto_c5_r9
+          c6_r8: goto_c6_r8
+      c5_r9:
+        attr:
+          labels: []
+          pose: '[[55, 95], [0]]'
+        connected_to:
+          c4_r9: goto_c4_r9
+          c5_r8: goto_c5_r8
+          c5_r9: stay
+          c6_r9: goto_c6_r9
+      c6_r0:
+        attr:
+          labels: []
+          pose: '[[65, 5], [0]]'
+        connected_to:
+          c5_r0: goto_c5_r0
+          c6_r0: stay
+          c6_r1: goto_c6_r1
+          c7_r0: goto_c7_r0
+      c6_r1:
+        attr:
+          labels: []
+          pose: '[[65, 15], [0]]'
+        connected_to:
+          c5_r1: goto_c5_r1
+          c6_r0: goto_c6_r0
+          c6_r1: stay
+          c6_r2: goto_c6_r2
+          c7_r1: goto_c7_r1
+      c6_r10:
+        attr:
+          labels: []
+          pose: '[[65, 105], [0]]'
+        connected_to:
+          c5_r10: goto_c5_r10
+          c6_r10: stay
+          c6_r11: goto_c6_r11
+          c7_r10: goto_c7_r10
+      c6_r11:
+        attr:
+          labels: []
+          pose: '[[65, 115], [0]]'
+        connected_to:
+          c5_r11: goto_c5_r11
+          c6_r10: goto_c6_r10
+          c6_r11: stay
+          c6_r12: goto_c6_r12
+          c7_r11: goto_c7_r11
+      c6_r12:
+        attr:
+          labels: []
+          pose: '[[65, 125], [0]]'
+        connected_to:
+          c5_r12: goto_c5_r12
+          c6_r11: goto_c6_r11
+          c6_r12: stay
+          c6_r13: goto_c6_r13
+          c7_r12: goto_c7_r12
+      c6_r13:
+        attr:
+          labels: []
+          pose: '[[65, 135], [0]]'
+        connected_to:
+          c5_r13: goto_c5_r13
+          c6_r12: goto_c6_r12
+          c6_r13: stay
+          c6_r14: goto_c6_r14
+          c7_r13: goto_c7_r13
+      c6_r14:
+        attr:
+          labels: []
+          pose: '[[65, 145], [0]]'
+        connected_to:
+          c5_r14: goto_c5_r14
+          c6_r13: goto_c6_r13
+          c6_r14: stay
+          c6_r15: goto_c6_r15
+          c7_r14: goto_c7_r14
+      c6_r15:
+        attr:
+          labels: []
+          pose: '[[65, 155], [0]]'
+        connected_to:
+          c5_r15: goto_c5_r15
+          c6_r14: goto_c6_r14
+          c6_r15: stay
+          c6_r16: goto_c6_r16
+          c7_r15: goto_c7_r15
+      c6_r16:
+        attr:
+          labels: []
+          pose: '[[65, 165], [0]]'
+        connected_to:
+          c5_r16: goto_c5_r16
+          c6_r15: goto_c6_r15
+          c6_r16: stay
+          c6_r17: goto_c6_r17
+          c7_r16: goto_c7_r16
+      c6_r17:
+        attr:
+          labels: []
+          pose: '[[65, 175], [0]]'
+        connected_to:
+          c5_r17: goto_c5_r17
+          c6_r16: goto_c6_r16
+          c6_r17: stay
+          c6_r18: goto_c6_r18
+          c7_r17: goto_c7_r17
+      c6_r18:
+        attr:
+          labels: []
+          pose: '[[65, 185], [0]]'
+        connected_to:
+          c5_r18: goto_c5_r18
+          c6_r17: goto_c6_r17
+          c6_r18: stay
+          c6_r19: goto_c6_r19
+          c7_r18: goto_c7_r18
+      c6_r19:
+        attr:
+          labels: []
+          pose: '[[65, 195], [0]]'
+        connected_to:
+          c5_r19: goto_c5_r19
+          c6_r18: goto_c6_r18
+          c6_r19: stay
+          c7_r19: goto_c7_r19
+      c6_r2:
+        attr:
+          labels: []
+          pose: '[[65, 25], [0]]'
+        connected_to:
+          c5_r2: goto_c5_r2
+          c6_r1: goto_c6_r1
+          c6_r2: stay
+          c6_r3: goto_c6_r3
+          c7_r2: goto_c7_r2
+      c6_r3:
+        attr:
+          labels: []
+          pose: '[[65, 35], [0]]'
+        connected_to:
+          c5_r3: goto_c5_r3
+          c6_r2: goto_c6_r2
+          c6_r3: stay
+          c6_r4: goto_c6_r4
+          c7_r3: goto_c7_r3
+      c6_r4:
+        attr:
+          labels: []
+          pose: '[[65, 45], [0]]'
+        connected_to:
+          c5_r4: goto_c5_r4
+          c6_r3: goto_c6_r3
+          c6_r4: stay
+          c6_r5: goto_c6_r5
+          c7_r4: goto_c7_r4
+      c6_r5:
+        attr:
+          labels: []
+          pose: '[[65, 55], [0]]'
+        connected_to:
+          c5_r5: goto_c5_r5
+          c6_r4: goto_c6_r4
+          c6_r5: stay
+          c6_r6: goto_c6_r6
+          c7_r5: goto_c7_r5
+      c6_r6:
+        attr:
+          labels: []
+          pose: '[[65, 65], [0]]'
+        connected_to:
+          c5_r6: goto_c5_r6
+          c6_r5: goto_c6_r5
+          c6_r6: stay
+          c6_r7: goto_c6_r7
+          c7_r6: goto_c7_r6
+      c6_r7:
+        attr:
+          labels: []
+          pose: '[[65, 75], [0]]'
+        connected_to:
+          c5_r7: goto_c5_r7
+          c6_r6: goto_c6_r6
+          c6_r7: stay
+          c6_r8: goto_c6_r8
+          c7_r7: goto_c7_r7
+      c6_r8:
+        attr:
+          labels: []
+          pose: '[[65, 85], [0]]'
+        connected_to:
+          c5_r8: goto_c5_r8
+          c6_r7: goto_c6_r7
+          c6_r8: stay
+          c6_r9: goto_c6_r9
+          c7_r8: goto_c7_r8
+      c6_r9:
+        attr:
+          labels: []
+          pose: '[[65, 95], [0]]'
+        connected_to:
+          c5_r9: goto_c5_r9
+          c6_r8: goto_c6_r8
+          c6_r9: stay
+          c7_r9: goto_c7_r9
+      c7_r0:
+        attr:
+          labels: []
+          pose: '[[75, 5], [0]]'
+        connected_to:
+          c6_r0: goto_c6_r0
+          c7_r0: stay
+          c7_r1: goto_c7_r1
+          c8_r0: goto_c8_r0
+      c7_r1:
+        attr:
+          labels: []
+          pose: '[[75, 15], [0]]'
+        connected_to:
+          c6_r1: goto_c6_r1
+          c7_r0: goto_c7_r0
+          c7_r1: stay
+          c7_r2: goto_c7_r2
+          c8_r1: goto_c8_r1
+      c7_r10:
+        attr:
+          labels: []
+          pose: '[[75, 105], [0]]'
+        connected_to:
+          c6_r10: goto_c6_r10
+          c7_r10: stay
+          c7_r11: goto_c7_r11
+          c8_r10: goto_c8_r10
+      c7_r11:
+        attr:
+          labels: []
+          pose: '[[75, 115], [0]]'
+        connected_to:
+          c6_r11: goto_c6_r11
+          c7_r10: goto_c7_r10
+          c7_r11: stay
+          c7_r12: goto_c7_r12
+          c8_r11: goto_c8_r11
+      c7_r12:
+        attr:
+          labels: []
+          pose: '[[75, 125], [0]]'
+        connected_to:
+          c6_r12: goto_c6_r12
+          c7_r11: goto_c7_r11
+          c7_r12: stay
+          c7_r13: goto_c7_r13
+          c8_r12: goto_c8_r12
+      c7_r13:
+        attr:
+          labels: []
+          pose: '[[75, 135], [0]]'
+        connected_to:
+          c6_r13: goto_c6_r13
+          c7_r12: goto_c7_r12
+          c7_r13: stay
+          c7_r14: goto_c7_r14
+          c8_r13: goto_c8_r13
+      c7_r14:
+        attr:
+          labels: []
+          pose: '[[75, 145], [0]]'
+        connected_to:
+          c6_r14: goto_c6_r14
+          c7_r13: goto_c7_r13
+          c7_r14: stay
+          c7_r15: goto_c7_r15
+          c8_r14: goto_c8_r14
+      c7_r15:
+        attr:
+          labels: []
+          pose: '[[75, 155], [0]]'
+        connected_to:
+          c6_r15: goto_c6_r15
+          c7_r14: goto_c7_r14
+          c7_r15: stay
+          c7_r16: goto_c7_r16
+          c8_r15: goto_c8_r15
+      c7_r16:
+        attr:
+          labels: []
+          pose: '[[75, 165], [0]]'
+        connected_to:
+          c6_r16: goto_c6_r16
+          c7_r15: goto_c7_r15
+          c7_r16: stay
+          c7_r17: goto_c7_r17
+          c8_r16: goto_c8_r16
+      c7_r17:
+        attr:
+          labels: []
+          pose: '[[75, 175], [0]]'
+        connected_to:
+          c6_r17: goto_c6_r17
+          c7_r16: goto_c7_r16
+          c7_r17: stay
+          c7_r18: goto_c7_r18
+          c8_r17: goto_c8_r17
+      c7_r18:
+        attr:
+          labels: []
+          pose: '[[75, 185], [0]]'
+        connected_to:
+          c6_r18: goto_c6_r18
+          c7_r17: goto_c7_r17
+          c7_r18: stay
+          c7_r19: goto_c7_r19
+          c8_r18: goto_c8_r18
+      c7_r19:
+        attr:
+          labels: []
+          pose: '[[75, 195], [0]]'
+        connected_to:
+          c6_r19: goto_c6_r19
+          c7_r18: goto_c7_r18
+          c7_r19: stay
+          c8_r19: goto_c8_r19
+      c7_r2:
+        attr:
+          labels: []
+          pose: '[[75, 25], [0]]'
+        connected_to:
+          c6_r2: goto_c6_r2
+          c7_r1: goto_c7_r1
+          c7_r2: stay
+          c7_r3: goto_c7_r3
+          c8_r2: goto_c8_r2
+      c7_r3:
+        attr:
+          labels: []
+          pose: '[[75, 35], [0]]'
+        connected_to:
+          c6_r3: goto_c6_r3
+          c7_r2: goto_c7_r2
+          c7_r3: stay
+          c7_r4: goto_c7_r4
+          c8_r3: goto_c8_r3
+      c7_r4:
+        attr:
+          labels: []
+          pose: '[[75, 45], [0]]'
+        connected_to:
+          c6_r4: goto_c6_r4
+          c7_r3: goto_c7_r3
+          c7_r4: stay
+          c7_r5: goto_c7_r5
+          c8_r4: goto_c8_r4
+      c7_r5:
+        attr:
+          labels: []
+          pose: '[[75, 55], [0]]'
+        connected_to:
+          c6_r5: goto_c6_r5
+          c7_r4: goto_c7_r4
+          c7_r5: stay
+          c7_r6: goto_c7_r6
+          c8_r5: goto_c8_r5
+      c7_r6:
+        attr:
+          labels: []
+          pose: '[[75, 65], [0]]'
+        connected_to:
+          c6_r6: goto_c6_r6
+          c7_r5: goto_c7_r5
+          c7_r6: stay
+          c7_r7: goto_c7_r7
+          c8_r6: goto_c8_r6
+      c7_r7:
+        attr:
+          labels: []
+          pose: '[[75, 75], [0]]'
+        connected_to:
+          c6_r7: goto_c6_r7
+          c7_r6: goto_c7_r6
+          c7_r7: stay
+          c7_r8: goto_c7_r8
+          c8_r7: goto_c8_r7
+      c7_r8:
+        attr:
+          labels: []
+          pose: '[[75, 85], [0]]'
+        connected_to:
+          c6_r8: goto_c6_r8
+          c7_r7: goto_c7_r7
+          c7_r8: stay
+          c7_r9: goto_c7_r9
+          c8_r8: goto_c8_r8
+      c7_r9:
+        attr:
+          labels: []
+          pose: '[[75, 95], [0]]'
+        connected_to:
+          c6_r9: goto_c6_r9
+          c7_r8: goto_c7_r8
+          c7_r9: stay
+          c8_r9: goto_c8_r9
+      c8_r0:
+        attr:
+          labels: []
+          pose: '[[85, 5], [0]]'
+        connected_to:
+          c7_r0: goto_c7_r0
+          c8_r0: stay
+          c8_r1: goto_c8_r1
+          c9_r0: goto_c9_r0
+      c8_r1:
+        attr:
+          labels: []
+          pose: '[[85, 15], [0]]'
+        connected_to:
+          c7_r1: goto_c7_r1
+          c8_r0: goto_c8_r0
+          c8_r1: stay
+          c8_r2: goto_c8_r2
+          c9_r1: goto_c9_r1
+      c8_r10:
+        attr:
+          labels:
+          - p
+          pose: '[[85, 105], [0]]'
+        connected_to:
+          c7_r10: goto_c7_r10
+          c8_r10: stay
+          c8_r11: goto_c8_r11
+          c9_r10: goto_c9_r10
+      c8_r11:
+        attr:
+          labels: []
+          pose: '[[85, 115], [0]]'
+        connected_to:
+          c7_r11: goto_c7_r11
+          c8_r10: goto_c8_r10
+          c8_r11: stay
+          c8_r12: goto_c8_r12
+          c9_r11: goto_c9_r11
+      c8_r12:
+        attr:
+          labels: []
+          pose: '[[85, 125], [0]]'
+        connected_to:
+          c7_r12: goto_c7_r12
+          c8_r11: goto_c8_r11
+          c8_r12: stay
+          c8_r13: goto_c8_r13
+          c9_r12: goto_c9_r12
+      c8_r13:
+        attr:
+          labels: []
+          pose: '[[85, 135], [0]]'
+        connected_to:
+          c7_r13: goto_c7_r13
+          c8_r12: goto_c8_r12
+          c8_r13: stay
+          c8_r14: goto_c8_r14
+          c9_r13: goto_c9_r13
+      c8_r14:
+        attr:
+          labels: []
+          pose: '[[85, 145], [0]]'
+        connected_to:
+          c7_r14: goto_c7_r14
+          c8_r13: goto_c8_r13
+          c8_r14: stay
+          c8_r15: goto_c8_r15
+          c9_r14: goto_c9_r14
+      c8_r15:
+        attr:
+          labels: []
+          pose: '[[85, 155], [0]]'
+        connected_to:
+          c7_r15: goto_c7_r15
+          c8_r14: goto_c8_r14
+          c8_r15: stay
+          c8_r16: goto_c8_r16
+          c9_r15: goto_c9_r15
+      c8_r16:
+        attr:
+          labels: []
+          pose: '[[85, 165], [0]]'
+        connected_to:
+          c7_r16: goto_c7_r16
+          c8_r15: goto_c8_r15
+          c8_r16: stay
+          c8_r17: goto_c8_r17
+          c9_r16: goto_c9_r16
+      c8_r17:
+        attr:
+          labels: []
+          pose: '[[85, 175], [0]]'
+        connected_to:
+          c7_r17: goto_c7_r17
+          c8_r16: goto_c8_r16
+          c8_r17: stay
+          c8_r18: goto_c8_r18
+          c9_r17: goto_c9_r17
+      c8_r18:
+        attr:
+          labels: []
+          pose: '[[85, 185], [0]]'
+        connected_to:
+          c7_r18: goto_c7_r18
+          c8_r17: goto_c8_r17
+          c8_r18: stay
+          c8_r19: goto_c8_r19
+          c9_r18: goto_c9_r18
+      c8_r19:
+        attr:
+          labels: []
+          pose: '[[85, 195], [0]]'
+        connected_to:
+          c7_r19: goto_c7_r19
+          c8_r18: goto_c8_r18
+          c8_r19: stay
+          c9_r19: goto_c9_r19
+      c8_r2:
+        attr:
+          labels: []
+          pose: '[[85, 25], [0]]'
+        connected_to:
+          c7_r2: goto_c7_r2
+          c8_r1: goto_c8_r1
+          c8_r2: stay
+          c8_r3: goto_c8_r3
+          c9_r2: goto_c9_r2
+      c8_r3:
+        attr:
+          labels: []
+          pose: '[[85, 35], [0]]'
+        connected_to:
+          c7_r3: goto_c7_r3
+          c8_r2: goto_c8_r2
+          c8_r3: stay
+          c8_r4: goto_c8_r4
+          c9_r3: goto_c9_r3
+      c8_r4:
+        attr:
+          labels: []
+          pose: '[[85, 45], [0]]'
+        connected_to:
+          c7_r4: goto_c7_r4
+          c8_r3: goto_c8_r3
+          c8_r4: stay
+          c8_r5: goto_c8_r5
+          c9_r4: goto_c9_r4
+      c8_r5:
+        attr:
+          labels: []
+          pose: '[[85, 55], [0]]'
+        connected_to:
+          c7_r5: goto_c7_r5
+          c8_r4: goto_c8_r4
+          c8_r5: stay
+          c8_r6: goto_c8_r6
+          c9_r5: goto_c9_r5
+      c8_r6:
+        attr:
+          labels: []
+          pose: '[[85, 65], [0]]'
+        connected_to:
+          c7_r6: goto_c7_r6
+          c8_r5: goto_c8_r5
+          c8_r6: stay
+          c8_r7: goto_c8_r7
+          c9_r6: goto_c9_r6
+      c8_r7:
+        attr:
+          labels: []
+          pose: '[[85, 75], [0]]'
+        connected_to:
+          c7_r7: goto_c7_r7
+          c8_r6: goto_c8_r6
+          c8_r7: stay
+          c8_r8: goto_c8_r8
+          c9_r7: goto_c9_r7
+      c8_r8:
+        attr:
+          labels: []
+          pose: '[[85, 85], [0]]'
+        connected_to:
+          c7_r8: goto_c7_r8
+          c8_r7: goto_c8_r7
+          c8_r8: stay
+          c8_r9: goto_c8_r9
+          c9_r8: goto_c9_r8
+      c8_r9:
+        attr:
+          labels:
+          - p
+          pose: '[[85, 95], [0]]'
+        connected_to:
+          c7_r9: goto_c7_r9
+          c8_r8: goto_c8_r8
+          c8_r9: stay
+          c9_r9: goto_c9_r9
+      c9_r0:
+        attr:
+          labels: []
+          pose: '[[95, 5], [0]]'
+        connected_to:
+          c10_r0: goto_c10_r0
+          c8_r0: goto_c8_r0
+          c9_r0: stay
+          c9_r1: goto_c9_r1
+      c9_r1:
+        attr:
+          labels: []
+          pose: '[[95, 15], [0]]'
+        connected_to:
+          c8_r1: goto_c8_r1
+          c9_r0: goto_c9_r0
+          c9_r1: stay
+          c9_r2: goto_c9_r2
+      c9_r10:
+        attr:
+          labels:
+          - h
+          pose: '[[95, 105], [0]]'
+        connected_to:
+          c8_r10: goto_c8_r10
+          c9_r10: stay
+          c9_r11: goto_c9_r11
+      c9_r11:
+        attr:
+          labels:
+          - p
+          pose: '[[95, 115], [0]]'
+        connected_to:
+          c8_r11: goto_c8_r11
+          c9_r10: goto_c9_r10
+          c9_r11: stay
+          c9_r12: goto_c9_r12
+      c9_r12:
+        attr:
+          labels: []
+          pose: '[[95, 125], [0]]'
+        connected_to:
+          c8_r12: goto_c8_r12
+          c9_r11: goto_c9_r11
+          c9_r12: stay
+          c9_r13: goto_c9_r13
+      c9_r13:
+        attr:
+          labels: []
+          pose: '[[95, 135], [0]]'
+        connected_to:
+          c8_r13: goto_c8_r13
+          c9_r12: goto_c9_r12
+          c9_r13: stay
+          c9_r14: goto_c9_r14
+      c9_r14:
+        attr:
+          labels: []
+          pose: '[[95, 145], [0]]'
+        connected_to:
+          c8_r14: goto_c8_r14
+          c9_r13: goto_c9_r13
+          c9_r14: stay
+          c9_r15: goto_c9_r15
+      c9_r15:
+        attr:
+          labels: []
+          pose: '[[95, 155], [0]]'
+        connected_to:
+          c8_r15: goto_c8_r15
+          c9_r14: goto_c9_r14
+          c9_r15: stay
+          c9_r16: goto_c9_r16
+      c9_r16:
+        attr:
+          labels: []
+          pose: '[[95, 165], [0]]'
+        connected_to:
+          c8_r16: goto_c8_r16
+          c9_r15: goto_c9_r15
+          c9_r16: stay
+          c9_r17: goto_c9_r17
+      c9_r17:
+        attr:
+          labels: []
+          pose: '[[95, 175], [0]]'
+        connected_to:
+          c8_r17: goto_c8_r17
+          c9_r16: goto_c9_r16
+          c9_r17: stay
+          c9_r18: goto_c9_r18
+      c9_r18:
+        attr:
+          labels: []
+          pose: '[[95, 185], [0]]'
+        connected_to:
+          c8_r18: goto_c8_r18
+          c9_r17: goto_c9_r17
+          c9_r18: stay
+          c9_r19: goto_c9_r19
+      c9_r19:
+        attr:
+          labels: []
+          pose: '[[95, 195], [0]]'
+        connected_to:
+          c10_r19: goto_c10_r19
+          c8_r19: goto_c8_r19
+          c9_r18: goto_c9_r18
+          c9_r19: stay
+      c9_r2:
+        attr:
+          labels: []
+          pose: '[[95, 25], [0]]'
+        connected_to:
+          c8_r2: goto_c8_r2
+          c9_r1: goto_c9_r1
+          c9_r2: stay
+          c9_r3: goto_c9_r3
+      c9_r3:
+        attr:
+          labels: []
+          pose: '[[95, 35], [0]]'
+        connected_to:
+          c8_r3: goto_c8_r3
+          c9_r2: goto_c9_r2
+          c9_r3: stay
+          c9_r4: goto_c9_r4
+      c9_r4:
+        attr:
+          labels: []
+          pose: '[[95, 45], [0]]'
+        connected_to:
+          c8_r4: goto_c8_r4
+          c9_r3: goto_c9_r3
+          c9_r4: stay
+          c9_r5: goto_c9_r5
+      c9_r5:
+        attr:
+          labels: []
+          pose: '[[95, 55], [0]]'
+        connected_to:
+          c8_r5: goto_c8_r5
+          c9_r4: goto_c9_r4
+          c9_r5: stay
+          c9_r6: goto_c9_r6
+      c9_r6:
+        attr:
+          labels: []
+          pose: '[[95, 65], [0]]'
+        connected_to:
+          c8_r6: goto_c8_r6
+          c9_r5: goto_c9_r5
+          c9_r6: stay
+          c9_r7: goto_c9_r7
+      c9_r7:
+        attr:
+          labels: []
+          pose: '[[95, 75], [0]]'
+        connected_to:
+          c8_r7: goto_c8_r7
+          c9_r6: goto_c9_r6
+          c9_r7: stay
+          c9_r8: goto_c9_r8
+      c9_r8:
+        attr:
+          labels:
+          - p
+          pose: '[[95, 85], [0]]'
+        connected_to:
+          c8_r8: goto_c8_r8
+          c9_r7: goto_c9_r7
+          c9_r8: stay
+          c9_r9: goto_c9_r9
+      c9_r9:
+        attr:
+          labels:
+          - e
+          pose: '[[95, 95], [0]]'
+        connected_to:
+          c8_r9: goto_c8_r9
+          c9_r8: goto_c9_r8
+          c9_r9: stay
+    ts_type: 2d_pose_region
+  robot_state:
+    initial: loaded
+    nodes:
+      loaded:
+        attr:
+          labels:
+          - loaded
+        connected_to:
+          loaded: stay
+    ts_type: robot_state

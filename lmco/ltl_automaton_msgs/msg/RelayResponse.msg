@@ -1,0 +1,3 @@
+bool success
+LTLPlan new_plan_prefix
+LTLPlan new_plan_suffix

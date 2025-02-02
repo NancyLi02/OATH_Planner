@@ -1,0 +1,712 @@
+actions:
+  goto_c0_r0:
+    attr:
+      pose: '[[15, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r1:
+    attr:
+      pose: '[[5, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r2:
+    attr:
+      pose: '[[5, 15, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r3:
+    attr:
+      pose: '[[5, 25, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r4:
+    attr:
+      pose: '[[5, 35, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c0_r5:
+    attr:
+      pose: '[[5, 45, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r0:
+    attr:
+      pose: '[[25, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r1:
+    attr:
+      pose: '[[15, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r2:
+    attr:
+      pose: '[[15, 15, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r3:
+    attr:
+      pose: '[[15, 25, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r4:
+    attr:
+      pose: '[[15, 35, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c1_r5:
+    attr:
+      pose: '[[15, 45, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r0:
+    attr:
+      pose: '[[35, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r1:
+    attr:
+      pose: '[[25, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r2:
+    attr:
+      pose: '[[25, 15, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r3:
+    attr:
+      pose: '[[25, 25, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r4:
+    attr:
+      pose: '[[25, 35, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c2_r5:
+    attr:
+      pose: '[[25, 45, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r0:
+    attr:
+      pose: '[[45, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r1:
+    attr:
+      pose: '[[35, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r2:
+    attr:
+      pose: '[[35, 15, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r3:
+    attr:
+      pose: '[[35, 25, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r4:
+    attr:
+      pose: '[[35, 35, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c3_r5:
+    attr:
+      pose: '[[35, 45, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r0:
+    attr:
+      pose: '[[55, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r1:
+    attr:
+      pose: '[[45, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r2:
+    attr:
+      pose: '[[45, 15, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r3:
+    attr:
+      pose: '[[45, 25, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r4:
+    attr:
+      pose: '[[45, 35, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c4_r5:
+    attr:
+      pose: '[[45, 45, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r0:
+    attr:
+      pose: '[[45, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r1:
+    attr:
+      pose: '[[55, 5, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r2:
+    attr:
+      pose: '[[55, 15, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r3:
+    attr:
+      pose: '[[55, 25, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r4:
+    attr:
+      pose: '[[55, 35, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  goto_c5_r5:
+    attr:
+      pose: '[[55, 45, 0], [0, 0, 0, 1]]'
+      region: c8
+    guard: '1'
+    type: move
+    weight: 10
+  load:
+    guard: 'b || c  || f || d'
+    type: load
+    weight: 0
+  stay:
+    guard: '1'
+    synchronized_transition:
+      guard: '1'
+      type: synchronized_transition
+      weight: 0
+    type: stay
+    weight: 0
+  unload:
+    guard: 'e'
+    type: unload
+    weight: 0
+state_dim:
+- 2d_pose_region
+- Drone_state
+state_models:
+  2d_pose_region:
+    initial: c2_r2
+    nodes:
+      c0_r0:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[5, 5], [0]]'
+          type: square
+        connected_to:
+          c0_r0: stay
+          c0_r1: goto_c0_r1
+      c0_r1:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[5, 15], [0]]'
+          type: square
+        connected_to:
+          c0_r0: goto_c0_r0
+          c0_r1: stay
+          c1_r1: goto_c1_r1
+      c0_r2:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[5, 25], [0]]'
+          type: square
+        connected_to:
+          c0_r2: stay
+          c0_r3: goto_c0_r3
+          c1_r2: goto_c1_r2
+      c0_r3:
+        attr:
+          hysteresis: 0.05
+          labels:
+          - f
+          length: 10
+          pose: '[[5, 35], [0]]'
+          type: square
+        connected_to:
+          c0_r2: goto_c0_r2
+          c0_r3: stay
+      c0_r4:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[5, 45], [0]]'
+          type: square
+        connected_to:
+          c0_r4: stay
+          c0_r5: goto_c0_r5
+          c1_r4: goto_c1_r4
+      c0_r5:
+        attr:
+          hysteresis: 0.05
+          labels:
+          - d
+          length: 10
+          pose: '[[5, 55], [0]]'
+          type: square
+        connected_to:
+          c0_r4: goto_c0_r4
+          c0_r5: stay
+      c1_r0:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[15, 5], [0]]'
+          type: square
+        connected_to:
+          c1_r0: stay
+          c1_r1: goto_c1_r1
+          c2_r0: goto_c2_r0
+      c1_r1:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[15, 15], [0]]'
+          type: square
+        connected_to:
+          c0_r1: goto_c0_r1
+          c1_r0: goto_c1_r0
+          c1_r1: stay
+          c1_r2: goto_c1_r2
+          c2_r1: goto_c2_r1
+      c1_r2:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[15, 25], [0]]'
+          type: square
+        connected_to:
+          c0_r2: goto_c0_r2
+          c1_r1: goto_c1_r1
+          c1_r2: stay
+          c1_r3: goto_c1_r3
+      c1_r3:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[15, 35], [0]]'
+          type: square
+        connected_to:
+          c1_r2: goto_c1_r2
+          c1_r3: stay
+          c1_r4: goto_c1_r4
+      c1_r4:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[15, 45], [0]]'
+          type: square
+        connected_to:
+          c0_r4: goto_c0_r4
+          c1_r3: goto_c1_r3
+          c1_r4: stay
+          c1_r5: goto_c1_r5
+          c2_r4: goto_c2_r4
+      c1_r5:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[15, 55], [0]]'
+          type: square
+        connected_to:
+          c1_r4: goto_c1_r4
+          c1_r5: stay
+          c2_r5: goto_c2_r5
+      c2_r0:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[25, 5], [0]]'
+          type: square
+        connected_to:
+          c1_r0: goto_c1_r0
+          c2_r0: stay
+          c2_r1: goto_c2_r1
+          c3_r0: goto_c3_r0
+      c2_r1:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[25, 15], [0]]'
+          type: square
+        connected_to:
+          c1_r1: goto_c1_r1
+          c2_r0: goto_c2_r0
+          c2_r1: stay
+          c2_r2: goto_c2_r2
+          c3_r1: goto_c3_r1
+      c2_r2:
+        attr:
+          hysteresis: 0.05
+          labels: 
+          - a
+          length: 10
+          pose: '[[25, 25], [0]]'
+          type: square
+        connected_to:
+          c2_r1: goto_c2_r1
+          c2_r2: stay
+          c2_r3: goto_c2_r3
+          c3_r2: goto_c3_r2
+      c2_r3:
+        attr:
+          hysteresis: 0.05
+          labels:
+          - e
+          length: 10
+          pose: '[[25, 35], [0]]'
+          type: square
+        connected_to:
+          c2_r2: goto_c2_r2
+          c2_r3: stay
+          c3_r3: goto_c3_r3
+      c2_r4:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[25, 45], [0]]'
+          type: square
+        connected_to:
+          c1_r4: goto_c1_r4
+          c2_r4: stay
+          c2_r5: goto_c2_r5
+          c3_r4: goto_c3_r4
+      c2_r5:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[25, 55], [0]]'
+          type: square
+        connected_to:
+          c1_r5: goto_c1_r5
+          c2_r4: goto_c2_r4
+          c2_r5: stay
+          c3_r5: goto_c3_r5
+      c3_r0:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[35, 5], [0]]'
+          type: square
+        connected_to:
+          c2_r0: goto_c2_r0
+          c3_r0: stay
+          c3_r1: goto_c3_r1
+          c4_r0: goto_c4_r0
+      c3_r1:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[35, 15], [0]]'
+          type: square
+        connected_to:
+          c2_r1: goto_c2_r1
+          c3_r0: goto_c3_r0
+          c3_r1: stay
+          c4_r1: goto_c4_r1
+      c3_r2:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[35, 25], [0]]'
+          type: square
+        connected_to:
+          c2_r2: goto_c2_r2
+          c3_r2: stay
+          c3_r3: goto_c3_r3
+      c3_r3:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[35, 35], [0]]'
+          type: square
+        connected_to:
+          c2_r3: goto_c2_r3
+          c3_r2: goto_c3_r2
+          c3_r3: stay
+          c3_r4: goto_c3_r4
+      c3_r4:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[35, 45], [0]]'
+          type: square
+        connected_to:
+          c2_r4: goto_c2_r4
+          c3_r3: goto_c3_r3
+          c3_r4: stay
+          c3_r5: goto_c3_r5
+          c4_r4: goto_c4_r4
+      c3_r5:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[35, 55], [0]]'
+          type: square
+        connected_to:
+          c2_r5: goto_c2_r5
+          c3_r4: goto_c3_r4
+          c3_r5: stay
+          c4_r5: goto_c4_r5
+      c4_r0:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[45, 5], [0]]'
+          type: square
+        connected_to:
+          c3_r0: goto_c3_r0
+          c4_r0: stay
+          c4_r1: goto_c4_r1
+      c4_r1:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[45, 15], [0]]'
+          type: square
+        connected_to:
+          c3_r1: goto_c3_r1
+          c4_r0: goto_c4_r0
+          c4_r1: stay
+          c4_r2: goto_c4_r2
+      c4_r2:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[45, 25], [0]]'
+          type: square
+        connected_to:
+          c4_r1: goto_c4_r1
+          c4_r2: stay
+          c4_r3: goto_c4_r3
+          c5_r2: goto_c5_r2
+      c4_r3:
+        attr:
+          hysteresis: 0.05
+          labels: 
+          - a
+          length: 10
+          pose: '[[45, 35], [0]]'
+          type: square
+        connected_to:
+          c4_r2: goto_c4_r2
+          c4_r3: stay
+          c4_r4: goto_c4_r4
+          c5_r3: goto_c5_r3
+      c4_r4:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[45, 45], [0]]'
+          type: square
+        connected_to:
+          c3_r4: goto_c3_r4
+          c4_r3: goto_c4_r3
+          c4_r4: stay
+          c4_r5: goto_c4_r5
+      c4_r5:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[45, 55], [0]]'
+          type: square
+        connected_to:
+          c3_r5: goto_c3_r5
+          c4_r4: goto_c4_r4
+          c4_r5: stay
+      c5_r0:
+        attr:
+          hysteresis: 0.05
+          labels:
+          - b
+          length: 10
+          pose: '[[55, 5], [0]]'
+          type: square
+        connected_to:
+          c5_r0: stay
+          c5_r1: goto_c5_r1
+      c5_r1:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[55, 15], [0]]'
+          type: square
+        connected_to:
+          c5_r0: goto_c5_r0
+          c5_r1: stay
+          c5_r2: goto_c5_r2
+      c5_r2:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[55, 25], [0]]'
+          type: square
+        connected_to:
+          c4_r2: goto_c4_r2
+          c5_r1: goto_c5_r1
+          c5_r2: stay
+          c5_r3: goto_c5_r3
+      c5_r3:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[55, 35], [0]]'
+          type: square
+        connected_to:
+          c4_r3: goto_c4_r3
+          c5_r2: goto_c5_r2
+          c5_r3: stay
+          c5_r4: goto_c5_r4
+      c5_r4:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: '[[55, 45], [0]]'
+          type: square
+        connected_to:
+          c5_r3: goto_c5_r3
+          c5_r4: stay
+          c5_r5: goto_c5_r5
+      c5_r5:
+        attr:
+          hysteresis: 0.05
+          labels:
+          - c
+          length: 10
+          pose: '[[55, 55], [0]]'
+          type: square
+        connected_to:
+          c5_r4: goto_c5_r4
+          c5_r5: stay
+    ts_type: 2d_pose_region
+  Drone_state:
+    initial: "unloaded"
+    nodes:
+      loaded:
+        attr:
+          labels: ['loaded']
+        connected_to:
+          unloaded: unload
+      unloaded:
+        attr:
+          labels: ['unloaded']
+        connected_to:
+          loaded: load
+    ts_type: Drone_state

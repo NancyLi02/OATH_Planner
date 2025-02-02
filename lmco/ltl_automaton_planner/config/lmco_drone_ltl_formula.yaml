@@ -1,0 +1,8 @@
+hard_task: ' []((p3 && !rescue) -> <> p4) && []((p4 && !rescue)-> <>p3) && <>(c && unloaded && <>(l1 && loaded && <>(h && unloaded && <>(p3))))'
+
+# hard_task: '[](i -> rescue) && [](rescue -> []i) && []((p3 && !rescue)-> <> p4) && []((p4 && !rescue) -> <>p3)) && \
+#             <>(c && unloaded && <>(l1 && loaded && <>(h && unloaded && <>(p3))))'
+soft_task: ""
+# [](p3 -> <> p4) && [](p4 -> <>p3)&& <>(c && unloaded && <>(l1 && loaded && <>(h && unloaded && <>(p3)))) 
+# [](p3 -> <> p4) && [](p4 -> <>p3) && <> p3
+# [](i -> rescue) && [](rescue -> []i)

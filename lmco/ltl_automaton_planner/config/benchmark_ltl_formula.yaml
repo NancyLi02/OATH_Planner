@@ -1,0 +1,2 @@
+hard_task: '[](e -> X((!e && !h && !g) U (f && X((!h && !e && !f) U (g && X((!g && !e && !f) U (h && X((!h && !g && !f) U e))))))))' # && [](a -> X((!a && !c && !d) U (b && X((!a && !b && !d) U (c && X((!c && !b && !a) U (d && X((!d && !c && !b) U a)))))))) && [](a -> X(loaded U (e && unloaded)))' #' && [](b -> X(loaded U (f && unloaded))) && [](c -> X(loaded U (g && unloaded))) && [](d -> X(loaded U (h && unloaded)))'
+soft_task: ''

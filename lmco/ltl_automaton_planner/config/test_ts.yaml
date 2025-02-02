@@ -1,0 +1,107 @@
+actions:
+  goto_c0_r0:
+    attr:
+      pose: [[15, 5, 0], [0, 0, 0, 1]]
+      region: c8
+    guard: '1'
+    type: "move"
+    weight: 10
+  goto_c0_r1:
+    attr:
+      pose: [[5, 5, 0], [0, 0, 0, 1]]
+      region: c8
+    guard: '1'
+    type: "move"
+    weight: 10
+  goto_c1_r0:
+    attr:
+      pose: [[25, 5, 0], [0, 0, 0, 1]]
+      region: c8
+    guard: '1'
+    type: "move"
+    weight: 10
+  goto_c1_r1:
+    attr:
+      pose: [[15, 15, 0], [0, 0, 0, 1]]
+      region: c8
+    guard: '1'
+    type: "move"
+    weight: 10
+  stay:
+    type: "stay"
+    guard: "1"
+    weight: 0.01
+  load:
+    guard: 'l1'
+    type: "load"
+    weight: 0
+  unload:
+    guard: 'h'
+    type: "unload"
+    weight: 0
+
+state_dim: ["2d_pose_region", "Drone_state"]
+state_models:
+  2d_pose_region:
+    initial: c0_r1
+    nodes:
+      c0_r0:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: [[5, 5], [0]]
+          type: square
+        connected_to:
+          c0_r0: stay
+          c0_r1: goto_c0_r1
+          c1_r0: goto_c1_r0
+      c0_r1:
+        attr:
+          hysteresis: 0.05
+          labels: ['a']
+          length: 10
+          pose: [[5, 15], [0]]
+          type: square
+        connected_to:
+          c0_r1: stay
+          c0_r0: goto_c0_r0
+          c1_r1: goto_c1_r1
+      
+      c1_r0:
+        attr:
+          hysteresis: 0.05
+          labels: []
+          length: 10
+          pose: [[15, 5], [0]]
+          type: square
+        connected_to:
+          c1_r0: stay
+          c0_r0: goto_c0_r0
+          c1_r1: goto_c1_r1
+      c1_r1:
+        attr:
+          hysteresis: 0.05
+          labels: ['b']
+          length: 10
+          pose: [[15, 15], [0]]
+          type: square
+        connected_to:
+          c1_r1: stay 
+          c0_r1: goto_c0_r1
+          c1_r0: goto_c1_r0
+    ts_type: 2d_pose_region
+  Drone_state:
+    initial: "unloaded"
+    nodes:
+      loaded:
+        attr:
+          labels: ['loaded']
+        connected_to:
+          unloaded: unload
+      unloaded:
+        attr:
+          labels: ['unloaded']
+        connected_to:
+          loaded: load
+    ts_type: Drone_state
