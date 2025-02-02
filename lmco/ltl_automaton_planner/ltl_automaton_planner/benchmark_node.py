@@ -30,7 +30,7 @@ from example_interfaces.srv import AddTwoInts
 # The node converts TS action to interpretable commands using
 # action attributes defined in the TS config file
 #=================================================================
-# dsfslf
+
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)

@@ -1,4 +1,4 @@
-A ROS package wrapping for the LTL2BA software by Dennis Oddoux and Paul Gastin .
+A ROS2 package wrapping for the LTL2BA software by Dennis Oddoux and Paul Gastin .
 
 1. LICENSE
 
@@ -65,11 +65,11 @@ Here are the files that contain some code from Spin v3.4.1 :
 
 2. COMPILING
 
-Compile using catkin
+Compile using colcon
 from your workspace:
-> catkin_make
+> colcon build
 or
-> catkin build ltl2ba
+> colcon build --packages-select ltl2ba
 
 Source
 > source devel/setup.bash
@@ -77,7 +77,7 @@ Source
 3. EXECUTING
 
 run the program
-> rosrun ltl2ba ltl2ba -f 'formula'
+> ros2 run ltl2ba ltl2ba -f 'formula'
 
 The formula is an LTL formula, and may contain propositional symbols, 
 boolean operators, temporal operators, and parentheses.
@@ -107,7 +107,7 @@ The result is a never claim in Promela that can be given to the
 Spin model checker to verify properties on a system.
 
 run the command
-> rosrun ltl2ba ltl2ba
+> ros2 run ltl2ba ltl2ba
 to see the possible options for executing the program
 
 4. CHANGES IN VERSION 1.1

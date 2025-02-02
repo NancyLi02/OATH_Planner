@@ -1,38 +1,56 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.5)
 project(ltl2ba)
 
-## Find catkin macros and libraries
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-)
+# Find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
 
-catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES ros_ltl2ba
-#  CATKIN_DEPENDS roscpp
-#  DEPENDS system_lib
-)
+# Default to C99
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
 
+# Default to C++14
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+# Enable C language
 enable_language(C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DNXT")
 
-add_library(ltl2ba STATIC
-			src/parse.c
-			src/lex.c
-			src/trans.c
-			src/buchi.c
-			src/set.c
-			src/mem.c
-			src/rewrt.c
-			src/cache.c
-			src/alternating.c
-			src/generalized.c
-			src/ltl2ba.h
-)
-#target_include_directories(ltl2ba PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# Add the library
+add_library(ltl2ba STATIC
+    src/parse.c
+    src/lex.c
+    src/trans.c
+    src/buchi.c
+    src/set.c
+    src/mem.c
+    src/rewrt.c
+    src/cache.c
+    src/alternating.c
+    src/generalized.c
+    src/ltl2ba.h
+)
+
+# Add the executable
 add_executable(main src/main.c src/ltl2ba.h)
 set_target_properties(main PROPERTIES OUTPUT_NAME ltl2ba)
+ament_target_dependencies(main rclcpp)
 target_link_libraries(main ltl2ba)
 
+# Install the library and executable
+install(TARGETS
+    ltl2ba
+    main
+    DESTINATION lib/${PROJECT_NAME}/
+  )
+
+ament_package()
