@@ -29,7 +29,8 @@ setup(
         'console_scripts': [
             'planner_node = ltl_automaton_planner.planner_node:main',
             'benchmark_node = ltl_automaton_planner.benchmark_node:main',
-            'relay_node = ltl_automaton_planner.relay_node:main'
+            'relay_node = ltl_automaton_planner.relay_node:main',
+            'taskassign_node = ltl_automaton_planner.taskassign_node:main'
         ],
     },
 )
