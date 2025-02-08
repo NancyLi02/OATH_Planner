@@ -14,6 +14,7 @@
 
   <!-- Dependencies for messages and services -->
   <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
   <depend>builtin_interfaces</depend>
   <depend>ltl2ba</depend>
 

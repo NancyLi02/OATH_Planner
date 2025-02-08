@@ -4,6 +4,8 @@
 # The robot's unique identifier
 int32 robot_id
 
-# A list of valid task IDs assigned to the robot
-int32[] valid_tasks
+# Robot's assigned task
+int32 task_id
 
+# Whether the robot finished the task, 1=finished, 0=failed
+int32 task_status

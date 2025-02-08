@@ -1,21 +1,20 @@
+import os
+import numpy as np
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Int32, String
-from ltl_automaton_msgs.msg import TaskRequest
-import numpy as np
-import matplotlib.pyplot as plt
-import random
+from std_msgs.msg import String
+from ltl_automaton_msgs.msg import TaskRequest, TaskAssignment, PositionRequest, CurrentPosition
 
 #=================================================================
 #  Interfaces between TaskAssignNode and other nodes
 #                       -----------------
 # Created by Nan Li
-# The node is responsible for receiving task assignment requests,
+# This node is responsible for receiving task assignment requests,
 # calculating task scores for each agent, and assigning tasks
 # based on the CBAA (Consensus-Based Auction Algorithm).
-# It communicates with the planner and benchmark nodes.
 #=================================================================
 
+# Consensus-Based Auction Algorithm
 class CBAA:
     def __init__(self):
         pass
@@ -72,68 +71,142 @@ class CBAA:
 
         return assigned_tasks
 
+
+# Task Assignment Node
 class TaskAssignNode(Node):
     def __init__(self):
         super().__init__('taskassign_node')
-        
-        self.cbaa_algorithm = CBAA()
-        # Publisher to send task assignments to planner_node
-        self.task_assignment_publisher = self.create_publisher(String, 'task_assignment', 10) # 需要修改消息类型！！！！
 
-        # Subscriber to receive task assignment requests from benchmark_node
+        # Declare parameters for initial robot states
+        self.declare_parameter('robot1_initial_state', 'c0_r0')
+        self.declare_parameter('robot2_initial_state', 'c4_r3')
+
+        # Retrieve initial states from parameters
+        self.robot1_initial_state = self.get_parameter('robot1_initial_state').value
+        self.robot2_initial_state = self.get_parameter('robot2_initial_state').value
+        self.robot_init_state = [self.robot1_initial_state, self.robot2_initial_state]        
+
+        self.get_logger().info(f'Robot 1 initial state: {self.robot1_initial_state}')
+        self.get_logger().info(f'Robot 2 initial state: {self.robot2_initial_state}')
+        
+        # Initialize CBAA algorithm and robot states
+        self.cbaa_algorithm = CBAA()
+
+        # Task positions hard coded for now
+        self.task_positions = ['c5_r0', 'c5_r5', 'c0_r3', 'c0_r5']
+        self.valid_tasks = [1, 1, 1, 1]
+        # Convert positions from format like 'c5_r0' to coordinates (x, y)
+        self.task_pos = [
+            (int(pos.split('_')[0][1:]), int(pos.split('_')[1][1:])) for pos in self.task_positions
+            ]
+        self.robot_pos = [
+            (int(pos.split('_')[0][1:]), int(pos.split('_')[1][1:])) for pos in self.robot_init_state
+            ]
+        self.positions = [None, None]  # To store positions for robot_1 and robot_2
+
+        # Publishers to send task assignments
+        self.task_assignment_publisher = self.create_publisher(TaskAssignment, 'task_assignment', 10)
+        self.position_request_publisher = self.create_publisher(PositionRequest, 'position_request', 10)
+
+        # Subscriber to receive task assignment requests
         self.task_request_subscriber = self.create_subscription(
             TaskRequest,
             'task_assignment_request',
-            self.task_request_callback,
+            self.pub_new_taskassignment,
             10
         )
-        
+        self.position_receive_subscriber = self.create_subscription(
+            CurrentPosition,
+            'current_position',
+            self.position_receive_callback,
+            10
+        )
+
         self.get_logger().info('TaskAssignNode has been started.')
 
-    def task_request_callback(self, msg):
-        # robot_position = msg.robot_position  # `robot_position` is defined in TaskRequest
-        # valid_tasks = msg.valid_tasks        # `valid_tasks` is defined in TaskRequest
+        # Publish Initial Task Assignments
+        self.pub_initial_tasks(self.robot_pos, self.task_pos)
+        self.get_logger().info('Initial tasks have been assigned.')
+    
+    def position_receive_callback(self, msg):
+        # Update robots’ current position
+        self.positions[msg.robot_id] = msg.position
+        self.get_logger().info(
+            f'Received position from {msg.robot_id}: {msg.position}'
+        )
 
-        # Test robot_position and valid_tasks
-        robot_position = [np.array([10, 15]), np.array([45, 4]), np.array([2, 35]), np.array([3,30]), np.array([10,20])]
-        valid_tasks = [1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0]
-        task_num = len(valid_tasks)
-        task_list = np.random.uniform(0, 50, size=(task_num, 2))
-        self.get_logger().info(f'Received task assignment request. Start task assignment progress')
+    def pub_initial_tasks(self, robot_pos, task_pos):
+        # Calculate scores for each robot-task pair
+        scores_list = self.calculate_score(robot_pos, self.valid_tasks, task_pos)
 
-        score_list = self.calculate_score(robot_position, valid_tasks, task_list)
-        task_assignment = self.cbaa_algorithm.initial_task_assignment(score_list)
-        self.get_logger().info(f'Task assignment completed: {task_assignment}')
+        # Perform task auction using CBAA algorithm
+        assigned_tasks = self.cbaa_algorithm.initial_task_assignment(scores_list)
 
-        assignment_msg = String()
-        assignment_msg.data = str(task_assignment)
-        self.task_assignment_publisher.publish(assignment_msg)
+        # Publish initial task assignment
+        self.publish_task_assignment(assigned_tasks)
 
-    def calculate_score(robot_position, valid_tasks, task_list):
+    def pub_new_taskassignment(self, msg):
+        # Publish position request to robots
+        request_id = str(uuid.uuid4())
+        position_request_msg = PositionRequest()
+        position_request_msg.request_id = request_id
+        self.position_request_publisher.publish(position_request_msg)
+        self.get_logger().info(f'Sent position request with ID: {request_id}')
+
+        # Extract robot and task information from message
+        robot_id = msg.robot_id
+        task_id = msg.task_id
+        task_status = msg.task_status
+
+        # Update valid tasks if task is completed
+        if task_status == 1:
+            if 0 <= task_id < len(self.valid_tasks):
+                self.valid_tasks[task_id] = 0  # Mark task as invalid
+
+        self.get_logger().info(f'Received task assignment request from Robot {robot_id}.')
+
+        # Check if both robots have reported their positions
+        if all(position is not None for position in self.positions):
+            robot_position = self.positions  # Both positions are available
+            task_list = self.task_pos
+
+            # Calculate task scores and assign tasks
+            score_list = self.calculate_score(robot_position, self.valid_tasks, task_list)
+            assigned_tasks = self.cbaa_algorithm.initial_task_assignment(score_list)
+
+            # Publish task assignment
+            self.publish_task_assignment(assigned_tasks)
+            self.positions = [None, None]
+    
+    def publish_task_assignment(self, assigned_tasks):
+        task_assignment_msg = TaskAssignment()
+        robot_1_tasks = []
+        robot_2_tasks = []
+
+        for robot_index, task_index in assigned_tasks:
+            if robot_index == 0:
+                robot_1_tasks.append(float(task_index))
+            elif robot_index == 1:
+                robot_2_tasks.append(float(task_index))
+
+        task_assignment_msg.robot_1_task = robot_1_tasks
+        task_assignment_msg.robot_2_task = robot_2_tasks
+        self.get_logger().info(f'Publishing task assignments: Robot 1: {robot_1_tasks}, Robot 2: {robot_2_tasks}')
+        self.task_assignment_publisher.publish(task_assignment_msg)
+
+    def calculate_score(self, robot_position, valid_tasks, task_list):
         scores_list = []
-
         for i, robot in enumerate(robot_position):
             robot_scores = []
             for j, task in enumerate(task_list):
                 if valid_tasks[j] == 1:
-                    # Calculate the Manhattan distance between the robot and the task
                     manhattan_distance = np.abs(robot[0] - task[0]) + np.abs(robot[1] - task[1])
-                    
-                    # Calculate the score as 100 - Manhattan distance
-                    score = 100 - manhattan_distance
+                    score = 15 - manhattan_distance
                 else:
-                    # If the task is not valid, the score is 0
                     score = 0
-                
                 robot_scores.append(score)
-            
             scores_list.append(robot_scores)
-
         return np.array(scores_list)
-    
-#==============================
-#             Main
-#==============================
 
 def main(args=None):
     rclpy.init(args=args)
