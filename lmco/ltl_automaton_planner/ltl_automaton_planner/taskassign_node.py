@@ -191,9 +191,9 @@ class TaskAssignNode(Node):
         for robot_index, task_index in assigned_tasks:
             task_index = int(task_index)
             if robot_index == 0:
-                task_assignment_msg.robot_1_task = task_index
+                task_assignment_msg.robot_1_task = task_index + 1
             elif robot_index == 1:
-                task_assignment_msg.robot_2_task = task_index
+                task_assignment_msg.robot_2_task = task_index + 1
 
         self.get_logger().info(
             f'Publishing task assignments: Robot 1: {task_assignment_msg.robot_1_task}, Robot 2: {task_assignment_msg.robot_2_task}'
