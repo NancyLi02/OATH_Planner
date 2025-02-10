@@ -55,9 +55,9 @@ def generate_launch_description():
             executable='benchmark_node',
             name='benchmark_node',
             output='screen',
-            parameters=[ltl_formula_file,
-                        {'transition_system_textfile': transition_system_file},
-                        {'N': 6}]
+            parameters=[#ltl_formula_file,
+                {'transition_system_textfile': transition_system_file},
+                {'N': 6}]
         ),
         Node(
             package='ltl_automaton_planner',
@@ -65,7 +65,8 @@ def generate_launch_description():
             name='planner_node',
             output='screen',
             parameters=[
-                ltl_formula_file,
+                {'agent_name': 'robot_1'},
+                {'ltl_formula_file': ltl_formula_file},
                 {'algo_type': LaunchConfiguration('algo_type')},
                 {'transition_system_textfile': transition_system_file},
                 {'init_state': 'c0_r0'}
@@ -80,9 +81,9 @@ def generate_launch_description():
             executable='benchmark_node',
             name='benchmark_node',
             output='screen',
-            parameters=[ltl_formula_file,
-                        {'transition_system_textfile': transition_system_file},
-                        {'N': 6}]
+            parameters=[#ltl_formula_file,
+                {'transition_system_textfile': transition_system_file},
+                {'N': 6}]
         ),
         Node(
             package='ltl_automaton_planner',
@@ -90,7 +91,8 @@ def generate_launch_description():
             name='planner_node',
             output='screen',
             parameters=[
-                ltl_formula_file,
+                {'agent_name': 'robot_2'},
+                {'ltl_formula_file': ltl_formula_file},
                 {'algo_type': LaunchConfiguration('algo_type')},
                 {'transition_system_textfile': transition_system_file},
                 {'init_state': 'c4_r3'}

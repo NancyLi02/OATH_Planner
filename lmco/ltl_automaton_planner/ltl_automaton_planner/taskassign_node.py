@@ -3,7 +3,9 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+import uuid
 from ltl_automaton_msgs.msg import TaskRequest, TaskAssignment, PositionRequest, CurrentPosition
+import time
 
 #=================================================================
 #  Interfaces between TaskAssignNode and other nodes
@@ -103,10 +105,13 @@ class TaskAssignNode(Node):
             (int(pos.split('_')[0][1:]), int(pos.split('_')[1][1:])) for pos in self.robot_init_state
             ]
         self.positions = [None, None]  # To store positions for robot_1 and robot_2
+        self.task_assignment_topic = ''
 
         # Publishers to send task assignments
-        self.task_assignment_publisher = self.create_publisher(TaskAssignment, 'task_assignment', 10)
-        self.position_request_publisher = self.create_publisher(PositionRequest, 'position_request', 10)
+        self.task_assignment_publisher1 = self.create_publisher(TaskAssignment, 'robot1/task_assignment', 10)
+        self.task_assignment_publisher2 = self.create_publisher(TaskAssignment, 'robot2/task_assignment', 10)
+        self.position_request_publisher1 = self.create_publisher(PositionRequest, 'robot1/position_request', 10)
+        self.position_request_publisher2 = self.create_publisher(PositionRequest, 'robot2/position_request', 10)
 
         # Subscriber to receive task assignment requests
         self.task_request_subscriber = self.create_subscription(
@@ -124,6 +129,7 @@ class TaskAssignNode(Node):
 
         self.get_logger().info('TaskAssignNode has been started.')
 
+        time.sleep(1)
         # Publish Initial Task Assignments
         self.pub_initial_tasks(self.robot_pos, self.task_pos)
         self.get_logger().info('Initial tasks have been assigned.')
@@ -150,7 +156,8 @@ class TaskAssignNode(Node):
         request_id = str(uuid.uuid4())
         position_request_msg = PositionRequest()
         position_request_msg.request_id = request_id
-        self.position_request_publisher.publish(position_request_msg)
+        self.position_request_publisher1.publish(position_request_msg)
+        self.position_request_publisher2.publish(position_request_msg)
         self.get_logger().info(f'Sent position request with ID: {request_id}')
 
         # Extract robot and task information from message
@@ -180,19 +187,20 @@ class TaskAssignNode(Node):
     
     def publish_task_assignment(self, assigned_tasks):
         task_assignment_msg = TaskAssignment()
-        robot_1_tasks = []
-        robot_2_tasks = []
 
         for robot_index, task_index in assigned_tasks:
+            task_index = int(task_index)
             if robot_index == 0:
-                robot_1_tasks.append(float(task_index))
+                task_assignment_msg.robot_1_task = task_index
             elif robot_index == 1:
-                robot_2_tasks.append(float(task_index))
+                task_assignment_msg.robot_2_task = task_index
 
-        task_assignment_msg.robot_1_task = robot_1_tasks
-        task_assignment_msg.robot_2_task = robot_2_tasks
-        self.get_logger().info(f'Publishing task assignments: Robot 1: {robot_1_tasks}, Robot 2: {robot_2_tasks}')
-        self.task_assignment_publisher.publish(task_assignment_msg)
+        self.get_logger().info(
+            f'Publishing task assignments: Robot 1: {task_assignment_msg.robot_1_task}, Robot 2: {task_assignment_msg.robot_2_task}'
+            )
+        
+        self.task_assignment_publisher1.publish(task_assignment_msg)
+        self.task_assignment_publisher2.publish(task_assignment_msg)
 
     def calculate_score(self, robot_position, valid_tasks, task_list):
         scores_list = []

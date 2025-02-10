@@ -7,7 +7,7 @@ import yaml
 import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse
+from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, PositionRequest, TaskRequest, CurrentPosition, LTLPlan, RelayRequest, RelayResponse
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers
@@ -131,7 +131,16 @@ class LTLControllerDrone(Node):
             self.relay_callback,
             10)
         
+        self.position_request_sub = self.create_subscription(
+            PositionRequest,
+            'position_request',
+            self.get_current_pos,
+            10
+        )
+        
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
+        self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
+        self.taskassignment_request_pub = self.create_publisher(TaskRequest, 'task_assignment_request', 10)
         self.on_hold = False
 
         # self.delete_client = self.create_client(TaskReplanningDelete, 'replanning_delete')
@@ -167,7 +176,9 @@ class LTLControllerDrone(Node):
         self.create_timer(1.0/10, self.simulate)
         # self.simulate()
     
-    
+    def get_current_pos():
+        pass
+
     def prefix_plan_callback(self, msg):
         self.get_logger().info("receive data pre")
         self.prefix_action_list = msg.action_sequence
@@ -620,7 +631,6 @@ def main(args=None):
     
     while(rclpy.ok()):
         try:
-            # ltl_drone = LTLControllerDrone(env)
             rclpy.spin_once(ltl_drone)
         except ValueError as e:
             node.get_logger().error(f"LTL drone node: {e}")

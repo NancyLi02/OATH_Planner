@@ -5,7 +5,7 @@ from rclpy.node import Node
 import sys
 import importlib
 import matplotlib.pyplot as plt
-
+import os
 from copy import deepcopy
 
 import std_msgs
@@ -15,7 +15,7 @@ import networkx as nx
 from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers
 
 # Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse
+from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment
 from ltl_automaton_msgs.srv import * #TaskPlanning, TaskPlanningResponse, TaskReplanningAdd, TaskReplanningDelete, TaskReplanningRelabel, TaskReplanningAddResponse, TaskReplanningDeleteResponse
 
 # Import dynamic reconfigure components for dynamic parameters (see dynamic_reconfigure and dynamic_params package)
@@ -43,25 +43,25 @@ class MainPlanner(Node):
         self.init_params()
         print(self.get_node_names_and_namespaces())
         self.setup_pub_sub()
-        self.build_automaton()
-        time.sleep(1)
-        self.publish_plan()
-
+        self.task_data = self.load_tasks(self.ltl_formula_file)
         self.get_logger().info("MainPlanner node started")
-        # self.timer = self.create_timer(1.0, self.loop_callback)
+
         
     def init_params(self):
-        self.declare_parameter('agent_name', 'agent')  
+        self.declare_parameter('agent_name', '')  
         self.declare_parameter('initial_beta', 1000)  
         self.declare_parameter('gamma', 10)
-        self.declare_parameter('hard_task', "")
-        self.declare_parameter('soft_task', "")
         self.declare_parameter('transition_system_textfile', "")  
         self.declare_parameter('algo_type', 'dstar')  
         self.declare_parameter('N', 10)
         self.declare_parameter('init_state', 'c0_r0')
+        self.declare_parameter('ltl_formula_file','')
 
+
+        self.ltl_formula_file = self.get_parameter('ltl_formula_file').get_parameter_value().string_value
         self.agent_name = self.get_parameter('agent_name').get_parameter_value().string_value
+        self.get_logger().info(f'Robot name is {self.agent_name}')
+
         self.initial_beta = self.get_parameter('initial_beta').get_parameter_value().integer_value
         self.gamma = self.get_parameter('gamma').get_parameter_value().integer_value
         self.algo_type = self.get_parameter('algo_type').get_parameter_value().string_value
@@ -69,34 +69,54 @@ class MainPlanner(Node):
         param_list = [parameter.name for parameter in self._parameters.values()]
         print("param_list", param_list)
 
-        # Get LTL hard task and raise error if it doesn't exist
-        if self.get_parameter('hard_task').get_parameter_value().string_value:
-            self.hard_task = self.get_parameter('hard_task').get_parameter_value().string_value
-            print("hard_task", self.hard_task)
-        else:
-            raise ValueError("Cannot initialize LTL planner, no hard_task defined")
-
-        # Get LTL soft task and transition system
-        self.soft_task = self.get_parameter('soft_task').get_parameter_value().string_value
         transition_system_textfile = self.get_parameter('transition_system_textfile').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
         self.initial_state_ts_dict = {'2d_pose_region': self.get_parameter('init_state').get_parameter_value().string_value,
                                       'Drone_state': 'unloaded'}
         print("**** inital state dict:", self.initial_state_ts_dict)
 
+        # workspace_dir = os.path.join('/home/nanli/ros2_ws/', 'src/lmco')
+        # package_src_dir = os.path.join(workspace_dir, 'ltl_automaton_planner')
+        # config_dir = os.path.join(package_src_dir, 'config')
+        # ltl_formula_file = os.path.join(config_dir, 'task_ltl.yaml')
+
+        # # Get LTL hard task and raise error if it doesn't exist
+        # if self.get_parameter('hard_task').get_parameter_value().string_value:
+        #     self.hard_task = self.get_parameter('hard_task').get_parameter_value().string_value
+        #     print("hard_task", self.hard_task)
+        # else:
+        #     raise ValueError("Cannot initialize LTL planner, no hard_task defined")
+        # # Get LTL soft task and transition system
+        # self.soft_task = self.get_parameter('soft_task').get_parameter_value().string_value
+
+
+    def load_tasks(self, yaml_file):
+        try:
+            with open(yaml_file, 'r') as file:
+                yaml_content = yaml.safe_load(file)
+            tasks = yaml_content.get('tasks', {})
+            task_data = {task_id: {'hard_task': task.get('hard_task', ""), 'soft_task': task.get('soft_task', "")}
+                         for task_id, task in tasks.items()}
+            return task_data
+        except Exception as e:
+            self.get_logger().error(f"Failed to read or parse the YAML file: {e}")
+            raise
     
-    def build_automaton(self):
+    def build_automaton(self, task_id):
         # Import state models from TS
         state_models = state_models_from_ts(self.transition_system, self.initial_state_ts_dict)
-     
-        # Here we take the product of each element of state_models to define the full TS
+
+        # Get task ltl specification
+        hard_task = self.task_data[task_id]['hard_task']
+        soft_task = self.task_data[task_id]['soft_task']
+
+        # Build product automaton
         self.robot_model = TSModel(state_models)
-        self.ltl_planner = LTLPlanner(self.robot_model, self.hard_task, self.soft_task, self.initial_beta, self.gamma)
+        self.ltl_planner = LTLPlanner(self.robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
         self.ltl_planner.optimal(algo=self.algo_type, N=self.grid_size)
-        # Get first value from set
-        self.ltl_planner.curr_ts_state = list(self.ltl_planner.product.graph['ts'].graph['initial'])[0]
 
         # initialize storage of set of possible runs in product
+        self.ltl_planner.curr_ts_state = list(self.ltl_planner.product.graph['ts'].graph['initial'])[0]
         self.ltl_planner.posb_runs = set([(n,) for n in self.ltl_planner.product.graph['initial']])
 
         #show_automaton(self.robot_model)
@@ -109,15 +129,7 @@ class MainPlanner(Node):
         # Set up publishers (replace YourMsgType with the correct message type)
         self.prefix_plan_pub = self.create_publisher(LTLPlan, 'prefix_plan', 10)
         self.suffix_plan_pub = self.create_publisher(LTLPlan, 'suffix_plan', 10)
-        
-        # # Prefix plan publisher
-        # self.prefix_plan_pub = rospy.Publisher('/prefix_plan', LTLPlan, queue_size = 1)
-        # self.suffix_plan_pub = rospy.Publisher('/suffix_plan', LTLPlan, queue_size = 1)
-
-        # Initialize services for task replanning modifications
-        # self.replan_srv_add = self.create_service(TaskReplanningModify, 'replanning_modify', self.replanning_modify_callback)
-        # self.replan_srv_delete = self.create_service(TaskReplanningDelete, 'replanning_delete', self.replanning_delete_callback)
-        # self.replan_srv_relabel = self.create_service(TaskReplanningRelabel, 'replanning_relabel', self.replanning_relabel_callback)
+        self.publisher_ = self.create_publisher(RelayResponse, 'replanning_response', 10)        
         
         # Initialize services 
         self.subscriber_ = self.create_subscription(
@@ -126,13 +138,44 @@ class MainPlanner(Node):
             self.listener_callback,
             10)
         
-        self.publisher_ = self.create_publisher(RelayResponse, 'replanning_response', 10)
+        self.taskassignment_sub = self.create_subscription(
+            TaskAssignment,
+            'task_assignment',
+            self.taskassignment_callback,
+            10
+        )
     
-        # # Initialize task replanning service for ADD
-        # self.replan_srv_add = rospy.Service('replanning_mod', TaskReplanningModify, self.replanning_modify_callback)
-        # self.replan_srv_delete = rospy.Service('replanning_delete', TaskReplanningDelete, self.replanning_delete_callback)
-        # self.replan_srv_relabel = rospy.Service('replanning_relabel', TaskReplanningRelabel, self.replanning_relabel_callback)
-        
+    def taskassignment_callback(self, msg):
+        self.get_logger().info('---------------start taskassignment callback function---------------')
+        # Determine the agent_name and extract the corresponding task
+        if self.agent_name == 'robot_1':
+            task_index = msg.robot_1_task
+            self.get_logger().info(f'Robot 1 has been assigned to task{task_index}')
+        elif self.agent_name == 'robot_2':
+            task_index = msg.robot_2_task
+            self.get_logger().info(f'Robot 2 has been assigned to task{task_index}')
+        else:
+            self.get_logger().error(f"Invalid agent name: {self.agent_name}")
+            return
+
+        # Ensure the task index is valid
+        if task_index is None:
+            self.get_logger().info(f"No task assigned to {self.agent_name}")
+            return
+
+        # Check if the task index is within a valid range
+        task_id = f'task{int(task_index)}'
+        if task_id not in self.task_data:
+            self.get_logger().error(f"Invalid task index received: {task_index}")
+            return
+
+        # Call the corresponding build_automaton method
+        self.get_logger().info(f"Building automaton for {task_id} assigned to {self.agent_name}")
+        self.build_automaton(task_id)
+
+        # Call the self.publish_plan() method to publish the plan
+        self.publish_plan()
+    
     #----------------------------------------------
     # Publish prefix and suffix plans from planner
     #----------------------------------------------
