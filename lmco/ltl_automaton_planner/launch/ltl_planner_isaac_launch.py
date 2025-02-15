@@ -56,6 +56,7 @@ def generate_launch_description():
             name='benchmark_node',
             output='screen',
             parameters=[#ltl_formula_file,
+                {'agent_name': 'robot_1'},
                 {'transition_system_textfile': transition_system_file},
                 {'N': 6}]
         ),
@@ -82,6 +83,7 @@ def generate_launch_description():
             name='benchmark_node',
             output='screen',
             parameters=[#ltl_formula_file,
+                {'agent_name': 'robot_2'},
                 {'transition_system_textfile': transition_system_file},
                 {'N': 6}]
         ),

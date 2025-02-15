@@ -4,8 +4,9 @@
 # The robot's unique identifier
 int32 robot_id
 
-# Robot's assigned task
-int32 task_id
+# The robot's position in (x, y) format
+int32 position_x
+int32 position_y
 
 # Whether the robot finished the task, 1=finished, 0=failed
 int32 task_status

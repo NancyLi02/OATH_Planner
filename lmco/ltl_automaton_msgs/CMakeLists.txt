@@ -12,6 +12,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 # Generate messages in the 'msg' folder
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -25,6 +26,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RelayResponse.msg"
   "msg/TaskRequest.msg"
   "msg/TaskAssignment.msg"
+  "msg/TaskReAssignment.msg"
   "msg/PositionRequest.msg"
   "msg/CurrentPosition.msg"
   

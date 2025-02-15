@@ -12,8 +12,8 @@ from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # 
 # Import transition system loader
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers
 # Import modules for commanding the a1
-
-from geometry_msgs.msg import PoseStamped
+import re
+from geometry_msgs.msg import Point
 from std_msgs.msg import String, Bool
 import pygame
 from enum import Enum
@@ -44,6 +44,7 @@ class EquipmentMode(Enum):
     UNLOADED = (0, 255, 0)
     LOADED = (0, 255, 255)
     RESCUE = (255, 0, 0)
+    WAITTASK = (255, 100, 0)
 
 class GridWorld(object):
     def __init__(self, grid_size):
@@ -141,6 +142,8 @@ class LTLControllerDrone(Node):
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
         self.taskassignment_request_pub = self.create_publisher(TaskRequest, 'task_assignment_request', 10)
+        self.timer_period = 2.0
+        self.pub_assign = True
         self.on_hold = False
 
         # self.delete_client = self.create_client(TaskReplanningDelete, 'replanning_delete')
@@ -158,11 +161,16 @@ class LTLControllerDrone(Node):
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
         #print(self.transition_system)
+        self.declare_parameter('agent_name', '')
+        self.agent_name = self.get_parameter('agent_name').get_parameter_value().string_value
         
         self.mode = EquipmentMode.UNLOADED
         self.total_cost = 0
         self.if_obs = False
-        self.pose = (0, 0)
+        if self.agent_name == 'robot_1':
+            self.pose = (0, 0)
+        elif self.agent_name =='robot_2':
+            self.pose = (4, 3)
         self.previous_pose = self.pose
         self.pose_history = [(self.pose, 0)]
         self.t_sim = self.get_clock().now()  # Use the ROS2 clock for the current time
@@ -176,10 +184,20 @@ class LTLControllerDrone(Node):
         self.create_timer(1.0/10, self.simulate)
         # self.simulate()
     
-    def get_current_pos():
-        pass
+    def get_current_pos(self, msg=None):
+        self.get_logger().info('Getting Current Position Now ................................')
+        current_pos_msg = CurrentPosition()
+        current_pos_msg.robot_id = self.agent_name
+        current_pos_msg.position = list(self.pose)
+        if self.mode == EquipmentMode.LOADED:
+            current_pos_msg.current_state = 'loaded'
+        else:
+            current_pos_msg.current_state = 'unloaded'
+        self.current_position_pub.publish(current_pos_msg)
+        self.get_logger().info(f"Publishing current position for {self.agent_name}: {self.pose}, with state {current_pos_msg.current_state}.")
 
     def prefix_plan_callback(self, msg):
+        self.plan_index = 0
         self.get_logger().info("receive data pre")
         self.prefix_action_list = msg.action_sequence
         self.get_logger().info(f"length prefix_action_list: {len(self.prefix_action_list)}")
@@ -215,6 +233,7 @@ class LTLControllerDrone(Node):
         if (len(self.prefix_action_list) + len(self.suffix_action_list) != 0):
             # self.get_logger().info(f"plan index: {self.plan_index}")
             if self.plan_index < len(self.prefix_action_list):
+                self.pub_assign = True
                 #self.get_logger().info("beanchmark fix 0")
                 for act in self.transition_system['actions']:
                     #self.get_logger().info("beanchmark fix 0.1")
@@ -353,10 +372,12 @@ class LTLControllerDrone(Node):
                                 future_time += 50
                         self.pose_history.append((self.pose, round(last_round_time+last_time), round(future_step), round(future_time)))
                         # self.get_logger().info("beanchmark fix 0.7")
+                        
                         return
 
-            if self.plan_index >= len(self.prefix_action_list):
+            if self.plan_index >= len(self.prefix_action_list) and self.plan_index < len(self.prefix_action_list) + len(self.suffix_action_list):
                 suffix_index = (self.plan_index - len(self.prefix_action_list)) % len(self.suffix_action_list)
+                self.pub_assign = True
                 for act in self.transition_system['actions']:
                     if str(act) == self.suffix_action_list[suffix_index]:
                         # Extract action types, attributes, etc. in dictionary
@@ -494,7 +515,26 @@ class LTLControllerDrone(Node):
                                     future_time += 50
                         self.pose_history.append((self.pose, round(self.next_interval+last_time), round(future_step), round(future_time)))
                         return
-    
+                    
+            else:
+                if self.pub_assign == True:
+                    self.publish_task_request()
+                    self.pub_assign = False
+                    self.mode = EquipmentMode.WAITTASK
+
+
+    def publish_task_request(self):
+        robot_id = int(self.agent_name.split('_')[-1])
+        task_request_msg = TaskRequest()
+        task_request_msg.robot_id = robot_id
+        task_request_msg.task_status = 1
+        task_request_msg.position_x = self.pose[0]
+        task_request_msg.position_y = self.pose[1]
+        
+        self.taskassignment_request_pub.publish(task_request_msg)
+        self.get_logger().info('------------Publish Task Assignment Request-------------')
+
+
     def simulate(self):
         #rate = self.create_rate(10)
         

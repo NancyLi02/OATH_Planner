@@ -15,7 +15,7 @@ import networkx as nx
 from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers
 
 # Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment
+from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment
 from ltl_automaton_msgs.srv import * #TaskPlanning, TaskPlanningResponse, TaskReplanningAdd, TaskReplanningDelete, TaskReplanningRelabel, TaskReplanningAddResponse, TaskReplanningDeleteResponse
 
 # Import dynamic reconfigure components for dynamic parameters (see dynamic_reconfigure and dynamic_params package)
@@ -144,6 +144,57 @@ class MainPlanner(Node):
             self.taskassignment_callback,
             10
         )
+
+        self.new_task_sub = self.create_subscription(
+            TaskReAssignment,
+            'task_reassignment',
+            self.new_task_callback,
+            10
+        )
+    
+    def new_task_callback(self, msg):
+        self.get_logger().info('---------------Task Reassignment Received---------------')
+
+        # Determine the agent name and extract the corresponding task
+        if self.agent_name == 'robot_1':
+            task_index = msg.robot_1_task
+            new_initial_pose = msg.robot_1_pos
+            self.get_logger().info(f'Robot 1 has been assigned to task {task_index}')
+        elif self.agent_name == 'robot_2':
+            task_index = msg.robot_2_task
+            new_initial_pose = msg.robot_1_pos
+            self.get_logger().info(f'Robot 2 has been assigned to task {task_index}')
+        else:
+            self.get_logger().error(f"Invalid agent name: {self.agent_name}")
+            return
+
+        # Ensure the task index is valid
+        if task_index is None:
+            self.get_logger().info(f"No task assigned to {self.agent_name}")
+            return
+        
+        # Format the position into 'cx_ry' format
+        formatted_pose = f'c{new_initial_pose[0]}_r{new_initial_pose[1]}'
+
+        # Update initial state dictionary
+        self.initial_state_ts_dict = {
+            '2d_pose_region': formatted_pose,
+            'Drone_state': 'unloaded'
+        }
+
+        # Check if the task index is within a valid range
+        task_id = f'task{int(task_index)}'
+        if task_id not in self.task_data:
+            self.get_logger().error(f"Invalid task index received: {task_index}")
+            return
+
+        # Build the automaton for the assigned task
+        self.get_logger().info(f"Building automaton for {task_id} assigned to {self.agent_name}")
+        self.build_automaton(task_id)
+
+        # Publish the plan
+        self.publish_plan()
+        
     
     def taskassignment_callback(self, msg):
         self.get_logger().info('---------------start taskassignment callback function---------------')
