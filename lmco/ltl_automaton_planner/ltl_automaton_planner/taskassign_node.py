@@ -83,7 +83,7 @@ class TaskAssignNode(Node):
         # Declare parameters for initial robot states
         self.declare_parameter('robot1_initial_state', 'c0_r0')
         self.declare_parameter('robot2_initial_state', 'c4_r3')
-        self.declare_parameter('score_scheme','dstar')
+        self.declare_parameter('score_scheme','')
 
         # Retrieve initial states from parameters
         self.robot1_initial_state = self.get_parameter('robot1_initial_state').value
@@ -313,7 +313,7 @@ class TaskAssignNode(Node):
 
 
         if required_robots.issubset(self.score_list.keys()):
-            
+
             if required_robots.issubset(self.score_list.keys()):
                 # Modify score_list based on valid_tasks
                 for robot_id, scores in self.score_list.items():
