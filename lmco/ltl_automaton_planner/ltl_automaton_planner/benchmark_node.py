@@ -198,6 +198,7 @@ class LTLControllerDrone(Node):
 
     def prefix_plan_callback(self, msg):
         self.plan_index = 0
+        self.mode = EquipmentMode.UNLOADED
         self.get_logger().info("receive data pre")
         self.prefix_action_list = msg.action_sequence
         self.get_logger().info(f"length prefix_action_list: {len(self.prefix_action_list)}")

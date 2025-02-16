@@ -29,6 +29,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/TaskReAssignment.msg"
   "msg/PositionRequest.msg"
   "msg/CurrentPosition.msg"
+  "msg/ScoreRequest.msg"
+  "msg/ScoreList.msg"
   
   # Generate services in the 'srv' folder
   "srv/TrapCheck.srv"

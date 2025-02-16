@@ -109,7 +109,8 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'robot1_initial_state': 'c0_r0'},
-            {'robot2_initial_state': 'c4_r3'}
+            {'robot2_initial_state': 'c4_r3'},
+            {'Score_Scheme': 'dstar'} # dstar or manhattan
         ]
     )
 

@@ -15,7 +15,7 @@ import networkx as nx
 from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers
 
 # Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment
+from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList
 from ltl_automaton_msgs.srv import * #TaskPlanning, TaskPlanningResponse, TaskReplanningAdd, TaskReplanningDelete, TaskReplanningRelabel, TaskReplanningAddResponse, TaskReplanningDeleteResponse
 
 # Import dynamic reconfigure components for dynamic parameters (see dynamic_reconfigure and dynamic_params package)
@@ -74,6 +74,7 @@ class MainPlanner(Node):
         self.initial_state_ts_dict = {'2d_pose_region': self.get_parameter('init_state').get_parameter_value().string_value,
                                       'Drone_state': 'unloaded'}
         print("**** inital state dict:", self.initial_state_ts_dict)
+        self.score_list = []
 
         # workspace_dir = os.path.join('/home/nanli/ros2_ws/', 'src/lmco')
         # package_src_dir = os.path.join(workspace_dir, 'ltl_automaton_planner')
@@ -129,7 +130,8 @@ class MainPlanner(Node):
         # Set up publishers (replace YourMsgType with the correct message type)
         self.prefix_plan_pub = self.create_publisher(LTLPlan, 'prefix_plan', 10)
         self.suffix_plan_pub = self.create_publisher(LTLPlan, 'suffix_plan', 10)
-        self.publisher_ = self.create_publisher(RelayResponse, 'replanning_response', 10)        
+        self.publisher_ = self.create_publisher(RelayResponse, 'replanning_response', 10)   
+        self.score_list_pub = self.create_publisher(ScoreList, 'score_list', 10)     
         
         # Initialize services 
         self.subscriber_ = self.create_subscription(
@@ -151,6 +153,73 @@ class MainPlanner(Node):
             self.new_task_callback,
             10
         )
+
+        self.score_request_sub = self.create_subscription(
+            ScoreRequest,
+            'score_request',
+            self.get_score_list,
+            10
+        )
+
+    def get_score_list(self, msg):
+        current_pos = msg.position
+        formatted_pose = f'c{current_pos[0]}_r{current_pos[1]}'
+        initial_state = {
+            '2d_pose_region': formatted_pose,
+            'Drone_state': 'unloaded'
+        }
+        task_index = [1, 2, 3, 4]
+        self.score_list = []
+
+        for i in task_index:
+            task_id = f'task{i}'
+            self.build_score_automaton(task_id, initial_state)
+            self.score_list.append(self.build_score_list())  # Append scores to the list
+
+        self.pub_score()
+
+    def pub_score(self):
+        self.get_logger().info(f'Finish calculating score for {self.agent_name}: {self.score_list}')
+        score_msg = ScoreList()
+        score_msg.robot_id = self.agent_name
+        score_msg.score_list = self.score_list
+        self.score_list_pub.publish(score_msg)
+        self.get_logger().info(f'Publish score list for {self.agent_name}...')
+
+    def build_score_list(self):
+        if self.score_est.run is not None:
+            
+            # Prefix Score
+            self.cal_score_pre = LTLPlan()
+            self.cal_score_pre.action_sequence = self.score_est.run.pre_plan
+            self.pre_score = len(self.cal_score_pre.action_sequence)  # Ensure correct length calculation
+            # Suffix Score
+            self.cal_score_suf = LTLPlan()
+            self.cal_score_suf.action_sequence = self.score_est.run.suf_plan
+            self.suf_score = len(self.cal_score_suf.action_sequence)  # Ensure correct length calculation
+            
+            score = max(0, 50 - (self.pre_score + self.suf_score))  # Prevent negative scores
+            return score
+        return 0  # Return 0 if no score is calculated
+
+
+
+    def build_score_automaton(self, task_id, initial_state):
+        # Import state models from TS
+        state_models = state_models_from_ts(self.transition_system, initial_state)
+
+        # Get task ltl specification
+        hard_task = self.task_data[task_id]['hard_task']
+        soft_task = self.task_data[task_id]['soft_task']
+
+        # Build product automaton
+        robot_model = TSModel(state_models)
+        self.score_est = LTLPlanner(robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
+        self.score_est.optimal(algo=self.algo_type, N=self.grid_size)
+
+        # initialize storage of set of possible runs in product
+        self.score_est.curr_ts_state = list(self.score_est.product.graph['ts'].graph['initial'])[0]
+        self.score_est.posb_runs = set([(n,) for n in self.score_est.product.graph['initial']])
     
     def new_task_callback(self, msg):
         self.get_logger().info('---------------Task Reassignment Received---------------')
