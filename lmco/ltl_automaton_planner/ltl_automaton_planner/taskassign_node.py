@@ -99,7 +99,10 @@ class TaskAssignNode(Node):
         self.cbaa_algorithm = CBAA()
         self.assigned_tasks = {}
         self.previous_assigned_tasks = {}
-        self.unloaded_robots = {}
+        self.unloaded_robots = {
+            "robot_1": [0, 0],
+            "robot_2": [4, 3]
+        }
         self.busy_robots = {}
 
         # Task positions hard coded for now
@@ -172,10 +175,10 @@ class TaskAssignNode(Node):
 
         self.get_logger().info('TaskAssignNode has been started.')
 
-        time.sleep(1)
-        # Publish Initial Task Assignments
-        self.pub_initial_tasks(self.robot_pos, self.task_pos)
-        self.get_logger().info('Initial tasks have been assigned.')
+        # time.sleep(1)
+        # # Publish Initial Task Assignments
+        # self.pub_initial_tasks(self.robot_pos, self.task_pos)
+        # self.get_logger().info('Initial tasks have been assigned.')
     
     def score_list_receive_callback(self, msg): 
         robot_id = msg.robot_id  # Keep robot_id as a string, e.g., 'robot_1'
@@ -314,12 +317,11 @@ class TaskAssignNode(Node):
 
         if required_robots.issubset(self.score_list.keys()):
 
-            if required_robots.issubset(self.score_list.keys()):
-                # Modify score_list based on valid_tasks
-                for robot_id, scores in self.score_list.items():
-                    for i, valid in enumerate(self.valid_tasks):
-                        if valid == 0 and i < len(scores):
-                            scores[i] = 0  # Set score to 0 if task is not valid
+            # Modify score_list based on valid_tasks
+            for robot_id, scores in self.score_list.items():
+                for i, valid in enumerate(self.valid_tasks):
+                    if valid == 0 and i < len(scores):
+                        scores[i] = 0  # Set score to 0 if task is not valid
 
             # Retrieve sorted score_list based on robot_id
             sorted_scores = [self.score_list.get(robot_id, []) for robot_id in sorted(self.unloaded_robots.keys(),

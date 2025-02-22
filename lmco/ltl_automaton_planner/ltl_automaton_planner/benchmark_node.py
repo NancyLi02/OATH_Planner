@@ -63,6 +63,7 @@ class GridWorld(object):
         # filename = "screen_%04d.png" % (self.frame_count)
         # pygame.image.save(self.screen, filename)
         # time.sleep(5)
+
         self.output_video = cv2.VideoWriter('/home/nanli/Isaac/planner/results/output_video.avi', cv2.VideoWriter_fourcc(*'XVID'), 30, (self.width, self.height))
         
         pygame.display.set_caption("Grid with Moving Circle")

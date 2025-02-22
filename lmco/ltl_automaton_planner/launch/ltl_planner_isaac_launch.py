@@ -24,7 +24,7 @@ def generate_launch_description():
 
     declare_argo_type_cmd = DeclareLaunchArgument(
         'algo_type',
-        default_value='relaxed',
+        default_value='brute-force',
         description='Algorithm type (e.g., dstar-relaxed/brute-force/local/relaxed)'
     )
     declare_namespace1_cmd = DeclareLaunchArgument(

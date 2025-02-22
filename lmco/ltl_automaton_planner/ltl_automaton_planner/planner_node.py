@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import numpy
+import numpy as np
 import rclpy
 from rclpy.node import Node
 import sys
@@ -46,6 +46,9 @@ class MainPlanner(Node):
         self.task_data = self.load_tasks(self.ltl_formula_file)
         self.get_logger().info("MainPlanner node started")
 
+        time.sleep(1)
+        self.init_score_list()
+
         
     def init_params(self):
         self.declare_parameter('agent_name', '')  
@@ -74,6 +77,8 @@ class MainPlanner(Node):
         self.initial_state_ts_dict = {'2d_pose_region': self.get_parameter('init_state').get_parameter_value().string_value,
                                       'Drone_state': 'unloaded'}
         print("**** inital state dict:", self.initial_state_ts_dict)
+        self.init_state = self.get_parameter('init_state').value
+        self.init_pose = np.array(list(map(int, self.init_state[1:].split('_r'))), dtype=np.int32)
         self.score_list = []
 
         # workspace_dir = os.path.join('/home/nanli/ros2_ws/', 'src/lmco')
@@ -177,6 +182,23 @@ class MainPlanner(Node):
             self.score_list.append(self.build_score_list())  # Append scores to the list
 
         self.pub_score()
+
+    def init_score_list(self):
+        formatted_pose = self.init_state
+        initial_state = {
+            '2d_pose_region': formatted_pose,
+            'Drone_state': 'unloaded'
+        }
+        task_index = [1, 2, 3, 4]
+        self.score_list = []
+
+        for i in task_index:
+            task_id = f'task{i}'
+            self.build_score_automaton(task_id, initial_state)
+            self.score_list.append(self.build_score_list())  # Append scores to the list
+
+        self.pub_score()
+
 
     def pub_score(self):
         self.get_logger().info(f'Finish calculating score for {self.agent_name}: {self.score_list}')
