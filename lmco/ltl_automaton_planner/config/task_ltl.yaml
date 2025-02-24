@@ -3,14 +3,20 @@
 
 tasks:
   task1:
-    hard_task: "<>(b) && [](b -> X(loaded && (!c && !d && !f) U (e && unloaded)))"
+    hard_task: "<>(b) && [](b -> X(loaded && (!c && !d && !f && !h && !i && !e) U (g && unloaded)))"
     soft_task: ""
   task2:
-    hard_task: "<>(c) && [](c -> X(loaded && (!b && !d && !f) U (e && unloaded)))"
+    hard_task: "<>(c) && [](c -> X(loaded && (!b && !d && !f && !h && !i && !e) U (g && unloaded)))"
     soft_task: ""
   task3:
-    hard_task: "<>(f) && [](f -> X(loaded && (!b && !c && !d) U (e && unloaded)))"
+    hard_task: "<>(f) && [](f -> X(loaded && (!b && !c && !d && !h && !i && !e) U (g && unloaded)))"
     soft_task: ""
   task4:
-    hard_task: "<>(d) && [](d -> X(loaded && (!b && !c && !f) U (e && unloaded)))"
+    hard_task: "<>(d) && [](d -> X(loaded && (!b && !c && !f && !h && !i && !g) U (e && unloaded)))"
+    soft_task: ""
+  task5:
+    hard_task: "<>(h) && [](h -> X(loaded && (!b && !c && !f && !d && !i && !g) U (e && unloaded)))"
+    soft_task: ""
+  task6:
+    hard_task: "<>(i) && [](i -> X(loaded && (!b && !c && !f && !h && !d && !g) U (e && unloaded)))"
     soft_task: ""

@@ -32,6 +32,8 @@ class LTLPlanner(object):
         self.suffix_opt_log = []
         self.beta = beta                    # importance of taking soft task into account
         self.gamma = gamma                  # cost ratio between prefix and suffix
+        # self.remove_list = list()
+        # self.modified_edges = {}
 
     def write_to_log(self, data, segment="prefix"):
         file_name = self.algo+'_'+str(self.N)+'_'+segment+'.yaml'
@@ -237,7 +239,7 @@ class LTLPlanner(object):
         modified_pairs = update_info["modified"]
         deleted_pairs = update_info["deleted"]
         relabel_states = update_info["relabel"]
-        modified_edges = {}
+        self.modified_edges = {}
         
         # add transition tuple (from, to, cost) 
         # already including bidirectional transition, no need to worry about the duality
@@ -255,7 +257,7 @@ class LTLPlanner(object):
                             else:
                                 self.product.add_edge((ts_node, bu_node), (mod_pair[1], bu_succ), weight=mod_pair[2])
                             self.product.graph['ts'][ts_node][mod_pair[1]]['weight'] = mod_pair[2]   # Adjust the weight
-                            modified_edges[edge] = mod_pair[2]
+                            self.modified_edges[edge] = mod_pair[2]
         
         # remove transition (from, to)
         remove_list = list()
@@ -269,9 +271,11 @@ class LTLPlanner(object):
                         guard = self.product.graph['buchi'].edges[bu_node, bu_succ]['guard']
                         if guard.check(label):
                             remove_list.append(((ts_node, bu_node), (deleted_pair[1], bu_succ)))
+                            # self.remove_list.append(((deleted_pair[1], bu_succ), (ts_node, bu_node)))
         self.product.remove_edges_from(remove_list)
+        # print(f'========Remove list includes: {remove_list}=========')
         for edge in remove_list:
-            modified_edges[edge] = float("inf")
+            self.modified_edges[edge] = float("inf")
             
         # relabel (b, pi_j)/(label, state)
         remove_list_relabel = list()
@@ -294,5 +298,5 @@ class LTLPlanner(object):
                             if not guard.check(relabel_state[0]):
                                 remove_list_relabel.append(((ts_node, bu_node), (relabel_state[1], bu_succ)))
         self.product.remove_edges_from(remove_list_relabel)
-        return modified_edges
+        return self.modified_edges
 

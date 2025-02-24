@@ -58,7 +58,7 @@ def generate_launch_description():
             parameters=[#ltl_formula_file,
                 {'agent_name': 'robot_1'},
                 {'transition_system_textfile': transition_system_file},
-                {'N': 6}]
+                {'N': 8}]
         ),
         Node(
             package='ltl_automaton_planner',
@@ -70,7 +70,7 @@ def generate_launch_description():
                 {'ltl_formula_file': ltl_formula_file},
                 {'algo_type': LaunchConfiguration('algo_type')},
                 {'transition_system_textfile': transition_system_file},
-                {'init_state': '109'}
+                {'init_state': '180'}
             ]
         ),
     ])
@@ -85,7 +85,7 @@ def generate_launch_description():
             parameters=[#ltl_formula_file,
                 {'agent_name': 'robot_2'},
                 {'transition_system_textfile': transition_system_file},
-                {'N': 6}]
+                {'N': 8}]
         ),
         Node(
             package='ltl_automaton_planner',
@@ -97,7 +97,7 @@ def generate_launch_description():
                 {'ltl_formula_file': ltl_formula_file},
                 {'algo_type': LaunchConfiguration('algo_type')},
                 {'transition_system_textfile': transition_system_file},
-                {'init_state': '108'}
+                {'init_state': '182'}
             ]
         ),
     ])
@@ -109,8 +109,8 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'robot1_initial_state': [0.5, 0.5]},
-            {'robot2_initial_state': [4.5, 1.5]},
-            {'score_scheme': 'dstar'} # dstar or manhattan
+            {'robot2_initial_state': [7.5, 7.7]},
+            {'score_scheme': 'dstar'}
         ]
     )
 

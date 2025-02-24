@@ -53,7 +53,7 @@ class GridWorld(object):
         self.grid_size = grid_size
         self.load_elements()
         
-        self.width, self.height = 780, 390
+        self.width, self.height = 780, 780
         self.cell_size = self.width // self.grid_size
 
         # Initialize the screen
@@ -142,9 +142,17 @@ class LTLControllerDrone(Node):
             self.get_current_pos,
             10
         )
+
+        self.update_pose_sub = self.create_subscription(
+            PositionRequest,
+            'update_pose_request',
+            self.update_current_pos,
+            10
+        )
         
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
+        self.update_pose_pub = self.create_publisher(CurrentPosition,'update_current_pose', 10)
         self.taskassignment_request_pub = self.create_publisher(TaskRequest, 'task_assignment_request', 10)
         self.pub_assign = True
         self.on_hold = False
@@ -166,7 +174,7 @@ class LTLControllerDrone(Node):
         self.declare_parameter('agent_name', '')
         self.agent_name = self.get_parameter('agent_name').get_parameter_value().string_value
 
-        self.nodes, self.actions = build_graph_hilton(6, 3, 120)
+        self.nodes, self.actions = build_graph_hilton(8, 8, 200)
         self.transition_system ['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system ['actions'].update(self.actions)
 
@@ -176,12 +184,12 @@ class LTLControllerDrone(Node):
         if self.agent_name == 'robot_1':
             self.pose = (0.5, 0.5)
         elif self.agent_name =='robot_2':
-            self.pose = (4.5, 1.5)
+            self.pose = (7.5, 7.7)
         
         if self.agent_name == 'robot_1':
-            self.pose_index = 109
+            self.pose_index = 180
         elif self.agent_name == 'robot_2':
-            self.pose_index = 108
+            self.pose_index = 182
 
         self.previous_pose = self.pose
         self.previous_pose_index = self.pose_index
@@ -210,8 +218,22 @@ class LTLControllerDrone(Node):
         self.current_position_pub.publish(current_pos_msg)
         self.get_logger().info(f"Publishing current position for {self.agent_name}: {self.pose_index}, with state {current_pos_msg.current_state}.")
 
+    def update_current_pos(self, msg=None):
+        self.get_logger().info('Updating Current Position Now ................................')
+        current_pos_msg = CurrentPosition()
+        current_pos_msg.robot_id = self.agent_name
+        current_pos_msg.pose_index = self.pose_index
+        if self.mode == EquipmentMode.LOADED:
+            current_pos_msg.current_state = 'loaded'
+        else:
+            current_pos_msg.current_state = 'unloaded'
+        self.update_pose_pub.publish(current_pos_msg)
+        self.get_logger().info(f"Publishing update current pose index for {self.agent_name}: {self.pose_index}, with state {current_pos_msg.current_state}.")
+
     def prefix_plan_callback(self, msg):
         self.plan_index = 0
+        self.world.block.clear()
+        self.world.bump.clear()
         self.mode = EquipmentMode.UNLOADED
         self.get_logger().info("receive data pre")
         self.prefix_action_list = msg.action_sequence
@@ -485,16 +507,17 @@ class LTLControllerDrone(Node):
     def simulate(self):
         #rate = self.create_rate(10)
         
-        lines = [
-            LineString([(0, 1), (1, 1)]),
-            LineString([(0, 2), (1, 2), (1, 1.5)]),
-            LineString([(1, 0), (1, 0.3)]),
-            LineString([(1, 2.5), (1, 3)]),
-            LineString([(2, 1), (2, 2), (3, 2)]),
-            LineString([(3, 1), (4, 1), (4, 2)]),
-            LineString([(5, 0), (5, 1)]),
-            LineString([(5, 2), (5, 3)])
-        ]
+        lines = [LineString([(0, 2), (1, 2), (1, 3)]),
+                LineString([(0, 4), (1, 4)]),
+                LineString([(0, 6), (1, 6), (1, 5)]),
+                LineString([(0, 7), (2, 7)]),
+                LineString([(3, 7), (5, 7), (5, 8)]),
+                LineString([(5, 6), (3, 6), (3, 4)]),
+                LineString([(4, 4), (6, 4), (6, 6)]),
+                LineString([(7, 3), (7, 5), (8, 5)]),
+                LineString([(7, 0), (7, 2)]),
+                LineString([(3, 1), (3, 3), (4, 3)]),
+                LineString([(5, 3), (6, 3), (6, 1), (4, 1)])]
 
         # Create buffered obstacles
         obstacles = [line.buffer(distance=0.1, cap_style=3) for line in lines]
@@ -510,9 +533,9 @@ class LTLControllerDrone(Node):
             self.world.screen.fill(WHITE)
             # self.world.background()
             # Draw the grid
-            for row in range(3):
-                for col in range(6):
-                    pygame.draw.rect(self.world.screen, BLACK, (col * self.world.cell_size, row * self.world.cell_size, self.world.cell_size, self.world.cell_size), 1)
+            # for row in range(3):
+            #     for col in range(6):
+            #         pygame.draw.rect(self.world.screen, BLACK, (col * self.world.cell_size, row * self.world.cell_size, self.world.cell_size, self.world.cell_size), 1)
             
             for obstacle in obstacles:
                 if obstacle.geom_type == "Polygon":
@@ -666,7 +689,7 @@ def main(args=None):
     rclpy.init(args=args)
     node = rclpy.create_node('benchmark_node_main')
 
-    grid_size = node.declare_parameter('N', 10).get_parameter_value().integer_value
+    grid_size = node.declare_parameter('N', 8).get_parameter_value().integer_value
     node.get_logger().info(f"grid_size: {grid_size}")
     
     env = GridWorld(grid_size)

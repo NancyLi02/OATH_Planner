@@ -48,7 +48,7 @@ class MainPlanner(Node):
         self.task_data = self.load_tasks(self.ltl_formula_file)
         self.get_logger().info("MainPlanner node started")
 
-        self.nodes, self.actions = build_graph_hilton(6, 3, 120)
+        self.nodes, self.actions = build_graph_hilton(8, 8, 200)
 
         self.initialize_automaton()
 
@@ -62,7 +62,7 @@ class MainPlanner(Node):
         self.declare_parameter('gamma', 10)
         self.declare_parameter('transition_system_textfile', "")  
         self.declare_parameter('algo_type', 'dstar')  
-        self.declare_parameter('N', 10)
+        self.declare_parameter('N', 8)
         self.declare_parameter('init_state', '')
         self.declare_parameter('ltl_formula_file','')
 
@@ -85,7 +85,7 @@ class MainPlanner(Node):
         print("**** inital state dict:", self.initial_state_ts_dict)
         self.init_state = self.get_parameter('init_state').value
         self.score_list = []
-        self.task_index = [1, 2, 3, 4]
+        self.task_index = [1, 2, 3, 4, 5, 6]
         self.cur_task = ''
 
     def load_tasks(self, yaml_file):

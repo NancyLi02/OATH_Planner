@@ -27,31 +27,38 @@ def halton_sequence(size, base=2):
     return np.array(sequence)
 
 
-def build_graph_hilton(x_length=6, y_length=3, n_points=120):
-    points_with_label = {(4.5, 1.5): '', 
-                     (0.5, 0.3): 'a', 
-                     (0.5, 1.7): 'f', 
-                     (0.5, 2.7): 'd',
-                     (2.5, 1.7): 'e',
-                     (5.5, 0.3): 'b',
-                     (5.5, 2.7): 'c'}
+def build_graph_hilton(x_length=8, y_length=8, n_points=200):
+    points_with_label = {(0.5, 0.3): 'a',
+                         (2.5, 5.7): '' ,
+                         (7.5, 7.7): '' ,
+                         (0.5, 2.3): 'f', 
+                         (0.5, 5.7): 'd',
+                         (3.5, 5.7): 'e',
+                         (7.5, 0.3): 'b',
+                         (7.5, 4.7): 'c',
+                         (5.5, 2.7): 'g',
+                         (4.5, 7.3): 'h',
+                         (0.5, 7.7): 'i'}
 
 
-    n_points = 120
-    x = halton_sequence(n_points, 2) * 6
-    y = halton_sequence(n_points, 3) * 3
+    n_points = 200
+    x = halton_sequence(n_points, 2) * 8
+    y = halton_sequence(n_points, 3) * 8
     points = np.vstack((x, y)).T
 
-    # 2. Filter points (pseudo-code)
+    # Filter points (pseudo-code)
     obstacles = []  # List of Shapely polygons
-    lines = [LineString([(0, 1), (1, 1)]),
-            LineString([(0, 2), (1, 2), (1, 1.5)]),
-            LineString([(1, 0), (1, 0.3)]),
-            LineString([(1, 2.5), (1, 3)]),
-            LineString([(2, 1), (2, 2), (3, 2)]),
-            LineString([(3, 1), (4, 1), (4, 2)]),
-            LineString([(5, 0), (5, 1)]),
-            LineString([(5, 2), (5, 3)])]
+    lines = [LineString([(0, 2), (1, 2), (1, 3)]),
+            LineString([(0, 4), (1, 4)]),
+            LineString([(0, 6), (1, 6), (1, 5)]),
+            LineString([(0, 7), (2, 7)]),
+            LineString([(3, 7), (5, 7), (5, 8)]),
+            LineString([(5, 6), (3, 6), (3, 4)]),
+            LineString([(4, 4), (6, 4), (6, 6)]),
+            LineString([(7, 3), (7, 5), (8, 5)]),
+            LineString([(7, 0), (7, 2)]),
+            LineString([(3, 1), (3, 3), (4, 3)]),
+            LineString([(5, 3), (6, 3), (6, 1), (4, 1)])]
     for line in lines:
         buffered = line.buffer(distance=0.1, cap_style=3)
         obstacles.append(buffered)
@@ -122,7 +129,8 @@ def check_in_block(action, nodes):
     to_pose = nodes[f'{to_pose_index}']['attr']['pose']
     
     blocks = []  # List of Shapely polygons
-    lines = [LineString([(2, 1), (3, 1)])]
+    lines = [LineString([(4, 3), (5, 3)]),
+             LineString([(3, 4), (4, 4)])]
     for line in lines:
         buffered = line.buffer(distance=0.1, cap_style=3)
         blocks.append(buffered)
@@ -141,9 +149,10 @@ def check_in_bump(action, nodes):
     to_pose = nodes[f'{to_pose_index}']['attr']['pose']
     
     bumps = []
-    coords = [[(3.1, 0.6), (3.1, 1.0), (5.0, 0.6), (5.0, 1.0)], \
-                [(2.1, 2), (2.1, 2.5), (3.9, 2), (4.1, 2.4)], \
-              [(5.1, 1.2), (5.1, 1.9), (6.0, 1.0), (6.0, 2.0)]]
+    coords = [[(4.1, 1.1), (4.1, 2.0), (6.0, 2.0), (6.0, 1.1)], \
+              [(1.1, 3.1), (1.1, 5.0), (2.0, 5.0), (2, 4), (3.0, 4.0), (3.0, 3.0)], \
+              [(6, 6), (6, 7), (7, 7), (7, 6)], \
+                [(7, 1), (7, 3), (8, 3), (8, 1)]]
     for coord in coords:
         polygon = Polygon(coord)
         bumps.append(polygon)
@@ -155,7 +164,7 @@ def check_in_bump(action, nodes):
 def state_models_from_ts(TS_dict, initial_states_dict=None):
     state_models = []
 
-    nodes, actions = build_graph_hilton(6, 3, 120)
+    nodes, actions = build_graph_hilton(8, 8, 200)
     TS_dict['state_models']['2d_pose_region']['nodes'] = nodes
     TS_dict['actions'].update(actions)
     
