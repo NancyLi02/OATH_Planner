@@ -40,24 +40,23 @@ class LTLPlanner(object):
         existing_data.append(data)
         write_to_yaml(existing_data, file_name)
     
-    def optimal(self, algo='dstar', N=10):
-        # rospy.loginfo("LTL Planner: --- Planning in progress ("+algo+") ---")
-        # rospy.loginfo("LTL Planner: Hard task is: "+str(self.hard_spec))
-        # rospy.loginfo("LTL Planner: Soft task is: "+str(self.soft_spec))
+    def optimal(self, product_automaton, algo='dstar', N=10):
         self.N = N
         self.algo = algo
         delete_file(self.algo+'_'+str(self.N)+'_'+'prefix'+'.yaml')
         delete_file(self.algo+'_'+str(self.N)+'_'+'suffix'+'.yaml')    
 
-        self.product = ProdAut(self.ts, mission_to_buchi(self.hard_spec, self.soft_spec), self.beta)
-        self.product.graph['ts'].build_full()
+        # self.product = ProdAut(self.ts, mission_to_buchi(self.hard_spec, self.soft_spec), self.beta)
+        # self.product.graph['ts'].build_full()
+
+        self.product = product_automaton
         
         if algo == 'dstar' or algo == "dstar-relaxed":
             print("in dstar")
-            start_time = time.time()
-            self.product.build_full()
-            elapsed_time = time.time() - start_time
-            print(f"Product automaton constuction took {elapsed_time} seconds to run.")
+            # start_time = time.time()
+            # self.product.build_full()
+            # elapsed_time = time.time() - start_time
+            # print(f"Product automaton constuction took {elapsed_time} seconds to run.")
             
             if algo == 'dstar':
                 self.dstar = DStar(self.product, "manhattan", relaxation=False)
@@ -74,19 +73,19 @@ class LTLPlanner(object):
             print(self.run)
             print("Dstar initial run compute time: ", plantime)
         elif algo == 'brute-force' or algo == 'local':
-            start_time = time.time()
-            self.product.build_full()
-            elapsed_time = time.time() - start_time
-            print(f"Product automaton constuction took {elapsed_time} seconds to run.")
+            # start_time = time.time()
+            # self.product.build_full()
+            # elapsed_time = time.time() - start_time
+            # print(f"Product automaton constuction took {elapsed_time} seconds to run.")
             self.dijkstra = Dijkstra()
             self.run, plantime = self.dijkstra.dijkstra_plan_networkX(self.product, self.gamma)
             print("Dijkstra initial run compute time: ", plantime)
         elif algo == 'relaxed': 
-            start_time = time.time()
-            self.product.build_full_relaxed()
-            end_time = time.time()
-            elapsed_time = end_time - start_time
-            print(f"The function took {elapsed_time} seconds to run.")
+            # start_time = time.time()
+            # self.product.build_full_relaxed()
+            # end_time = time.time()
+            # elapsed_time = end_time - start_time
+            # print(f"The function took {elapsed_time} seconds to run.")
             self.dijkstra = Dijkstra()
             self.run, plantime = self.dijkstra.dijkstra_plan_networkX(self.product, self.gamma)
             print("Dijkstra relaxed initial run compute time: ", plantime)

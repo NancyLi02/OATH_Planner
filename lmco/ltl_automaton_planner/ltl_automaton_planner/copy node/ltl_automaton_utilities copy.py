@@ -2,10 +2,6 @@ import os
 import yaml
 import re
 from networkx.classes.digraph import DiGraph
-from scipy.spatial import Delaunay
-from shapely.geometry import Point, LineString, Polygon
-import math
-import numpy as np
 
 # Import TS and action attributes from file
 def import_ts_from_file(transition_system_textfile):
@@ -15,150 +11,9 @@ def import_ts_from_file(transition_system_textfile):
     except:
         raise ValueError("cannot load transition system from textfile")
 
-def halton_sequence(size, base=2):
-    sequence = []
-    for i in range(1, size+1):
-        f, r = 1.0, 0.0
-        while i > 0:
-            f /= base
-            r += f * (i % base)
-            i = i // base
-        sequence.append(r)
-    return np.array(sequence)
-
-
-def build_graph_hilton(x_length=6, y_length=3, n_points=120):
-    points_with_label = {(4.5, 1.5): '', 
-                     (0.5, 0.3): 'a', 
-                     (0.5, 1.7): 'f', 
-                     (0.5, 2.7): 'd',
-                     (2.5, 1.7): 'e',
-                     (5.5, 0.3): 'b',
-                     (5.5, 2.7): 'c'}
-
-
-    n_points = 120
-    x = halton_sequence(n_points, 2) * 6
-    y = halton_sequence(n_points, 3) * 3
-    points = np.vstack((x, y)).T
-
-    # 2. Filter points (pseudo-code)
-    obstacles = []  # List of Shapely polygons
-    lines = [LineString([(0, 1), (1, 1)]),
-            LineString([(0, 2), (1, 2), (1, 1.5)]),
-            LineString([(1, 0), (1, 0.3)]),
-            LineString([(1, 2.5), (1, 3)]),
-            LineString([(2, 1), (2, 2), (3, 2)]),
-            LineString([(3, 1), (4, 1), (4, 2)]),
-            LineString([(5, 0), (5, 1)]),
-            LineString([(5, 2), (5, 3)])]
-    for line in lines:
-        buffered = line.buffer(distance=0.1, cap_style=3)
-        obstacles.append(buffered)
-        
-    valid_points = [Point(p) for p in points if not any(poly.contains(Point(p)) for poly in obstacles)]
-    nodes = dict()
-    actions = dict()
-    index = 0
-
-    for p in valid_points:
-        cell_key = f'{index}'
-        position = [p.x, p.y]
-        nodes[cell_key] = {
-            'attr': {
-                'pose': tuple(position),
-                'labels': [],
-            },
-            'connected_to': {f'{index}':'stay'}
-        }
-        index = index + 1
-        
-    for key, value in points_with_label.items():
-        cell_key = f'{index}'
-        nodes[cell_key] = {
-            'attr': {
-                'pose': key,
-                'labels': [points_with_label[key]],
-            },
-            'connected_to': {f'{index}':'stay'}
-        }
-        valid_points.append(Point(key))
-        print(f"Point {key} assigned index: {index}")
-        index = index + 1
-
-    # print(valid_points)
-
-    tri = Delaunay([(p.x, p.y) for p in valid_points])
-    edges = set()
-    for simplex in tri.simplices:
-        for i in range(3):
-            a, b = simplex[i], simplex[(i+1)%3]
-            # print("a: ", a)
-            if a < b:  # Avoid duplicates
-                line = LineString([valid_points[a], valid_points[b]])
-                if not any(line.intersects(obstacle) for obstacle in obstacles):
-                    edges.add(line)
-                    nodes[f'{a}']["connected_to"][f'{b}'] = f'from_{a}_to_{b}'
-                    nodes[f'{b}']["connected_to"][f'{a}'] = f'from_{b}_to_{a}'
-                    actions[f'from_{a}_to_{b}'] = {
-                        'guard': '1',
-                        'type': 'move',
-                        'weight':math.dist([valid_points[a].x, valid_points[a].y], 
-                                        [valid_points[b].x, valid_points[b].y])
-                    }
-                    actions[f'from_{b}_to_{a}'] = {
-                        'guard': '1',
-                        'type': 'move',
-                        'weight':math.dist([valid_points[a].x, valid_points[a].y], 
-                                        [valid_points[b].x, valid_points[b].y])
-                    }
-                    
-    return nodes, actions
-
-def check_in_block(action, nodes):
-    from_pose_index = extract_numbers(str(action))[0]
-    to_pose_index = extract_numbers(str(action))[1]
-    from_pose = nodes[f'{from_pose_index}']['attr']['pose']
-    to_pose = nodes[f'{to_pose_index}']['attr']['pose']
-    
-    blocks = []  # List of Shapely polygons
-    lines = [LineString([(2, 1), (3, 1)])]
-    for line in lines:
-        buffered = line.buffer(distance=0.1, cap_style=3)
-        blocks.append(buffered)
-        
-    A = Point(from_pose)
-    B = Point(to_pose)
-    connection = LineString([A, B])
-    if not any(connection.intersects(block) for block in blocks):
-        return False
-    return True
-        
-def check_in_bump(action, nodes):
-    #from_pose_index = extract_numbers(str(action))[0]
-    to_pose_index = extract_numbers(str(action))[1]
-    #from_pose = nodes[f'{from_pose_index}']['attr']['pose']
-    to_pose = nodes[f'{to_pose_index}']['attr']['pose']
-    
-    bumps = []
-    coords = [[(3.1, 0.6), (3.1, 1.0), (5.0, 0.6), (5.0, 1.0)], \
-                [(2.1, 2), (2.1, 2.5), (3.9, 2), (4.1, 2.4)], \
-              [(5.1, 1.2), (5.1, 1.9), (6.0, 1.0), (6.0, 2.0)]]
-    for coord in coords:
-        polygon = Polygon(coord)
-        bumps.append(polygon)
-    
-    if not any(poly.contains(Point(to_pose)) for poly in bumps):
-        return False
-    return True
-
 def state_models_from_ts(TS_dict, initial_states_dict=None):
     state_models = []
 
-    nodes, actions = build_graph_hilton(6, 3, 120)
-    TS_dict['state_models']['2d_pose_region']['nodes'] = nodes
-    TS_dict['actions'].update(actions)
-    
     # If initial states are given as argument
     if initial_states_dict:
         # Check that dimensions are conform

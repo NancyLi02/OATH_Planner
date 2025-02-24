@@ -24,7 +24,7 @@ def generate_launch_description():
 
     declare_argo_type_cmd = DeclareLaunchArgument(
         'algo_type',
-        default_value='brute-force',
+        default_value='relaxed',
         description='Algorithm type (e.g., dstar-relaxed/brute-force/local/relaxed)'
     )
     declare_namespace1_cmd = DeclareLaunchArgument(
@@ -70,7 +70,7 @@ def generate_launch_description():
                 {'ltl_formula_file': ltl_formula_file},
                 {'algo_type': LaunchConfiguration('algo_type')},
                 {'transition_system_textfile': transition_system_file},
-                {'init_state': '109'}
+                {'init_state': 'c0_r0'}
             ]
         ),
     ])
@@ -97,7 +97,7 @@ def generate_launch_description():
                 {'ltl_formula_file': ltl_formula_file},
                 {'algo_type': LaunchConfiguration('algo_type')},
                 {'transition_system_textfile': transition_system_file},
-                {'init_state': '108'}
+                {'init_state': 'c4_r3'}
             ]
         ),
     ])
@@ -108,8 +108,8 @@ def generate_launch_description():
         name='taskassign_node',
         output='screen',
         parameters=[
-            {'robot1_initial_state': [0.5, 0.5]},
-            {'robot2_initial_state': [4.5, 1.5]},
+            {'robot1_initial_state': 'c0_r0'},
+            {'robot2_initial_state': 'c4_r3'},
             {'score_scheme': 'dstar'} # dstar or manhattan
         ]
     )

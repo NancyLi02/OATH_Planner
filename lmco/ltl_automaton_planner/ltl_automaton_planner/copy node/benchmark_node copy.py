@@ -10,10 +10,10 @@ from copy import deepcopy
 from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, PositionRequest, TaskRequest, CurrentPosition, LTLPlan, RelayRequest, RelayResponse
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
-from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_hilton, check_in_block, check_in_bump
+from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers
 # Import modules for commanding the a1
-
-from geometry_msgs.msg import PoseStamped
+import re
+from geometry_msgs.msg import Point
 from std_msgs.msg import String, Bool
 import pygame
 from enum import Enum
@@ -21,7 +21,6 @@ import cv2
 import numpy as np
 import time
 import csv
-from shapely.geometry import Point, LineString, Polygon
 from example_interfaces.srv import AddTwoInts
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
@@ -53,7 +52,7 @@ class GridWorld(object):
         self.grid_size = grid_size
         self.load_elements()
         
-        self.width, self.height = 780, 390
+        self.width, self.height = 780, 780
         self.cell_size = self.width // self.grid_size
 
         # Initialize the screen
@@ -98,9 +97,7 @@ class GridWorld(object):
                     self.bump[(tuple(b[0]),tuple(b[1]))] = 0 
             else:
                 print("The YAML file does not contain a list.")    
-        
-        self.bump = dict()
-        self.block = dict()
+            
     
     # def background(self):
     #     for key, pos in self.loc.items():
@@ -163,33 +160,22 @@ class LTLControllerDrone(Node):
         
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
+        #print(self.transition_system)
         self.declare_parameter('agent_name', '')
         self.agent_name = self.get_parameter('agent_name').get_parameter_value().string_value
-
-        self.nodes, self.actions = build_graph_hilton(6, 3, 120)
-        self.transition_system ['state_models']['2d_pose_region']['nodes'] = self.nodes
-        self.transition_system ['actions'].update(self.actions)
-
+        
         self.mode = EquipmentMode.UNLOADED
         self.total_cost = 0
         self.if_obs = False
         if self.agent_name == 'robot_1':
-            self.pose = (0.5, 0.5)
+            self.pose = (0, 0)
         elif self.agent_name =='robot_2':
-            self.pose = (4.5, 1.5)
-        
-        if self.agent_name == 'robot_1':
-            self.pose_index = 109
-        elif self.agent_name == 'robot_2':
-            self.pose_index = 108
-
+            self.pose = (4, 3)
         self.previous_pose = self.pose
-        self.previous_pose_index = self.pose_index
         self.pose_history = [(self.pose, 0)]
         self.t_sim = self.get_clock().now()  # Use the ROS2 clock for the current time
         self.plan_index = 0
         self.next_interval = 10
-        #print(self.transition_system)
         # self.get_logger().info("BN sending request")    
         # response = self.send_request(2, 3)
         # self.get_logger().info(
@@ -202,13 +188,13 @@ class LTLControllerDrone(Node):
         self.get_logger().info('Getting Current Position Now ................................')
         current_pos_msg = CurrentPosition()
         current_pos_msg.robot_id = self.agent_name
-        current_pos_msg.pose_index = self.pose_index
+        current_pos_msg.position = list(self.pose)
         if self.mode == EquipmentMode.LOADED:
             current_pos_msg.current_state = 'loaded'
         else:
             current_pos_msg.current_state = 'unloaded'
         self.current_position_pub.publish(current_pos_msg)
-        self.get_logger().info(f"Publishing current position for {self.agent_name}: {self.pose_index}, with state {current_pos_msg.current_state}.")
+        self.get_logger().info(f"Publishing current position for {self.agent_name}: {self.pose}, with state {current_pos_msg.current_state}.")
 
     def prefix_plan_callback(self, msg):
         self.plan_index = 0
@@ -218,7 +204,6 @@ class LTLControllerDrone(Node):
         self.get_logger().info(f"length prefix_action_list: {len(self.prefix_action_list)}")
         self.prefix_state_sequence = msg.ts_state_sequence
         self.get_logger().info("end data pre")
-        print(self.prefix_action_list)
         # self.prefix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
 
     def suffix_plan_callback(self, msg):
@@ -227,7 +212,6 @@ class LTLControllerDrone(Node):
         self.get_logger().info(f"length suffix_action_list: {len(self.suffix_action_list)}")
         self.suffix_state_sequence = msg.ts_state_sequence
         self.get_logger().info("end data sub")
-        print(self.suffix_action_list)
         # self.suffix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
         
     def relay_callback(self, msg):
@@ -248,30 +232,27 @@ class LTLControllerDrone(Node):
         #--------------
         # self.get_logger().info("inside the next move")
         if (len(self.prefix_action_list) + len(self.suffix_action_list) != 0):
-            self.get_logger().info(f"plan index: {self.plan_index}")
+            # self.get_logger().info(f"plan index: {self.plan_index}")
             if self.plan_index < len(self.prefix_action_list):
                 self.pub_assign = True
                 #self.get_logger().info("beanchmark fix 0")
                 for act in self.transition_system['actions']:
                     #self.get_logger().info("beanchmark fix 0.1")
                     if str(act) == self.prefix_action_list[self.plan_index]:
-                        self.get_logger().info(str(act))
                         #self.get_logger().info("beanchmark fix 0.2")
                         # Extract action types, attributes, etc. in dictionary
                         action_dict = self.transition_system['actions'][str(act)]
                         # print(self.prefix_action_list)
-                        if str(act)[:4] == "from":
+                        if str(act)[:4] == "goto":
                             # self.get_logger().info("beanchmark fix 0.3")
                             self.previous_pose = self.pose
-                            self.previous_pose_index = self.pose_index
-                            self.pose_index = extract_numbers(str(act))[1]
-                            self.pose = self.nodes[f'{self.pose_index}']['attr']['pose']
-                            self.get_logger().info(f"previous pose: {self.previous_pose}")
-                            self.get_logger().info(f"pose: {self.pose}")
-                            
-                            if check_in_block(act, self.nodes) and str(act) not in self.world.block:
-                                self.get_logger().info("--------Block detected---------")
-                                self.world.block[str(act)] = 1
+                            self.pose = extract_numbers(str(act))
+                            # self.get_logger().info(f"previous pose: {self.previous_pose}")
+                            # self.get_logger().info(f"pose: {self.pose}")
+                            if (self.previous_pose, self.pose) in self.world.wall or (self.pose, self.previous_pose) in self.world.wall:
+                                self.get_logger().info("--------Obstacle detected---------")
+                                self.world.wall[((self.previous_pose, self.pose))] = 1
+                                self.world.wall[((self.pose, self.previous_pose))] = 1
                                 # self.if_obs = True
                                 try: 
                                     self.on_hold = True
@@ -287,15 +268,15 @@ class LTLControllerDrone(Node):
                                     self.relay_pub.publish(publish_msg)
                                     self.on_hold = True
                                     self.pose = self.previous_pose
-                                    self.pose_index = self.previous_pose_index
                                     return
                                 except Exception as e:
                                     self.get_logger().error(f'Failed to call service: {e}')
                                     exit(1)
                             # self.get_logger().info("beanchmark fix 0.4")       
-                            if check_in_bump(act, self.nodes) and str(act) not in self.world.bump:
-                                self.get_logger().info("--------Bump detected---------")
-                                self.world.bump[str(act)] = 1
+                            if self.world.bump.get((self.previous_pose, self.pose)) == 0 or self.world.bump.get((self.pose, self.previous_pose)) == 0 :
+                                self.get_logger().info("--------Obstacle detected---------")
+                                self.world.bump[((self.previous_pose, self.pose))] = 1
+                                self.world.bump[((self.pose, self.previous_pose))] = 1
                                 # self.if_obs = True
                                 try: 
                                     publish_msg = RelayRequest()
@@ -304,7 +285,7 @@ class LTLControllerDrone(Node):
                                     publish_msg.from_pose.extend(list(self.previous_pose))
                                     publish_msg.to_pose.extend(list(self.pose))
                                     publish_msg.exec_index = self.plan_index
-                                    publish_msg.cost = self.actions[act]['weight']*5
+                                    publish_msg.cost = 50.0
                                     self.relay_pub.publish(publish_msg)
                                     self.on_hold = True
                                     self.pose = self.previous_pose
@@ -326,33 +307,30 @@ class LTLControllerDrone(Node):
                         self.get_logger().info(f"plan index: {self.plan_index}")
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
-                        self.next_interval = action_dict['weight']*5 # +1
+                        self.next_interval = action_dict['weight'] # +1
                         # self.get_logger().info("beanchmark fix 0.6")
-                        
                         ##### Logging
                         last_round_time = 50 if (self.previous_pose, self.pose) in self.world.bump else 10
                         last_time = self.pose_history[-1][1]
                         future_step = len(self.prefix_state_sequence) + len(self.suffix_state_sequence) - self.plan_index
                         future_time = 0
                         for i in range(self.plan_index, len(self.prefix_state_sequence)-1):
-                            pose_ab = extract_numbers(str(act))
-                            
-                            # pose_a = extract_numbers(str(self.prefix_state_sequence[i].states[0]))
-                            # pose_b = extract_numbers(str(self.prefix_state_sequence[i+1].states[0]))
-                            if pose_ab not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
+                            pose_a = extract_numbers(str(self.prefix_state_sequence[i].states[0]))
+                            pose_b = extract_numbers(str(self.prefix_state_sequence[i+1].states[0]))
+                            if (pose_a, pose_b) not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
                                 future_time += 10
                             else:
                                 future_time += 50
                         for i in range(0, len(self.suffix_state_sequence)):
-                            pose_ab = extract_numbers(str(act))
-                            # pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
-                            # pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
-                            if pose_ab not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
+                            pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
+                            pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
+                            if (pose_a, pose_b) not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
                                 future_time += 10
                             else:
                                 future_time += 50
                         self.pose_history.append((self.pose, round(last_round_time+last_time), round(future_step), round(future_time)))
                         # self.get_logger().info("beanchmark fix 0.7")
+                        
                         return
 
             if self.plan_index >= len(self.prefix_action_list) and self.plan_index < len(self.prefix_action_list) + len(self.suffix_action_list):
@@ -367,17 +345,15 @@ class LTLControllerDrone(Node):
                         # print(self.suffix_action_list)
                         if str(act)[:4] == "goto":
                             self.previous_pose = self.pose
-                            self.previous_pose_index = self.pose_index
-                            self.pose_index = extract_numbers(str(act))[1]
-                            self.pose = self.nodes[f'{self.pose_index}']['attr']['pose']
-                            if check_in_block(act, self.nodes) and str(act) not in self.world.block:
-                                self.get_logger().info("--------Block detected---------")
-                                self.world.block[str(act)] = 1
-                                # self.if_obs = True
+                            self.pose = extract_numbers(str(act))
+                            if (self.previous_pose, self.pose) in self.world.wall or (self.pose, self.previous_pose) in self.world.wall:
+                                print("\n")
+                                print("----Obstacle detected----")
+                                self.world.wall[((self.previous_pose, self.pose))] = 1
+                                self.world.wall[((self.pose, self.previous_pose))] = 1
+                                self.if_obs = True
                                 try: 
-                                    self.on_hold = True
                                     publish_msg = RelayRequest()
-                                    # self.get_logger().info("checkpoint2")
                                     publish_msg.type = "delete"
                                     publish_msg.current_state = self.prefix_state_sequence[self.plan_index]
                                     publish_msg.from_pose.extend(list(self.previous_pose))
@@ -387,15 +363,16 @@ class LTLControllerDrone(Node):
                                     self.relay_pub.publish(publish_msg)
                                     self.on_hold = True
                                     self.pose = self.previous_pose
-                                    self.pose_index = self.previous_pose_index
                                     return
                                 except Exception as e:
                                     self.get_logger().error(f'Failed to call service: {e}')
                                     exit(1)
-                            # self.get_logger().info("beanchmark fix 0.4")       
-                            if check_in_bump(act, self.nodes) and str(act) not in self.world.bump:
-                                self.get_logger().info("--------Bump detected---------")
-                                self.world.bump[str(act)] = 1
+                                    
+                            if self.world.bump.get((self.previous_pose, self.pose)) == 0 or self.world.bump.get((self.pose, self.previous_pose)) == 0 :
+                                print("\n")
+                                print("----Bump detected----")
+                                self.world.bump[((self.previous_pose, self.pose))] = 1
+                                self.world.bump[((self.pose, self.previous_pose))] = 1
                                 # self.if_obs = True
                                 try: 
                                     publish_msg = RelayRequest()
@@ -404,7 +381,7 @@ class LTLControllerDrone(Node):
                                     publish_msg.from_pose.extend(list(self.previous_pose))
                                     publish_msg.to_pose.extend(list(self.pose))
                                     publish_msg.exec_index = self.plan_index
-                                    publish_msg.cost = self.actions[act]['weight']*5
+                                    publish_msg.cost = 50.0
                                     self.relay_pub.publish(publish_msg)
                                     self.on_hold = True
                                     self.pose = self.previous_pose
@@ -412,6 +389,8 @@ class LTLControllerDrone(Node):
                                 except Exception as e:
                                     self.get_logger().error(f'Failed to call service: {e}')
                                     exit(1)
+                                    
+                            # self.pose = (int(str(act).split('c')[1]), int(str(act).split('r')[1]))
                         elif str(act) == "unload" or str(act) == "release":
                             self.mode = EquipmentMode.UNLOADED
                         elif str(act) == "load":
@@ -423,7 +402,7 @@ class LTLControllerDrone(Node):
                         self.plan_index += 1
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
-                        self.next_interval = action_dict['weight']*5 # +1
+                        self.next_interval = action_dict['weight'] # +1
                         
                         ########Logging
                         last_round_time = 50 if (self.previous_pose, self.pose) in self.world.bump else 10
@@ -431,28 +410,25 @@ class LTLControllerDrone(Node):
                         future_step = len(self.prefix_state_sequence) + len(self.suffix_state_sequence) - self.plan_index
                         future_time = 0
                         for i in range(self.plan_index, len(self.prefix_state_sequence)-1):
-                            pose_ab = extract_numbers(str(act))
-                            # pose_a = extract_numbers(str(self.prefix_state_sequence[i].states[0]))
-                            # pose_b = extract_numbers(str(self.prefix_state_sequence[i+1].states[0]))
-                            if pose_ab not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
+                            pose_a = extract_numbers(str(self.prefix_state_sequence[i].states[0]))
+                            pose_b = extract_numbers(str(self.prefix_state_sequence[i+1].states[0]))
+                            if (pose_a, pose_b) not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
                                 future_time += 10
                             else:
                                 future_time += 50
                         if self.plan_index <= len(self.prefix_state_sequence):
                             for i in range(0, len(self.suffix_state_sequence)):
-                                pose_ab = extract_numbers(str(act))
-                                # pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
-                                # pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
-                                if pose_ab not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
+                                pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
+                                pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
+                                if (pose_a, pose_b) not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
                                     future_time += 10
                                 else:
                                     future_time += 50
                         else:
                             for i in range(self.plan_index-len(self.prefix_state_sequence), len(self.suffix_state_sequence)):
-                                pose_ab = extract_numbers(str(act))
-                                # pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
-                                # pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
-                                if pose_ab not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
+                                pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
+                                pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
+                                if (pose_a, pose_b) not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
                                     future_time += 10
                                 else:
                                     future_time += 50
@@ -465,41 +441,21 @@ class LTLControllerDrone(Node):
                     self.pub_assign = False
                     self.mode = EquipmentMode.WAITTASK
 
+
     def publish_task_request(self):
         robot_id = int(self.agent_name.split('_')[-1])
         task_request_msg = TaskRequest()
         task_request_msg.robot_id = robot_id
         task_request_msg.task_status = 1
-        # task_request_msg.pose_index = self.pose_index
-
+        task_request_msg.position_x = self.pose[0]
+        task_request_msg.position_y = self.pose[1]
         
         self.taskassignment_request_pub.publish(task_request_msg)
         self.get_logger().info('------------Publish Task Assignment Request-------------')
-    
-    def transform_coords(self, coord):
-        """Convert shapely coordinates to pygame coordinates."""
-        x, y = coord
-        return int(x * self.world.cell_size ), int(-y * self.world.cell_size + self.world.height)  # Flip y-axis for pygame
 
-    
+
     def simulate(self):
         #rate = self.create_rate(10)
-        
-        lines = [
-            LineString([(0, 1), (1, 1)]),
-            LineString([(0, 2), (1, 2), (1, 1.5)]),
-            LineString([(1, 0), (1, 0.3)]),
-            LineString([(1, 2.5), (1, 3)]),
-            LineString([(2, 1), (2, 2), (3, 2)]),
-            LineString([(3, 1), (4, 1), (4, 2)]),
-            LineString([(5, 0), (5, 1)]),
-            LineString([(5, 2), (5, 3)])
-        ]
-
-        # Create buffered obstacles
-        obstacles = [line.buffer(distance=0.1, cap_style=3) for line in lines]
-        
-        
         
         try:
             for event in pygame.event.get():
@@ -510,71 +466,9 @@ class LTLControllerDrone(Node):
             self.world.screen.fill(WHITE)
             # self.world.background()
             # Draw the grid
-            for row in range(3):
-                for col in range(6):
+            for row in range(self.world.grid_size):
+                for col in range(self.world.grid_size):
                     pygame.draw.rect(self.world.screen, BLACK, (col * self.world.cell_size, row * self.world.cell_size, self.world.cell_size, self.world.cell_size), 1)
-            
-            for obstacle in obstacles:
-                if obstacle.geom_type == "Polygon":
-                    polygon_coords = [self.transform_coords(coord) for coord in obstacle.exterior.coords]
-                    pygame.draw.polygon(self.world.screen, RED, polygon_coords, 0)  # Filled polygon
-
-            
-            for action in self.actions:
-                pose_ab = extract_numbers(str(action))
-                pose_a = pose_ab[0]
-                pose_b = pose_ab[1]
-                
-                start_pos = (
-                    int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
-                )
-                end_pos = (
-                    int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
-                )
-
-                pygame.draw.line(self.world.screen, BLACK, start_pos, end_pos, 1)  # 
-            
-            for action in self.world.block:
-                pose_ab = extract_numbers(action)
-                pose_a = pose_ab[0]
-                pose_b = pose_ab[1]
-                
-                start_pos = (
-                    int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
-                )
-                end_pos = (
-                    int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
-                )
-
-                pygame.draw.line(self.world.screen, RED, start_pos, end_pos, 3)  # 
-                
-            for action in self.world.bump:
-                pose_ab = extract_numbers(action)
-                pose_a = pose_ab[0]
-                pose_b = pose_ab[1]
-                
-                start_pos = (
-                    int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
-                )
-                end_pos = (
-                    int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
-                )
-
-                pygame.draw.line(self.world.screen, YELLOW, start_pos, end_pos, 3)  # 
-            
-            # Draw nodes
-            for node in self.nodes:
-                pygame.draw.circle(self.world.screen, BLUE, (self.nodes[node]['attr']['pose'][0]* self.world.cell_size, \
-                               self.world.height - (self.nodes[node]['attr']['pose'][1]* self.world.cell_size)), 5)
-            
-            
-            
             # self.get_logger().info("inside b")    
             # # # Update to next action
             # self.get_logger.info(f"An error occurred: {e}")
@@ -610,11 +504,32 @@ class LTLControllerDrone(Node):
             #     pygame.draw.line(self.world.screen, BLACK,  
             #                 (i*self.world.cell_size, self.world.grid_size/2*self.world.cell_size),\
             #                 ((i+1)*self.world.cell_size, (self.world.grid_size/2)*self.world.cell_size), 5)
-        
+            
+            for wall, checked in self.world.wall.items():
+                if checked:
+                    if wall[0][1] == wall[1][1]: # vertical
+                        pygame.draw.line(self.world.screen, RED,  
+                            (max(wall[0][0], wall[1][0])*self.world.cell_size, self.world.height - (wall[0][1]+1)*self.world.cell_size),\
+                            (max(wall[0][0], wall[1][0])*self.world.cell_size, self.world.height - wall[0][1]*self.world.cell_size), 5)
+                    if wall[0][0] == wall[1][0]: # horizontal
+                        pygame.draw.line(self.world.screen, RED,  
+                            (wall[0][0]*self.world.cell_size, self.world.height - max(wall[0][1], wall[1][1])*self.world.cell_size),\
+                            ((wall[0][0]+1)*self.world.cell_size, self.world.height - max(wall[0][1], wall[1][1])*self.world.cell_size), 5)
+            
+            for wall, checked in self.world.bump.items():
+                if checked:
+                    if wall[0][1] == wall[1][1]: # vertical
+                        pygame.draw.line(self.world.screen, YELLOW,  
+                            (max(wall[0][0], wall[1][0])*self.world.cell_size, self.world.height - (wall[0][1]+1)*self.world.cell_size),\
+                            (max(wall[0][0], wall[1][0])*self.world.cell_size, self.world.height - wall[0][1]*self.world.cell_size), 5)
+                    if wall[0][0] == wall[1][0]: # horizontal
+                        pygame.draw.line(self.world.screen, YELLOW,  
+                            (wall[0][0]*self.world.cell_size, self.world.height - max(wall[0][1], wall[1][1])*self.world.cell_size),\
+                            ((wall[0][0]+1)*self.world.cell_size, self.world.height - max(wall[0][1], wall[1][1])*self.world.cell_size), 5)
                     
             
-            pygame.draw.circle(self.world.screen, self.mode.value, (self.pose[0] * self.world.cell_size, \
-                self.world.height - (self.pose[1] * self.world.cell_size)), self.world.cell_size // 5)
+            pygame.draw.circle(self.world.screen, self.mode.value, (int(self.pose[0] * self.world.cell_size + self.world.cell_size/2), \
+                self.world.height - int(self.pose[1] * self.world.cell_size + self.world.cell_size/2)), self.world.cell_size // 2)
             # self.world.screen.blit(text, text_)
             
             
@@ -675,7 +590,6 @@ def main(args=None):
     
     while(rclpy.ok()):
         try:
-            # ltl_drone = LTLControllerDrone(env)
             rclpy.spin_once(ltl_drone)
         except ValueError as e:
             node.get_logger().error(f"LTL drone node: {e}")
