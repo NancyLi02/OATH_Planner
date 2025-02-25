@@ -307,6 +307,10 @@ class MainPlanner(Node):
             task_index = msg.robot_2_task
             new_initial_pose = msg.robot_2_pos
             self.get_logger().info(f'Robot 2 has been assigned to task {task_index}')
+        elif self.agent_name == 'robot_3':
+            task_index = msg.robot_3_task
+            new_initial_pose = msg.robot_3_pos
+            self.get_logger().info(f'Robot 3 has been assigned to task {task_index}')
         else:
             self.get_logger().error(f"Invalid agent name: {self.agent_name}")
             return

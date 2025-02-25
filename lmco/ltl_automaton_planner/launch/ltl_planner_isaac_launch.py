@@ -37,6 +37,11 @@ def generate_launch_description():
         default_value='robot2',
         description='Namespace for the second robot'
     )
+    declare_namespace3_cmd = DeclareLaunchArgument(
+        'robot3_namespace',
+        default_value='robot3',
+        description='Namespace for the third robot'
+    )
     declare_ltl_file_cmd = DeclareLaunchArgument(
         'ltl_params_file',
         default_value=ltl_formula_file,
@@ -102,6 +107,33 @@ def generate_launch_description():
         ),
     ])
 
+    robot_3_node = GroupAction([
+        PushRosNamespace(LaunchConfiguration('robot3_namespace')),
+        Node(
+            package='ltl_automaton_planner',
+            executable='benchmark_node',
+            name='benchmark_node',
+            output='screen',
+            parameters=[#ltl_formula_file,
+                {'agent_name': 'robot_3'},
+                {'transition_system_textfile': transition_system_file},
+                {'N': 8}]
+        ),
+        Node(
+            package='ltl_automaton_planner',
+            executable='planner_node',
+            name='planner_node',
+            output='screen',
+            parameters=[
+                {'agent_name': 'robot_3'},
+                {'ltl_formula_file': ltl_formula_file},
+                {'algo_type': LaunchConfiguration('algo_type')},
+                {'transition_system_textfile': transition_system_file},
+                {'init_state': '181'}
+            ]
+        ),
+    ])
+
     taskassign_node = Node(
         package='ltl_automaton_planner',
         executable='taskassign_node',
@@ -110,6 +142,7 @@ def generate_launch_description():
         parameters=[
             {'robot1_initial_state': [0.5, 0.5]},
             {'robot2_initial_state': [7.5, 7.7]},
+            {'robot3_initial_state': [2.5, 5.7]},
             {'score_scheme': 'dstar'}
         ]
     )
@@ -117,10 +150,12 @@ def generate_launch_description():
     ld.add_action(declare_argo_type_cmd)
     ld.add_action(declare_namespace1_cmd)
     ld.add_action(declare_namespace2_cmd)
+    ld.add_action(declare_namespace3_cmd)
     ld.add_action(declare_ltl_file_cmd)
     ld.add_action(declare_ts_file_cmd)
     ld.add_action(robot_1_node)
     ld.add_action(robot_2_node)
+    ld.add_action(robot_3_node)
     ld.add_action(taskassign_node)
 
     return ld

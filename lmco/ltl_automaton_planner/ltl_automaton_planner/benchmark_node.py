@@ -185,11 +185,15 @@ class LTLControllerDrone(Node):
             self.pose = (0.5, 0.5)
         elif self.agent_name =='robot_2':
             self.pose = (7.5, 7.7)
+        elif self.agent_name =='robot_3':
+            self.pose = (2.5, 5.7)
         
         if self.agent_name == 'robot_1':
             self.pose_index = 180
         elif self.agent_name == 'robot_2':
             self.pose_index = 182
+        elif self.agent_name == 'robot_3':
+            self.pose_index = 181
 
         self.previous_pose = self.pose
         self.previous_pose_index = self.pose_index
