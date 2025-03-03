@@ -81,50 +81,40 @@ class TaskAssignNode(Node):
     def __init__(self):
         super().__init__('taskassign_node')
 
-        # Declare parameters for initial robot states
-        self.declare_parameter('robot1_initial_state', [0.0, 0.0])
-        self.declare_parameter('robot2_initial_state', [0.0, 0.0])
-        self.declare_parameter('robot3_initial_state', [0.0, 0.0])
-        self.declare_parameter('score_scheme','')
-
-        # Retrieve initial states from parameters
-        self.robot1_initial_state = self.get_parameter('robot1_initial_state').value
-        self.robot2_initial_state = self.get_parameter('robot2_initial_state').value
-        self.robot3_initial_state = self.get_parameter('robot3_initial_state').value
-        self.robot_init_state = [self.robot1_initial_state, self.robot2_initial_state, self.robot3_initial_state] 
-        self.score_scheme  = self.get_parameter('score_scheme').get_parameter_value().string_value     
-
-        self.get_logger().info(f'Robot 1 initial state: {self.robot1_initial_state}')
-        self.get_logger().info(f'Robot 2 initial state: {self.robot2_initial_state}')
-        self.get_logger().info(f'Robot 3 initial state: {self.robot3_initial_state}')
+        self.declare_parameter('robot_count', 4)
+        self.robot_count = self.get_parameter('robot_count').value
+        
+        self.robot_init_poses = {}
+        for i in range(1, self.robot_count + 1):
+            param_name = f'robot{i}_init_pose'
+            self.declare_parameter(param_name, 0)
+            self.robot_init_poses[f'robot_{i}'] = self.get_parameter(param_name).value
+        
+        self.declare_parameter('score_scheme', '')
+        self.score_scheme = self.get_parameter('score_scheme').get_parameter_value().string_value
+        
+        for robot, init_pose in self.robot_init_poses.items():
+            self.get_logger().info(f'{robot} initial state: {init_pose}')
         self.get_logger().info(f'Score scheme for CBAA: {self.score_scheme}')
         
-        # Initialize CBAA algorithm and robot states
         self.cbaa_algorithm = CBAA()
         self.assigned_tasks = []
         self.previous_assigned_tasks = []
-        self.unloaded_robots = {
-            "robot_1": 180,
-            "robot_2": 182,
-            "robot_3": 181
-        }
+        self.unloaded_robots = {robot: pose for robot, pose in self.robot_init_poses.items()}
         self.busy_robots = {}
         self.first_call = True
 
-        # Task positions hard coded for now
-        # self.task_positions = [(5.5, 0.3), (5.5, 2.7), (0.5, 1.7), (0.5, 2.7)]
-        # Convert positions from format like 'c5_r0' to coordinates (x, y)
-        # self.task_pos = [
-        #     (pos[0], pos[1]) for pos in self.task_positions
-        # ]
+        self.declare_parameter('task_count', 10)
+        task_count = self.get_parameter('task_count').value
+        self.valid_tasks = [1] * task_count
 
-        self.valid_tasks = [1, 1, 1, 1, 1, 1]
         self.positions = {}
         self.pose_index_list = {}
         self.score_list = {}
 
         # Define robot list
-        robots = ['robot1', 'robot2', 'robot3']
+        self.robots = [f'robot{i}' for i in range(1, self.robot_count + 1)]
+        self.robots_ = [f'robot_{i}' for i in range(1, self.robot_count + 1)]
 
         # Dictionaries to store publishers
         # self.task_assignment_publishers = {}
@@ -134,7 +124,7 @@ class TaskAssignNode(Node):
         self.score_request_publishers = {}
 
         # Loop to create publishers
-        for robot in robots:
+        for robot in self.robots:
             # self.task_assignment_publishers[robot] = self.create_publisher(
             #     TaskAssignment, f'{robot}/task_assignment', 10)
             
@@ -157,7 +147,7 @@ class TaskAssignNode(Node):
         self.score_list_subscribers = {}
 
         # Loop to create subscribers
-        for robot in robots:
+        for robot in self.robots:
             self.task_request_subscribers[robot] = self.create_subscription(
                 TaskRequest,
                 f'{robot}/task_assignment_request',
@@ -220,9 +210,9 @@ class TaskAssignNode(Node):
         )
 
         # Check if all required robots have reported their positions
-        required_robots = {"robot_1", "robot_2", "robot_3"}
+        required_robots = {f'robot_{i}' for i in range(1, self.robot_count + 1)}
         if required_robots.issubset(self.pose_index_list.keys()):  # Verify all robots have reported
-            self.get_logger().info("All robot_1, robot_2, and robot_3 positions collected, assigning new task...")
+            self.get_logger().info("All robot positions collected, assigning new task...")
             self.new_task_assign(self.pose_index_list)
             self.pose_index_list.clear()  # Clear data after task assignment
 
@@ -239,28 +229,12 @@ class TaskAssignNode(Node):
             f'Received update pose index from {msg.robot_id}: {msg.pose_index}, state: {msg.current_state}'
         )
         # Check if all required robots have reported their updated pose index
-        required_robots = {"robot_1", "robot_2", "robot_3"}
+        required_robots = {f'robot_{i}' for i in range(1, self.robot_count + 1)}
         if required_robots.issubset(self.pose_index_list.keys()):  # Verify all robots have updated
-            self.get_logger().info("All robot_1, robot_2, and robot_3 update pose index collected, publishing new task...")
+            self.get_logger().info("All robots update pose index collected, publishing new task...")
             self.check_task_assign(self.pose_index_list)
             self.pose_index_list.clear()  # Clear data after reassignment
 
-    # def pub_score_request(self, positions):
-    #     if "robot_1" in positions and "robot_2" in positions:
-    #         # Create ScoreRequest messages for both robots
-    #         score_request_msg1 = ScoreRequest()
-    #         score_request_msg1.position = positions["robot_1"]["position"]
-
-    #         score_request_msg2 = ScoreRequest()
-    #         score_request_msg2.position = positions["robot_2"]["position"]
-
-    #         # Publish messages
-    #         self.score_request_pub1.publish(score_request_msg1)
-    #         self.score_request_pub2.publish(score_request_msg2)
-
-    #         self.get_logger().info("Published score request for robot_1 and robot_2.")
-    #     else:
-    #         self.get_logger().warn("Missing positions for one or both robots. Score request not published.")
 
     def construct_valid_tasks(self, busy_robots):
         # This function updates self.valid_tasks by setting the task index assigned to busy robots to 0
@@ -292,6 +266,7 @@ class TaskAssignNode(Node):
         self.busy_robots = {}
 
         self.get_logger().info('Using dstar as score scheme.........')
+        # self.get_logger().info(f'pose_index_list is {pose_index_list}.')
         for robot_id, data in pose_index_list.items():
             if data["current_state"] == "unloaded":
                 self.unloaded_robots[robot_id] = data["pose_index"]
@@ -299,57 +274,15 @@ class TaskAssignNode(Node):
                 score_request_msg = ScoreRequest()
                 score_request_msg.pose_index = self.unloaded_robots[robot_id]
                 
-                if robot_id == 'robot_1':
-                    self.score_request_publishers['robot1'].publish(score_request_msg)
-                elif robot_id == 'robot_2':
-                    self.score_request_publishers['robot2'].publish(score_request_msg)
-                elif robot_id == 'robot_3':
-                    self.score_request_publishers['robot3'].publish(score_request_msg)
-                
-                self.get_logger().info(f"Published score request for {robot_id}")
+                if robot_id in self.robots_:
+                    # Convert robot_id from format "robot_1" to "robot1"
+                    publisher_key = robot_id.replace("_", "")
+                    if publisher_key in self.score_request_publishers:
+                        self.score_request_publishers[publisher_key].publish(score_request_msg)
+                        self.get_logger().info(f"Published score request for {robot_id}")
             else:
                 self.busy_robots[robot_id] = data["pose_index"]
 
-        # if self.score_scheme == 'manhattan':
-        #     for robot_id, data in pose_index_list.items():
-        #         if data["current_state"] == "unloaded":
-        #             self.unloaded_robots[robot_id] = data["pose_index"]
-        #         else:
-        #             self.busy_robots[robot_id] = data["pose_index"]
-        
-        #     self.valid_tasks = self.construct_valid_tasks(self.busy_robots)
-            
-        #     # If no available robots, return immediately
-        #     if not self.unloaded_robots:
-        #         self.get_logger().info("No available robots for task assignment.")
-        #         return
-            
-        #     # Sort unloaded_robots based on robot_id numerically
-        #     sorted_unloaded_robots = dict(sorted(self.unloaded_robots.items(), key=lambda x: int(x[0].split('_')[-1])))
-            
-        #     # Extract positions of sorted unloaded robots and create a mapping
-        #     robot_positions = list(sorted_unloaded_robots.values())
-        #     robot_id_mapping = {robot_id: index for index, robot_id in enumerate(sorted_unloaded_robots.keys())}
-        #     reverse_robot_id_mapping = {index: int(robot_id.split('_')[-1]) for robot_id, index in robot_id_mapping.items()}
-            
-        #     # Calculate task scores for each unloaded robot
-        #     scores_list = self.calculate_score(robot_positions, self.valid_tasks, self.task_pos)
-            
-        #     # Perform task assignment
-        #     assigned_tasks = self.cbaa_algorithm.initial_task_assignment(scores_list)
-            
-        #     # Map numerical indices back to expected format
-        #     self.previous_assigned_tasks = self.assigned_tasks
-        #     self.assigned_tasks = []
-            
-        #     for robot_index, task_index in assigned_tasks:
-        #         assigned_robot_number = reverse_robot_id_mapping[robot_index] - 1  # Convert robot_index to expected format
-        #         self.assigned_tasks.append((assigned_robot_number, int(task_index)))  # Ensure task_index is an integer
-            
-        #     self.get_logger().info(f"Final task assignments: {self.assigned_tasks}")
-            
-        #     # Publish task assignment
-        #     self.publish_reassignment(self.unloaded_robots)
 
 
     def dstar_task_assign(self):
@@ -410,144 +343,75 @@ class TaskAssignNode(Node):
         request_id = str(uuid.uuid4())
         position_request_msg = PositionRequest()
         position_request_msg.request_id = request_id
-        self.update_pose_pub['robot1'].publish(position_request_msg)
-        self.update_pose_pub['robot2'].publish(position_request_msg)
-        self.update_pose_pub['robot3'].publish(position_request_msg)
+        
+        for robot in self.robots:
+            if robot in self.update_pose_pub:
+                self.update_pose_pub[robot].publish(position_request_msg)
+        
         self.get_logger().info(f'Sent update position request with ID: {request_id}')
-
-    # def pub_initial_tasks(self, robot_pos, task_pos):
-    #     # Calculate scores for each robot-task pair
-    #     scores_list = self.calculate_score(robot_pos, self.valid_tasks, task_pos)
-
-    #     # Perform task auction using CBAA algorithm
-    #     self.assigned_tasks = self.cbaa_algorithm.initial_task_assignment(scores_list)
-
-    #     # Publish initial task assignment
-    #     self.publish_task_assignment(self.assigned_tasks)
-
+    
     def pub_current_pos_request(self, msg):
         robot_index = msg.robot_id - 1
         for assigned_robot, task_index in self.assigned_tasks:
             if assigned_robot == robot_index:
                 self.valid_tasks[task_index] = 0  # Set the task as invalid
         self.get_logger().info(f"After task completed Updated valid tasks: {self.valid_tasks}")
+        
         # Publish position request to robots
         request_id = str(uuid.uuid4())
         position_request_msg = PositionRequest()
         position_request_msg.request_id = request_id
-        self.position_request_publishers['robot1'].publish(position_request_msg)
-        self.position_request_publishers['robot2'].publish(position_request_msg)
-        self.position_request_publishers['robot3'].publish(position_request_msg)
+        
+        for robot in self.robots:
+            if robot in self.position_request_publishers:
+                self.position_request_publishers[robot].publish(position_request_msg)
+        
         self.get_logger().info(f'Sent position request with ID: {request_id}')
-
-    
-    # def publish_task_assignment(self, assigned_tasks):
-    #     task_assignment_msg = TaskAssignment()
-
-    #     # Assign tasks to robots based on the assignment results
-    #     for robot_index, task_index in assigned_tasks:
-    #         task_index = int(task_index)
-    #         if robot_index == 0:
-    #             task_assignment_msg.robot_1_task = task_index + 1
-    #         elif robot_index == 1:
-    #             task_assignment_msg.robot_2_task = task_index + 1
-
-    #     # Log the task assignment results
-    #     self.get_logger().info(
-    #         f'Publishing task assignments: Robot 1: {task_assignment_msg.robot_1_task}, Robot 2: {task_assignment_msg.robot_2_task}'
-    #     )
-
-    #     # Publish the task assignment message to both publishers
-    #     self.task_assignment_publishers['robot1'].publish(task_assignment_msg)
-    #     self.task_assignment_publishers['robot2'].publish(task_assignment_msg)
-
 
 
     def publish_reassignment(self, unloaded_robot):
         task_assignment_msg = TaskReAssignment()
+        publish_flags = {}  # Record whether to publish message for each robot
 
-        publish_to_robot_1 = False
-        publish_to_robot_2 = False
-        publish_to_robot_3 = False
         self.get_logger().info(f'self.previous_assigned_tasks is {self.previous_assigned_tasks}')
-
 
         for robot_index, task_index in self.assigned_tasks:
             task_index = int(task_index)
             self.get_logger().info(f'robot_index is {robot_index}, task_index is {task_index}.')
-            
-            if robot_index == 0:
-                if "robot_1" in unloaded_robot:
-                    self.get_logger().info('robot_1 in unloaded_robot')
-                    # Check if the previous assignment for robot_1 was the same
-                    if not any(prev_robot == 0 and prev_task == task_index for prev_robot, prev_task in self.previous_assigned_tasks):
-                        publish_to_robot_1 = True
-                        task_assignment_msg.robot_1_task = task_index + 1 if task_index != -1 else -1
-                        task_assignment_msg.robot_1_pos = unloaded_robot['robot_1']  # Add robot 1 position
-                else:
-                    # 把self.previous_assigned_tasks列表中robot_index == 0的task_index赋给self.assigned_tasks中robot_index == 0的task_index
-                    self.assigned_tasks = [
-                        (r, prev_task) if r == 0 else (r, t)
-                        for r, t in self.assigned_tasks
-                        for prev_r, prev_task in self.previous_assigned_tasks if prev_r == 0
-                    ]
-            
-            elif robot_index == 1:
-                if "robot_2" in unloaded_robot:
-                    if not any(prev_robot == 1 and prev_task == task_index for prev_robot, prev_task in self.previous_assigned_tasks):
-                        publish_to_robot_2 = True
-                        task_assignment_msg.robot_2_task = task_index + 1 if task_index != -1 else -1
-                        task_assignment_msg.robot_2_pos = unloaded_robot['robot_2']  # Add robot 2 position
-                else:
-                    self.assigned_tasks = [
-                        (r, prev_task) if r == 1 else (r, t)
-                        for r, t in self.assigned_tasks
-                        for prev_r, prev_task in self.previous_assigned_tasks if prev_r == 1
-                    ]
-            
-            elif robot_index == 2:
-                if "robot_3" in unloaded_robot:
-                    if not any(prev_robot == 2 and prev_task == task_index for prev_robot, prev_task in self.previous_assigned_tasks):
-                        publish_to_robot_3 = True
-                        task_assignment_msg.robot_3_task = task_index + 1 if task_index != -1 else -1
-                        task_assignment_msg.robot_3_pos = unloaded_robot['robot_3']  # Add robot 3 position
-                else:
-                    self.assigned_tasks = [
-                        (r, prev_task) if r == 2 else (r, t)
-                        for r, t in self.assigned_tasks
-                        for prev_r, prev_task in self.previous_assigned_tasks if prev_r == 2
-                    ]  
 
-        # Log the task assignment results
+            # Construct dynamic key for message fields (e.g., "robot_1", "robot_2", etc.)
+            robot_msg_key = f"robot_{robot_index+1}"
+
+            if robot_msg_key in unloaded_robot:
+                self.get_logger().info(f'{robot_msg_key} in unloaded_robot')
+                # Check if the previous assignment for this robot is the same as the current one
+                if not any(prev_robot == robot_index and prev_task == task_index for prev_robot, prev_task in self.previous_assigned_tasks):
+                    publish_flags[robot_index] = True
+                    # Dynamically set task and position fields in the message
+                    setattr(task_assignment_msg, f"{robot_msg_key}_task", task_index + 1 if task_index != -1 else -1)
+                    setattr(task_assignment_msg, f"{robot_msg_key}_pos", unloaded_robot[robot_msg_key])
+            else:
+                # Update the task assignment from previous_assigned_tasks if data for this robot is not in unloaded_robot
+                self.assigned_tasks = [
+                    (r, prev_task) if r == robot_index else (r, t)
+                    for r, t in self.assigned_tasks
+                    for prev_r, prev_task in self.previous_assigned_tasks if prev_r == robot_index
+                ]
+
+        # Log the new task assignments and publishing flags for all robots
         self.get_logger().info(f'Publishing new task assignments {self.assigned_tasks}.')
-        self.get_logger().info(f'Publish to robot1 {publish_to_robot_1}.')
-        self.get_logger().info(f'Publish to robot2 {publish_to_robot_2}.')
-        self.get_logger().info(f'Publish to robot3 {publish_to_robot_3}.')
+        for i in range(len(self.robots)):
+            flag = publish_flags.get(i, False)
+            self.get_logger().info(f'Publish to {self.robots[i]} {flag}.')
 
+        # Publish the task assignment message for robots with flag True
+        for i, robot in enumerate(self.robots):
+            if publish_flags.get(i, False):
+                self.task_reassignment_publishers[robot].publish(task_assignment_msg)
 
-        # Publish the task assignment message to the respective publishers if applicable
-        if publish_to_robot_1:
-            self.task_reassignment_publishers['robot1'].publish(task_assignment_msg)
-        if publish_to_robot_2:
-            self.task_reassignment_publishers['robot2'].publish(task_assignment_msg)
-        if publish_to_robot_3:
-            self.task_reassignment_publishers['robot3'].publish(task_assignment_msg)
-        
         self.previous_assigned_tasks = copy.deepcopy(self.assigned_tasks)
-            
-    # def calculate_score(self, robot_position, valid_tasks, task_list):
-    #     scores_list = []
-    #     for i, robot in enumerate(robot_position):
-    #         robot_scores = []
-    #         for j, task in enumerate(task_list):
-    #             if valid_tasks[j] == 1:
-    #                 manhattan_distance = np.abs(robot[0] - task[0]) + np.abs(robot[1] - task[1])
-    #                 score = 15 - manhattan_distance
-    #             else:
-    #                 score = 0
-    #             robot_scores.append(score)
-    #         scores_list.append(robot_scores)
-    #     return np.array(scores_list)
+
+
 
 def main(args=None):
     rclpy.init(args=args)

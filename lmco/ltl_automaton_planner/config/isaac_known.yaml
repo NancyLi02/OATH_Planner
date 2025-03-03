@@ -1,6 +1,6 @@
 actions:
   load:
-    guard: 'b || c  || f || d || h || i'
+    guard: 'b || c  || f || d || h || i || j || k || l || m'
     type: load
     weight: 0
   stay:
@@ -12,7 +12,7 @@ actions:
     type: stay
     weight: 0
   unload:
-    guard: 'e || g'
+    guard: 'e || g || n'
     type: unload
     weight: 0
 state_dim:

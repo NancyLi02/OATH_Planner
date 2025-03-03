@@ -1,22 +1,45 @@
-# tasks.yaml
-# Define LTL formulas for each task as hard and soft tasks
-
 tasks:
   task1:
-    hard_task: "<>(b) && [](b -> X(loaded && (!c && !d && !f && !h && !i && !e) U (g && unloaded)))"
-    soft_task: ""
+    hard_task: <>(b) && [](b -> X(loaded && ((!c) && (!d) && (!f) && (!g) && (!h)
+      && (!i) && (!j) && (!k) && (!l) && (!m) && (!n) && (!o) ) U (e && unloaded)))
+    soft_task: ''
   task2:
-    hard_task: "<>(c) && [](c -> X(loaded && (!b && !d && !f && !h && !i && !e) U (g && unloaded)))"
-    soft_task: ""
+    hard_task: <>(c) && [](c -> X(loaded && ((!b) && (!d) && (!f) && (!g) && (!h)
+      && (!i) && (!j) && (!k) && (!l) && (!m) && (!n) && (!o) ) U (e && unloaded)))
+    soft_task: ''
   task3:
-    hard_task: "<>(f) && [](f -> X(loaded && (!b && !c && !d && !h && !i && !e) U (g && unloaded)))"
-    soft_task: ""
+    hard_task: <>(d) && [](d -> X(loaded && ((!b) && (!c) && (!f) && (!g) && (!h)
+      && (!i) && (!j) && (!k) && (!l) && (!m) && (!n) && (!o) ) U (e && unloaded)))
+    soft_task: ''
   task4:
-    hard_task: "<>(d) && [](d -> X(loaded && (!b && !c && !f && !h && !i && !g) U (e && unloaded)))"
-    soft_task: ""
+    hard_task: <>(f) && [](f -> X(loaded && ((!b) && (!c) && (!d) && (!g) && (!h)
+      && (!i) && (!j) && (!k) && (!l) && (!m) && (!n) && (!o) ) U (e && unloaded)))
+    soft_task: ''
   task5:
-    hard_task: "<>(h) && [](h -> X(loaded && (!b && !c && !f && !d && !i && !g) U (e && unloaded)))"
-    soft_task: ""
+    hard_task: <>(h) && [](h -> X(loaded && ((!b) && (!c) && (!d) && (!e) && (!f)
+      && (!i) && (!j) && (!k) && (!l) && (!m) && (!n) && (!o) ) U (g && unloaded)))
+    soft_task: ''
   task6:
-    hard_task: "<>(i) && [](i -> X(loaded && (!b && !c && !f && !h && !d && !g) U (e && unloaded)))"
-    soft_task: ""
+    hard_task: <>(i) && [](i -> X(loaded && ((!b) && (!c) && (!d) && (!e) && (!f)
+      && (!h) && (!j) && (!k) && (!l) && (!m) && (!n) && (!o) ) U (g && unloaded)))
+    soft_task: ''
+  task7:
+    hard_task: <>(j) && [](j -> X(loaded && ((!b) && (!c) && (!d) && (!e) && (!f)
+      && (!h) && (!i) && (!k) && (!l) && (!m) && (!n) && (!o) ) U (g && unloaded)))
+    soft_task: ''
+  task8:
+    hard_task: <>(k) && [](k -> X(loaded && ((!b) && (!c) && (!d) && (!e) && (!f)
+      && (!g) && (!h) && (!i) && (!j) && (!l) && (!m) && (!o) ) U (n && unloaded)))
+    soft_task: ''
+  task9:
+    hard_task: <>(l) && [](l -> X(loaded && ((!b) && (!c) && (!d) && (!e) && (!f)
+      && (!g) && (!h) && (!i) && (!j) && (!k) && (!m) && (!o) ) U (n && unloaded)))
+    soft_task: ''
+  task10:
+    hard_task: <>(m) && [](m -> X(loaded && ((!b) && (!c) && (!d) && (!e) && (!f)
+      && (!g) && (!h) && (!i) && (!j) && (!k) && (!l) && (!o) ) U (n && unloaded)))
+    soft_task: ''
+  task11:
+    hard_task: <>(o) && [](o -> X(loaded && ((!b) && (!c) && (!d) && (!e) && (!f)
+      && (!g) && (!h) && (!i) && (!j) && (!k) && (!l) && (!m) ) U (n && unloaded)))
+    soft_task: ''

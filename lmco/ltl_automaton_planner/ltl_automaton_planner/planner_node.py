@@ -48,9 +48,13 @@ class MainPlanner(Node):
         self.task_data = self.load_tasks(self.ltl_formula_file)
         self.get_logger().info("MainPlanner node started")
 
-        self.nodes, self.actions = build_graph_hilton(8, 8, 200)
+        self.nodes, self.actions = build_graph_hilton(8, 8, 180)
 
+        start_time = time.time()
         self.initialize_automaton()
+        end_time = time.time()
+        build_automaton_time = end_time - start_time
+        self.get_logger().info(f'Building Automaton for {self.agent_name} cost {build_automaton_time} seconds.')
 
         time.sleep(1)
         self.init_score_list()
@@ -63,29 +67,30 @@ class MainPlanner(Node):
         self.declare_parameter('transition_system_textfile', "")  
         self.declare_parameter('algo_type', 'dstar')  
         self.declare_parameter('N', 8)
-        self.declare_parameter('init_state', '')
+        self.declare_parameter('init_state', 0)
         self.declare_parameter('ltl_formula_file','')
 
 
         self.ltl_formula_file = self.get_parameter('ltl_formula_file').get_parameter_value().string_value
         self.agent_name = self.get_parameter('agent_name').get_parameter_value().string_value
-        self.get_logger().info(f'Robot name is {self.agent_name}')
+        # self.get_logger().info(f'Robot name is {self.agent_name}')
 
         self.initial_beta = self.get_parameter('initial_beta').get_parameter_value().integer_value
         self.gamma = self.get_parameter('gamma').get_parameter_value().integer_value
         self.algo_type = self.get_parameter('algo_type').get_parameter_value().string_value
         self.grid_size = self.get_parameter('N').get_parameter_value().integer_value
         param_list = [parameter.name for parameter in self._parameters.values()]
-        print("param_list", param_list)
+        # print("param_list", param_list)
 
         transition_system_textfile = self.get_parameter('transition_system_textfile').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
-        self.initial_state_ts_dict = {'2d_pose_region': self.get_parameter('init_state').get_parameter_value().string_value,
+        self.init_state = self.get_parameter('init_state').value
+        self.initial_state_ts_dict = {'2d_pose_region': f'{self.init_state}',
                                       'Drone_state': 'unloaded'}
         print("**** inital state dict:", self.initial_state_ts_dict)
-        self.init_state = self.get_parameter('init_state').value
+        
         self.score_list = []
-        self.task_index = [1, 2, 3, 4, 5, 6]
+        self.task_index = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         self.cur_task = ''
 
     def load_tasks(self, yaml_file):
@@ -239,7 +244,7 @@ class MainPlanner(Node):
         self.pub_score()
 
     def init_score_list(self):
-        formatted_pose = self.init_state
+        formatted_pose = f'{self.init_state}'
         initial_state = {
             '2d_pose_region': formatted_pose,
             'Drone_state': 'unloaded'
@@ -311,6 +316,10 @@ class MainPlanner(Node):
             task_index = msg.robot_3_task
             new_initial_pose = msg.robot_3_pos
             self.get_logger().info(f'Robot 3 has been assigned to task {task_index}')
+        elif self.agent_name == 'robot_4':
+            task_index = msg.robot_4_task
+            new_initial_pose = msg.robot_4_pos
+            self.get_logger().info(f'Robot 4 has been assigned to task {task_index}')
         else:
             self.get_logger().error(f"Invalid agent name: {self.agent_name}")
             return

@@ -27,38 +27,79 @@ def halton_sequence(size, base=2):
     return np.array(sequence)
 
 
-def build_graph_hilton(x_length=8, y_length=8, n_points=200):
-    points_with_label = {(0.5, 0.3): 'a',
-                         (2.5, 5.7): '' ,
-                         (7.5, 7.7): '' ,
-                         (0.5, 2.3): 'f', 
-                         (0.5, 5.7): 'd',
-                         (3.5, 5.7): 'e',
-                         (7.5, 0.3): 'b',
-                         (7.5, 4.7): 'c',
-                         (5.5, 2.7): 'g',
-                         (4.5, 7.3): 'h',
-                         (0.5, 7.7): 'i'}
+def build_graph_hilton(x_length=20, y_length=20, n_points=700):
+    points_with_label = {(1, 19): 'a',
+                         (11, 19): '' ,
+                         (9, 11): '' ,
+                         (11, 9): '' ,
+                         (1, 6.5): 'b', 
+                         (5.5, 9.5): 'c',
+                         (8, 6.5): 'd',
+                         (6.5, 3): 'e', # unload
+                         (1, 13.5): 'f',
+                         (9, 16.5): 'g',
+                         (5, 16): 'h', # unload
+                         (11, 13.5): 'i',
+                         (11, 16.5): 'j',
+                         (18, 16.5): 'k',
+                         (16, 13): 'l', # unload
+                         (11, 4): 'm',
+                         (19, 6.5): 'n',
+                         (16, 5.5): 'o'} # unload
 
 
-    n_points = 200
-    x = halton_sequence(n_points, 2) * 8
-    y = halton_sequence(n_points, 3) * 8
+    n_points = 700
+    x = halton_sequence(n_points, 2) * 20
+    y = halton_sequence(n_points, 3) * 20
     points = np.vstack((x, y)).T
 
     # Filter points (pseudo-code)
     obstacles = []  # List of Shapely polygons
-    lines = [LineString([(0, 2), (1, 2), (1, 3)]),
-            LineString([(0, 4), (1, 4)]),
-            LineString([(0, 6), (1, 6), (1, 5)]),
-            LineString([(0, 7), (2, 7)]),
-            LineString([(3, 7), (5, 7), (5, 8)]),
-            LineString([(5, 6), (3, 6), (3, 4)]),
-            LineString([(4, 4), (6, 4), (6, 6)]),
-            LineString([(7, 3), (7, 5), (8, 5)]),
-            LineString([(7, 0), (7, 2)]),
-            LineString([(3, 1), (3, 3), (4, 3)]),
-            LineString([(5, 3), (6, 3), (6, 1), (4, 1)])]
+    lines = [LineString([(0, 3), (2, 3), (2, 4)]),
+            LineString([(0, 5), (2, 5)]),
+            LineString([(0, 7), (2, 7), (2, 6)]),
+            LineString([(4, 9), (6, 9), (6, 10)]),
+            LineString([(6, 7), (4, 7), (4, 5)]),
+            LineString([(5, 5), (7, 5), (7, 7)]),
+            LineString([(8, 5), (8, 7), (10, 7)]),
+            LineString([(4, 2), (4, 4), (5, 4)]),
+            LineString([(6, 4), (7, 4), (7, 2), (5, 2)]),
+
+            LineString([(10, 3), (12, 3), (12, 4)]),
+            LineString([(10, 5), (12, 5)]),
+            LineString([(10, 7), (12, 7), (12, 6)]),
+            LineString([(14, 9), (16, 9), (16, 10)]),
+            LineString([(16, 7), (14, 7), (14, 5)]),
+            LineString([(15, 5), (17, 5), (17, 7)]),
+            LineString([(18, 5), (18, 7), (20, 7)]),
+            LineString([(14, 2), (14, 4), (15, 4)]),
+            LineString([(16, 4), (17, 4), (17, 2), (15, 2)]),
+
+            LineString([(0, 13), (2, 13), (2, 14)]),
+            LineString([(0, 15), (2, 15)]),
+            LineString([(0, 17), (2, 17), (2, 16)]),
+            LineString([(4, 19), (6, 19), (6, 20)]),
+            LineString([(6, 17), (4, 17), (4, 15)]),
+            LineString([(5, 15), (7, 15), (7, 17)]),
+            LineString([(8, 15), (8, 17), (10, 17)]),
+            LineString([(4, 12), (4, 14), (5, 14)]),
+            LineString([(6, 14), (7, 14), (7, 12), (5, 12)]),
+            
+            LineString([(10, 13), (12, 13), (12, 14)]),
+            LineString([(10, 15), (12, 15)]),
+            LineString([(10, 17), (12, 17), (12, 16)]),
+            LineString([(14, 19), (16, 19), (16, 20)]),
+            LineString([(16, 17), (14, 17), (14, 15)]),
+            LineString([(15, 15), (17, 15), (17, 17)]),
+            LineString([(18, 15), (18, 17), (20, 17)]),
+            LineString([(14, 12), (14, 14), (15, 14)]),
+            LineString([(16, 14), (17, 14), (17, 12), (15, 12)]),
+            
+            LineString([(0, 10), (6, 10)]),
+            LineString([(10, 0), (10, 7)]),
+            LineString([(14, 10), (20, 10)]),
+            LineString([(10, 13), (10, 20)])]
+    
     for line in lines:
         buffered = line.buffer(distance=0.1, cap_style=3)
         obstacles.append(buffered)

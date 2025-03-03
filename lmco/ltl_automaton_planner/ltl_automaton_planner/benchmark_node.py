@@ -44,8 +44,8 @@ BLUE = (0, 0, 128)
 class EquipmentMode(Enum):
     UNLOADED = (0, 255, 0)
     LOADED = (0, 255, 255)
-    RESCUE = (255, 0, 0)
     WAITTASK = (255, 100, 0)
+    RESCUE = (255, 0, 0)
 
 class GridWorld(object):
     def __init__(self, grid_size):
@@ -53,7 +53,7 @@ class GridWorld(object):
         self.grid_size = grid_size
         self.load_elements()
         
-        self.width, self.height = 780, 780
+        self.width, self.height = 800, 800
         self.cell_size = self.width // self.grid_size
 
         # Initialize the screen
@@ -156,44 +156,33 @@ class LTLControllerDrone(Node):
         self.taskassignment_request_pub = self.create_publisher(TaskRequest, 'task_assignment_request', 10)
         self.pub_assign = True
         self.on_hold = False
-
-        # self.delete_client = self.create_client(TaskReplanningDelete, 'replanning_delete')
-        # if not self.delete_client.wait_for_service(timeout_sec=1000.0):  # Set your desired timeout in seconds
-        #     self.get_logger().error('Service /replanning_delete not available after waiting')
-        # else:
-        #     self.get_logger().info('Service /replanning_delete is available')
-            
-        # self.modify_client = self.create_client(TaskReplanningModify, 'replanning_modify')
-        # if not self.modify_client.wait_for_service(timeout_sec=1000.0):  # Set your desired timeout in seconds
-        #     self.get_logger().error('Service /replanning_modify not available after waiting')
-        # else:
-        #     self.get_logger().info('Service /replanning_modify is available')
         
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
         self.declare_parameter('agent_name', '')
         self.agent_name = self.get_parameter('agent_name').get_parameter_value().string_value
+        self.declare_parameter('init_state', 0)
+        self.init_pose = self.get_parameter('init_state').value
 
-        self.nodes, self.actions = build_graph_hilton(8, 8, 200)
+        self.nodes, self.actions = build_graph_hilton(20, 20, 700)
         self.transition_system ['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system ['actions'].update(self.actions)
 
         self.mode = EquipmentMode.UNLOADED
         self.total_cost = 0
         self.if_obs = False
+
         if self.agent_name == 'robot_1':
-            self.pose = (0.5, 0.5)
+            self.pose = (1, 19)
         elif self.agent_name =='robot_2':
-            self.pose = (7.5, 7.7)
+            self.pose = (11, 19)
         elif self.agent_name =='robot_3':
-            self.pose = (2.5, 5.7)
+            self.pose = (9, 11)
+        elif self.agent_name =='robot_4':
+            self.pose = (11, 9)
         
-        if self.agent_name == 'robot_1':
-            self.pose_index = 180
-        elif self.agent_name == 'robot_2':
-            self.pose_index = 182
-        elif self.agent_name == 'robot_3':
-            self.pose_index = 181
+
+        self.pose_index = self.init_pose
 
         self.previous_pose = self.pose
         self.previous_pose_index = self.pose_index
@@ -201,12 +190,7 @@ class LTLControllerDrone(Node):
         self.t_sim = self.get_clock().now()  # Use the ROS2 clock for the current time
         self.plan_index = 0
         self.next_interval = 10
-        #print(self.transition_system)
-        # self.get_logger().info("BN sending request")    
-        # response = self.send_request(2, 3)
-        # self.get_logger().info(
-        #         'BN Result of add_two_ints: for %d + %d = %d' %
-        #         (20, 32, response.sum))
+
         self.create_timer(1.0/10, self.simulate)
         # self.simulate()
     
@@ -511,17 +495,50 @@ class LTLControllerDrone(Node):
     def simulate(self):
         #rate = self.create_rate(10)
         
-        lines = [LineString([(0, 2), (1, 2), (1, 3)]),
-                LineString([(0, 4), (1, 4)]),
-                LineString([(0, 6), (1, 6), (1, 5)]),
-                LineString([(0, 7), (2, 7)]),
-                LineString([(3, 7), (5, 7), (5, 8)]),
-                LineString([(5, 6), (3, 6), (3, 4)]),
-                LineString([(4, 4), (6, 4), (6, 6)]),
-                LineString([(7, 3), (7, 5), (8, 5)]),
-                LineString([(7, 0), (7, 2)]),
-                LineString([(3, 1), (3, 3), (4, 3)]),
-                LineString([(5, 3), (6, 3), (6, 1), (4, 1)])]
+        lines = [LineString([(0, 3), (2, 3), (2, 4)]),
+                LineString([(0, 5), (2, 5)]),
+                LineString([(0, 7), (2, 7), (2, 6)]),
+                LineString([(4, 9), (6, 9), (6, 10)]),
+                LineString([(6, 7), (4, 7), (4, 5)]),
+                LineString([(5, 5), (7, 5), (7, 7)]),
+                LineString([(8, 5), (8, 7), (10, 7)]),
+                LineString([(4, 2), (4, 4), (5, 4)]),
+                LineString([(6, 4), (7, 4), (7, 2), (5, 2)]),
+
+                LineString([(10, 3), (12, 3), (12, 4)]),
+                LineString([(10, 5), (12, 5)]),
+                LineString([(10, 7), (12, 7), (12, 6)]),
+                LineString([(14, 9), (16, 9), (16, 10)]),
+                LineString([(16, 7), (14, 7), (14, 5)]),
+                LineString([(15, 5), (17, 5), (17, 7)]),
+                LineString([(18, 5), (18, 7), (20, 7)]),
+                LineString([(14, 2), (14, 4), (15, 4)]),
+                LineString([(16, 4), (17, 4), (17, 2), (15, 2)]),
+
+                LineString([(0, 13), (2, 13), (2, 14)]),
+                LineString([(0, 15), (2, 15)]),
+                LineString([(0, 17), (2, 17), (2, 16)]),
+                LineString([(4, 19), (6, 19), (6, 20)]),
+                LineString([(6, 17), (4, 17), (4, 15)]),
+                LineString([(5, 15), (7, 15), (7, 17)]),
+                LineString([(8, 15), (8, 17), (10, 17)]),
+                LineString([(4, 12), (4, 14), (5, 14)]),
+                LineString([(6, 14), (7, 14), (7, 12), (5, 12)]),
+                
+                LineString([(10, 13), (12, 13), (12, 14)]),
+                LineString([(10, 15), (12, 15)]),
+                LineString([(10, 17), (12, 17), (12, 16)]),
+                LineString([(14, 19), (16, 19), (16, 20)]),
+                LineString([(16, 17), (14, 17), (14, 15)]),
+                LineString([(15, 15), (17, 15), (17, 17)]),
+                LineString([(18, 15), (18, 17), (20, 17)]),
+                LineString([(14, 12), (14, 14), (15, 14)]),
+                LineString([(16, 14), (17, 14), (17, 12), (15, 12)]),
+                
+                LineString([(0, 10), (6, 10)]),
+                LineString([(10, 0), (10, 7)]),
+                LineString([(14, 10), (20, 10)]),
+                LineString([(10, 13), (10, 20)])]
 
         # Create buffered obstacles
         obstacles = [line.buffer(distance=0.1, cap_style=3) for line in lines]
@@ -657,26 +674,7 @@ class LTLControllerDrone(Node):
             
             # Update the display
             pygame.display.flip()
-            # self.get_logger().info("inside d")    
 
-            # if not (self.curr_ltl_state == self.prev_ltl_state):
-            #     # Update previous state
-            #     self.prev_ltl_state = deepcopy(self.curr_ltl_state)
-            #     # If all states are initialized (not None), publish message
-            #     if all([False for element in self.curr_ltl_state if element == None]):
-            #         # Publish msg
-            #         self.ltl_state_msg.header.stamp = rospy.Time.now()
-            #         self.ltl_state_msg.ts_state.states = self.curr_ltl_state
-            #         self.ltl_state_pub.publish(self.ltl_state_msg)
-
-            # If waiting for obstacles or acknowledgement, check again
-            # if self.next_action:
-            #     # If action returns true, action was carried out and is reset
-            #     if self.a1_action(self.next_action):
-            #         self.a1_action = {}
-                    
-            # rospy.loginfo("State is %s and prev state is %s" %(self.curr_ltl_state, self.prev_ltl_state))
-            # rate.sleep()    
         except KeyboardInterrupt:
             print(self.pose_history)
             csv_file_name = "example.csv"

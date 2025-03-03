@@ -142,7 +142,7 @@ class DStar(object):
         relaxed_modified_edges_dict = self.relaxed_edges_change(update_info)
         new_modified_edges_dict.update(relaxed_modified_edges_dict)
         for d in update_info["deleted"]:
-            self.removed_list.add((extract_numbers(d[0][0]), extract_numbers(d[1][0])))
+            self.removed_list.add((extract_numbers(d[0][0]), extract_numbers(d[1][0]))) 
         
         plantime_sum = 0
         for prod_target, dstar_graph in self.loop_graph.items():
@@ -258,7 +258,7 @@ class DStar(object):
         if s_goal == 'imag_goal':
             return 10
         heuristic_type = self.heuristic_type  # heuristic type: Manhattan
-        node_start_loc = extract_numbers(self.product.nodes[s_start]['ts'][0])
+        node_start_loc = extract_numbers(self.product.nodes[s_start]['ts'][0])   
         node_goal_loc = extract_numbers(self.product.nodes[s_goal]['ts'][0])
         
         if heuristic_type == "manhattan":
