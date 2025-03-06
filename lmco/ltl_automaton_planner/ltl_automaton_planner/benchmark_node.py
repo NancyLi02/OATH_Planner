@@ -7,7 +7,7 @@ import yaml
 import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, PositionRequest, TaskRequest, CurrentPosition, LTLPlan, RelayRequest, RelayResponse
+from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequest, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_hilton, check_in_block, check_in_bump
@@ -56,9 +56,9 @@ class GridWorld(object):
         self.width, self.height = 800, 800
         self.cell_size = self.width // self.grid_size
 
-        # Initialize the screen
-        self.screen = pygame.display.set_mode((self.width, self.height))
-        self.font = pygame.font.SysFont('timesnewroman',  20)
+        # Initialize the screen==================================
+        # self.screen = pygame.display.set_mode((self.width, self.height))
+        # self.font = pygame.font.SysFont('timesnewroman',  20)
         
         # self.frame_count = 0 
         # filename = "screen_%04d.png" % (self.frame_count)
@@ -67,7 +67,7 @@ class GridWorld(object):
 
         self.output_video = cv2.VideoWriter('/home/nanli/Isaac/planner/results/output_video.avi', cv2.VideoWriter_fourcc(*'XVID'), 30, (self.width, self.height))
         
-        pygame.display.set_caption("Grid with Moving Circle")
+        # pygame.display.set_caption("Grid with Moving Circle") # =====================
 
     
     def load_elements(self):
@@ -149,13 +149,30 @@ class LTLControllerDrone(Node):
             self.update_current_pos,
             10
         )
+
+        self.waiting_sub = self.create_subscription(
+            WaitingRequest,
+            'waiting_request',
+            self.waiting_request,
+            10
+        )
+
+        self.stop_waiting_sub = self.create_subscription(
+            StopWaiting,
+            'stop_waiting',
+            self.stop_waiting,
+            10
+        )
         
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
         self.update_pose_pub = self.create_publisher(CurrentPosition,'update_current_pose', 10)
         self.taskassignment_request_pub = self.create_publisher(TaskRequest, 'task_assignment_request', 10)
+        self.position_pub = self.create_publisher(ShowPosition, 'show_position', 10)
+        self.update_valid_tasks_pub = self.create_publisher(UpdateValidTasks, 'update_valid_tasks', 10)
         self.pub_assign = True
         self.on_hold = False
+        self.cur_task = 0
         
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
@@ -194,6 +211,13 @@ class LTLControllerDrone(Node):
         self.create_timer(1.0/10, self.simulate)
         # self.simulate()
     
+    def waiting_request(self, msg):
+        self.on_hold = True
+
+    def stop_waiting(self, msg):
+        self.on_hold = False
+
+    
     def get_current_pos(self, msg=None):
         self.get_logger().info('Getting Current Position Now ................................')
         current_pos_msg = CurrentPosition()
@@ -203,6 +227,7 @@ class LTLControllerDrone(Node):
             current_pos_msg.current_state = 'loaded'
         else:
             current_pos_msg.current_state = 'unloaded'
+            self.on_hold = True
         self.current_position_pub.publish(current_pos_msg)
         self.get_logger().info(f"Publishing current position for {self.agent_name}: {self.pose_index}, with state {current_pos_msg.current_state}.")
 
@@ -220,6 +245,8 @@ class LTLControllerDrone(Node):
 
     def prefix_plan_callback(self, msg):
         self.plan_index = 0
+        self.on_hold = False
+        self.cur_task = msg.cur_task
         self.world.block.clear()
         self.world.bump.clear()
         self.mode = EquipmentMode.UNLOADED
@@ -229,15 +256,18 @@ class LTLControllerDrone(Node):
         self.prefix_state_sequence = msg.ts_state_sequence
         self.get_logger().info("end data pre")
         print(self.prefix_action_list)
+        
         # self.prefix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
 
     def suffix_plan_callback(self, msg):
+        # self.on_hold = False
         self.get_logger().info("receive data sub")
         self.suffix_action_list = msg.action_sequence
         self.get_logger().info(f"length suffix_action_list: {len(self.suffix_action_list)}")
         self.suffix_state_sequence = msg.ts_state_sequence
         self.get_logger().info("end data sub")
         print(self.suffix_action_list)
+        
         # self.suffix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
         
     def relay_callback(self, msg):
@@ -328,6 +358,11 @@ class LTLControllerDrone(Node):
                             self.mode = EquipmentMode.UNLOADED
                         elif str(act) == "load":
                             self.mode = EquipmentMode.LOADED
+                            msg = UpdateValidTasks()
+                            msg.robot_id = int(self.agent_name.split('_')[-1])
+                            msg.loaded_task = self.cur_task
+                            self.update_valid_tasks_pub.publish(msg)
+                            self.get_logger().info(f'==================Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}==================')
                         elif str(act) == "goto_rescue":
                             self.mode = EquipmentMode.RESCUE
                         else: # including action "stay", nothing particular needs to be done
@@ -426,6 +461,12 @@ class LTLControllerDrone(Node):
                             self.mode = EquipmentMode.UNLOADED
                         elif str(act) == "load":
                             self.mode = EquipmentMode.LOADED
+                            msg = UpdateValidTasks()
+                            msg.robot_id = int(self.agent_name.split('_')[-1])
+                            msg.loaded_task = self.cur_task
+                            self.update_valid_tasks_pub.publish(msg)
+                            self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
+
                         elif str(act) == "goto_rescue":
                             self.mode = EquipmentMode.RESCUE
                         else: # including action "stay", nothing particular needs to be done
@@ -475,6 +516,7 @@ class LTLControllerDrone(Node):
                     self.pub_assign = False
                     self.mode = EquipmentMode.WAITTASK
 
+
     def publish_task_request(self):
         robot_id = int(self.agent_name.split('_')[-1])
         task_request_msg = TaskRequest()
@@ -495,134 +537,136 @@ class LTLControllerDrone(Node):
     def simulate(self):
         #rate = self.create_rate(10)
         
-        lines = [LineString([(0, 3), (2, 3), (2, 4)]),
-                LineString([(0, 5), (2, 5)]),
-                LineString([(0, 7), (2, 7), (2, 6)]),
-                LineString([(4, 9), (6, 9), (6, 10)]),
-                LineString([(6, 7), (4, 7), (4, 5)]),
-                LineString([(5, 5), (7, 5), (7, 7)]),
-                LineString([(8, 5), (8, 7), (10, 7)]),
-                LineString([(4, 2), (4, 4), (5, 4)]),
-                LineString([(6, 4), (7, 4), (7, 2), (5, 2)]),
+        # ====================================================================
+        # lines = [LineString([(0, 3), (2, 3), (2, 4)]),
+        #         LineString([(0, 5), (2, 5)]),
+        #         LineString([(0, 7), (2, 7), (2, 6)]),
+        #         LineString([(4, 9), (6, 9), (6, 10)]),
+        #         LineString([(6, 7), (4, 7), (4, 5)]),
+        #         LineString([(5, 5), (7, 5), (7, 7)]),
+        #         LineString([(8, 5), (8, 7), (10, 7)]),
+        #         LineString([(4, 2), (4, 4), (5, 4)]),
+        #         LineString([(6, 4), (7, 4), (7, 2), (5, 2)]),
 
-                LineString([(10, 3), (12, 3), (12, 4)]),
-                LineString([(10, 5), (12, 5)]),
-                LineString([(10, 7), (12, 7), (12, 6)]),
-                LineString([(14, 9), (16, 9), (16, 10)]),
-                LineString([(16, 7), (14, 7), (14, 5)]),
-                LineString([(15, 5), (17, 5), (17, 7)]),
-                LineString([(18, 5), (18, 7), (20, 7)]),
-                LineString([(14, 2), (14, 4), (15, 4)]),
-                LineString([(16, 4), (17, 4), (17, 2), (15, 2)]),
+        #         LineString([(10, 3), (12, 3), (12, 4)]),
+        #         LineString([(10, 5), (12, 5)]),
+        #         LineString([(10, 7), (12, 7), (12, 6)]),
+        #         LineString([(14, 9), (16, 9), (16, 10)]),
+        #         LineString([(16, 7), (14, 7), (14, 5)]),
+        #         LineString([(15, 5), (17, 5), (17, 7)]),
+        #         LineString([(18, 5), (18, 7), (20, 7)]),
+        #         LineString([(14, 2), (14, 4), (15, 4)]),
+        #         LineString([(16, 4), (17, 4), (17, 2), (15, 2)]),
 
-                LineString([(0, 13), (2, 13), (2, 14)]),
-                LineString([(0, 15), (2, 15)]),
-                LineString([(0, 17), (2, 17), (2, 16)]),
-                LineString([(4, 19), (6, 19), (6, 20)]),
-                LineString([(6, 17), (4, 17), (4, 15)]),
-                LineString([(5, 15), (7, 15), (7, 17)]),
-                LineString([(8, 15), (8, 17), (10, 17)]),
-                LineString([(4, 12), (4, 14), (5, 14)]),
-                LineString([(6, 14), (7, 14), (7, 12), (5, 12)]),
+        #         LineString([(0, 13), (2, 13), (2, 14)]),
+        #         LineString([(0, 15), (2, 15)]),
+        #         LineString([(0, 17), (2, 17), (2, 16)]),
+        #         LineString([(4, 19), (6, 19), (6, 20)]),
+        #         LineString([(6, 17), (4, 17), (4, 15)]),
+        #         LineString([(5, 15), (7, 15), (7, 17)]),
+        #         LineString([(8, 15), (8, 17), (10, 17)]),
+        #         LineString([(4, 12), (4, 14), (5, 14)]),
+        #         LineString([(6, 14), (7, 14), (7, 12), (5, 12)]),
                 
-                LineString([(10, 13), (12, 13), (12, 14)]),
-                LineString([(10, 15), (12, 15)]),
-                LineString([(10, 17), (12, 17), (12, 16)]),
-                LineString([(14, 19), (16, 19), (16, 20)]),
-                LineString([(16, 17), (14, 17), (14, 15)]),
-                LineString([(15, 15), (17, 15), (17, 17)]),
-                LineString([(18, 15), (18, 17), (20, 17)]),
-                LineString([(14, 12), (14, 14), (15, 14)]),
-                LineString([(16, 14), (17, 14), (17, 12), (15, 12)]),
+        #         LineString([(10, 13), (12, 13), (12, 14)]),
+        #         LineString([(10, 15), (12, 15)]),
+        #         LineString([(10, 17), (12, 17), (12, 16)]),
+        #         LineString([(14, 19), (16, 19), (16, 20)]),
+        #         LineString([(16, 17), (14, 17), (14, 15)]),
+        #         LineString([(15, 15), (17, 15), (17, 17)]),
+        #         LineString([(18, 15), (18, 17), (20, 17)]),
+        #         LineString([(14, 12), (14, 14), (15, 14)]),
+        #         LineString([(16, 14), (17, 14), (17, 12), (15, 12)]),
                 
-                LineString([(0, 10), (6, 10)]),
-                LineString([(10, 0), (10, 7)]),
-                LineString([(14, 10), (20, 10)]),
-                LineString([(10, 13), (10, 20)])]
+        #         LineString([(0, 10), (6, 10)]),
+        #         LineString([(10, 0), (10, 7)]),
+        #         LineString([(14, 10), (20, 10)]),
+        #         LineString([(10, 13), (10, 20)])]
 
-        # Create buffered obstacles
-        obstacles = [line.buffer(distance=0.1, cap_style=3) for line in lines]
+        # # Create buffered obstacles
+        # obstacles = [line.buffer(distance=0.1, cap_style=3) for line in lines]
         
         
         
-        try:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    raise ValueError("pygame shutdown")
+        # try:
+        #     for event in pygame.event.get():
+        #         if event.type == pygame.QUIT:
+        #             raise ValueError("pygame shutdown")
 
-            # Clear the screen
-            self.world.screen.fill(WHITE)
-            # self.world.background()
-            # Draw the grid
-            # for row in range(3):
-            #     for col in range(6):
-            #         pygame.draw.rect(self.world.screen, BLACK, (col * self.world.cell_size, row * self.world.cell_size, self.world.cell_size, self.world.cell_size), 1)
+        #     # Clear the screen
+        #     self.world.screen.fill(WHITE)
+        #     # self.world.background()
+        #     # Draw the grid
+        #     # for row in range(3):
+        #     #     for col in range(6):
+        #     #         pygame.draw.rect(self.world.screen, BLACK, (col * self.world.cell_size, row * self.world.cell_size, self.world.cell_size, self.world.cell_size), 1)
             
-            for obstacle in obstacles:
-                if obstacle.geom_type == "Polygon":
-                    polygon_coords = [self.transform_coords(coord) for coord in obstacle.exterior.coords]
-                    pygame.draw.polygon(self.world.screen, RED, polygon_coords, 0)  # Filled polygon
+        #     for obstacle in obstacles:
+        #         if obstacle.geom_type == "Polygon":
+        #             polygon_coords = [self.transform_coords(coord) for coord in obstacle.exterior.coords]
+        #             pygame.draw.polygon(self.world.screen, RED, polygon_coords, 0)  # Filled polygon
 
             
-            for action in self.actions:
-                pose_ab = extract_numbers(str(action))
-                pose_a = pose_ab[0]
-                pose_b = pose_ab[1]
+        #     for action in self.actions:
+        #         pose_ab = extract_numbers(str(action))
+        #         pose_a = pose_ab[0]
+        #         pose_b = pose_ab[1]
                 
-                start_pos = (
-                    int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
-                )
-                end_pos = (
-                    int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
-                )
+        #         start_pos = (
+        #             int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
+        #             int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
+        #         )
+        #         end_pos = (
+        #             int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
+        #             int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
+        #         )
 
-                pygame.draw.line(self.world.screen, BLACK, start_pos, end_pos, 1)  # 
+        #         pygame.draw.line(self.world.screen, BLACK, start_pos, end_pos, 1)  # 
             
-            for action in self.world.block:
-                pose_ab = extract_numbers(action)
-                pose_a = pose_ab[0]
-                pose_b = pose_ab[1]
+        #     for action in self.world.block:
+        #         pose_ab = extract_numbers(action)
+        #         pose_a = pose_ab[0]
+        #         pose_b = pose_ab[1]
                 
-                start_pos = (
-                    int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
-                )
-                end_pos = (
-                    int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
-                )
+        #         start_pos = (
+        #             int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
+        #             int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
+        #         )
+        #         end_pos = (
+        #             int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
+        #             int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
+        #         )
 
-                pygame.draw.line(self.world.screen, RED, start_pos, end_pos, 3)  # 
+        #         pygame.draw.line(self.world.screen, RED, start_pos, end_pos, 3)  # 
                 
-            for action in self.world.bump:
-                pose_ab = extract_numbers(action)
-                pose_a = pose_ab[0]
-                pose_b = pose_ab[1]
+        #     for action in self.world.bump:
+        #         pose_ab = extract_numbers(action)
+        #         pose_a = pose_ab[0]
+        #         pose_b = pose_ab[1]
                 
-                start_pos = (
-                    int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
-                )
-                end_pos = (
-                    int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
-                    int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
-                )
+        #         start_pos = (
+        #             int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
+        #             int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
+        #         )
+        #         end_pos = (
+        #             int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
+        #             int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
+        #         )
 
-                pygame.draw.line(self.world.screen, YELLOW, start_pos, end_pos, 3)  # 
+        #         pygame.draw.line(self.world.screen, YELLOW, start_pos, end_pos, 3)  # 
             
-            # Draw nodes
-            for node in self.nodes:
-                pygame.draw.circle(self.world.screen, BLUE, (self.nodes[node]['attr']['pose'][0]* self.world.cell_size, \
-                               self.world.height - (self.nodes[node]['attr']['pose'][1]* self.world.cell_size)), 5)
+        #     # Draw nodes
+        #     for node in self.nodes:
+        #         pygame.draw.circle(self.world.screen, BLUE, (self.nodes[node]['attr']['pose'][0]* self.world.cell_size, \
+        #                        self.world.height - (self.nodes[node]['attr']['pose'][1]* self.world.cell_size)), 5)
             
-            
+            # ========================================================================
             
             # self.get_logger().info("inside b")    
             # # # Update to next action
             # self.get_logger.info(f"An error occurred: {e}")
-            if (self.get_clock().now().nanoseconds - self.t_sim.nanoseconds) / 1e9 >= self.next_interval/50:      
+        try:    
+            if (self.get_clock().now().nanoseconds - self.t_sim.nanoseconds) / 1e9 >= self.next_interval/20:      
                 # self.get_logger().info(f"self.on_hold: {self.on_hold}")
                 if self.on_hold == False:             
                     self.next_move()
@@ -639,41 +683,39 @@ class LTLControllerDrone(Node):
                     except Exception as e:
                         print(f"An error occurred: {e}")
                 # print("total_cost: ", self.total_cost)
-            
-            # Draw the moving agent
-            # text = pygame.font.SysFont('timesnewroman', 10).render(str(self.mode), True, BLACK, WHITE)
-            # text_ = text.get_rect()
-            # text_.center = (int(self.pose[0] * self.world.cell_size + self.world.cell_size/2), \
-            #     self.world.height - int(self.pose[1] * self.world.cell_size + self.world.cell_size/2))
-            # self.get_logger().info(f"Pose in simulate: x={self.pose[0]}, y={self.pose[1]}")
-            # self.get_logger().info("----------------------------------------------------------------------------------")
-            # for i in range(1, self.world.grid_size-1):
-            #     pygame.draw.line(self.world.screen, BLACK,  
-            #                 (self.world.grid_size/2*self.world.cell_size, (i+1)*self.world.cell_size),\
-            #                 ((self.world.grid_size/2)*self.world.cell_size, i*self.world.cell_size), 5)
-            #     pygame.draw.line(self.world.screen, BLACK,  
-            #                 (i*self.world.cell_size, self.world.grid_size/2*self.world.cell_size),\
-            #                 ((i+1)*self.world.cell_size, (self.world.grid_size/2)*self.world.cell_size), 5)
-        
-                    
-            
-            pygame.draw.circle(self.world.screen, self.mode.value, (self.pose[0] * self.world.cell_size, \
-                self.world.height - (self.pose[1] * self.world.cell_size)), self.world.cell_size // 5)
-            # self.world.screen.blit(text, text_)
-            
-            
-            pygame_surface = pygame.display.get_surface()
-            pygame_pixels = pygame.surfarray.array3d(pygame_surface)
-            image = np.flipud(pygame_pixels)
+               
+            # =================================================================
+            # pygame.draw.circle(self.world.screen, self.mode.value, (self.pose[0] * self.world.cell_size, \
+            #     self.world.height - (self.pose[1] * self.world.cell_size)), self.world.cell_size // 5)
+            # # self.world.screen.blit(text, text_)
+            # =================================================================
 
-            # Convert to BGR format (required by OpenCV)
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            if self.mode == EquipmentMode.UNLOADED:
+                mode = 'unloaded'
+            elif self.mode == EquipmentMode.LOADED:
+                mode = 'loaded'
+            elif self.mode == EquipmentMode.WAITTASK:
+                mode = 'Waiting'
 
-            # Write the frame to the video file
-            self.world.output_video.write(image)
+            msg = ShowPosition()   # Create a new ShowPosition message instance
+            msg.robot_id = self.agent_name
+            msg.pose = [float(x) for x in self.pose]  # Convert tuple (1, 19) to list [1, 19] to match int32[] type
+            msg.mode = mode
+            self.position_pub.publish(msg)
+
+
+            # pygame_surface = pygame.display.get_surface()
+            # pygame_pixels = pygame.surfarray.array3d(pygame_surface)
+            # image = np.flipud(pygame_pixels)
+
+            # # Convert to BGR format (required by OpenCV)
+            # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+            # # Write the frame to the video file
+            # self.world.output_video.write(image)
             
-            # Update the display
-            pygame.display.flip()
+            # # Update the display
+            # pygame.display.flip()
 
         except KeyboardInterrupt:
             print(self.pose_history)
@@ -687,7 +729,7 @@ class LTLControllerDrone(Node):
 #             Main
 #==============================
 def main(args=None):
-    pygame.init()
+    # pygame.init()
     rclpy.init(args=args)
     node = rclpy.create_node('benchmark_node_main')
 
@@ -707,7 +749,7 @@ def main(args=None):
             env.output_video.release()
             break
 
-    pygame.quit()
+    # pygame.quit()
     node.destroy_node()
     rclpy.shutdown()
 

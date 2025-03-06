@@ -28,20 +28,30 @@ def halton_sequence(size, base=2):
         sequence.append(r)
     return np.array(sequence)
 
-points_with_label = {(0.5, 0.3): 'A', 
-                     (0.5, 2.3): 'F', 
-                     (0.5, 5.7): 'D',
-                     (3.5, 5.7): 'E',
-                     (7.5, 0.3): 'B',
-                     (7.5, 4.7): 'C',
-                     (5.5, 2.7): 'G',
-                     (4.5, 7.3): 'H',
-                     (0.5, 7.7): 'I'}
+points_with_label = {(1, 19): 'a',
+                    (11, 19): '' ,
+                    (9, 11): '' ,
+                    (11, 9): '' ,
+                    (17, 14.5): '',
+                    (1, 6.5): 'b', 
+                    (5.5, 9.5): 'c',
+                    (9, 6.5): 'd',
+                    (6, 3): 'e', # unload
+                    (1, 13.5): 'f',
+                    (9, 16.5): 'g',
+                    (5, 16): 'h', # unload
+                    (11, 13.5): 'i',
+                    (11, 16.5): 'j',
+                    (19, 16.5): 'k',
+                    (16, 13): 'l', # unload
+                    (11, 4): 'm',
+                    (19, 6.5): 'n',
+                    (16, 5.5): 'o'} # unload
 
 x_length = 20
 y_length = 20
 
-n_points = 700
+n_points = 1000
 x = halton_sequence(n_points, 2) * 20
 y = halton_sequence(n_points, 3) * 20
 points = np.vstack((x, y)).T

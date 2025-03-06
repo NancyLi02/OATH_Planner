@@ -49,7 +49,7 @@ def generate_launch_description():
         )
         declare_init_state_cmd = DeclareLaunchArgument(
             init_state_arg,
-            default_value=str(647 + i),
+            default_value=str(924 + i),
             description=f'Initial state for robot {i}'
         )
         
@@ -99,7 +99,20 @@ def generate_launch_description():
             for i in range(1, 5)
         ]
     )
+
+    showmove_node = Node(
+        package='ltl_automaton_planner',
+        executable='showmove_node',
+        name='showmove_node',
+        output='screen',
+        parameters=[
+                    {'transition_system_textfile': transition_system_file},
+                    {'N': 20}
+                ]
+            )
+
     
     ld.add_action(taskassign_node)
+    ld.add_action(showmove_node)
     
     return ld

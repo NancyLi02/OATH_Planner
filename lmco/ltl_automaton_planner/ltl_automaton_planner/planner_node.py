@@ -9,6 +9,7 @@ import os
 from copy import deepcopy
 from ltl_automaton_planner.ltl_tools.product import ProdAut
 from ltl_automaton_planner.ltl_tools.buchi import mission_to_buchi
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy
 import std_msgs
 
 #import matplotlib.pyplot as plt
@@ -48,7 +49,7 @@ class MainPlanner(Node):
         self.task_data = self.load_tasks(self.ltl_formula_file)
         self.get_logger().info("MainPlanner node started")
 
-        self.nodes, self.actions = build_graph_hilton(8, 8, 180)
+        self.nodes, self.actions = build_graph_hilton(20, 20, 180)
 
         start_time = time.time()
         self.initialize_automaton()
@@ -92,6 +93,8 @@ class MainPlanner(Node):
         self.score_list = []
         self.task_index = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         self.cur_task = ''
+        self.task_number = 0
+
 
     def load_tasks(self, yaml_file):
         try:
@@ -192,12 +195,19 @@ class MainPlanner(Node):
 
 
     def setup_pub_sub(self):
-        
+
+        qos_profile = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=10
+        )
+
         # Set up publishers (replace YourMsgType with the correct message type)
         self.prefix_plan_pub = self.create_publisher(LTLPlan, 'prefix_plan', 10)
         self.suffix_plan_pub = self.create_publisher(LTLPlan, 'suffix_plan', 10)
         self.publisher_ = self.create_publisher(RelayResponse, 'replanning_response', 10)   
-        self.score_list_pub = self.create_publisher(ScoreList, 'score_list', 10)     
+        self.score_list_pub = self.create_publisher(ScoreList, 'score_list', qos_profile)     
         
         # Initialize services 
         self.subscriber_ = self.create_subscription(
@@ -329,6 +339,7 @@ class MainPlanner(Node):
             self.get_logger().info(f"No task assigned to {self.agent_name}")
             return
         
+        self.task_number = task_index
         # Format the pose_index into '' format
         formatted_pose = f'{new_initial_pose}'
 
@@ -410,6 +421,7 @@ class MainPlanner(Node):
             self.prefix_plan_msg.header.stamp = self.get_clock().now().to_msg()
             self.prefix_plan_msg.action_sequence = self.ltl_planners[task_id].run.pre_plan
             self.prefix_plan_msg.ts_state_sequence = []
+            self.prefix_plan_msg.cur_task = self.task_number
             # # Go through all TS state in plan and add it as TransitionSystemState message
             for ts_state in self.ltl_planners[task_id].run.line:
                 ts_state_msg = TransitionSystemState()

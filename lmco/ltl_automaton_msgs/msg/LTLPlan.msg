@@ -7,3 +7,5 @@ std_msgs/Header header
 string[] action_sequence
 # Sequence of states in the plan
 TransitionSystemState[] ts_state_sequence
+
+int32 cur_task

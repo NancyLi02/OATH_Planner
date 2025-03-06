@@ -130,9 +130,13 @@ class LTLPlanner(object):
             # self.run.suffix = self.run.suffix
         else:
             print("Suffix")
-            self.run, plantime = self.dijkstra.dijkstra_plan_with_initial(self.product, self.run.suffix[exec_index-len(self.run.line)+1], segment="suffix")
             print(self.run.prefix)
             print(self.run.suffix)
+            print(self.run.line)
+            print(exec_index)
+            self.run, plantime = self.dijkstra.dijkstra_plan_with_initial(self.product, self.run.suffix[exec_index-len(self.run.line)+1], segment="suffix")
+            # print(self.run.prefix)
+            # print(self.run.suffix)
             print("Dijkstra replanning suffix compute time: ", plantime)
             self.write_to_log([plantime, self.run.precost+self.gamma*self.run.sufcost], segment="suffix")
             self.run.prefix = self.old_run.prefix + self.old_run.suffix[:exec_index-len(self.old_run.prefix)+1] + self.run.prefix
