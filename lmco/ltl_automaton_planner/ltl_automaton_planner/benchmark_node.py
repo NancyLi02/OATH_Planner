@@ -141,12 +141,6 @@ class LTLControllerDrone(Node):
             self.get_current_pos,
             10
         )
-
-        self.status_sub = self.create_subscription(
-            Status,
-            'status',
-            self.status_callback,
-            10)
         
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
@@ -191,6 +185,14 @@ class LTLControllerDrone(Node):
         #         'BN Result of add_two_ints: for %d + %d = %d' %
         #         (20, 32, response.sum))
         self.create_timer(1.0/10, self.simulate)
+
+        # For Isaac Integration
+        self.status_sub = self.create_subscription(
+            Status,
+            'status',
+            self.status_callback,
+            10)
+        
         self.sim_arrived = False
         self.sim_received = False
         self.sim_start = False
