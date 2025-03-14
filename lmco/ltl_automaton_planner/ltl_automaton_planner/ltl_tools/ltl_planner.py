@@ -32,8 +32,6 @@ class LTLPlanner(object):
         self.suffix_opt_log = []
         self.beta = beta                    # importance of taking soft task into account
         self.gamma = gamma                  # cost ratio between prefix and suffix
-        # self.remove_list = list()
-        # self.modified_edges = {}
 
     def write_to_log(self, data, segment="prefix"):
         file_name = self.algo+'_'+str(self.N)+'_'+segment+'.yaml'
@@ -42,23 +40,24 @@ class LTLPlanner(object):
         existing_data.append(data)
         write_to_yaml(existing_data, file_name)
     
-    def optimal(self, product_automaton, algo='dstar', N=10):
+    def optimal(self, algo='dstar', N=10):
+        # rospy.loginfo("LTL Planner: --- Planning in progress ("+algo+") ---")
+        # rospy.loginfo("LTL Planner: Hard task is: "+str(self.hard_spec))
+        # rospy.loginfo("LTL Planner: Soft task is: "+str(self.soft_spec))
         self.N = N
         self.algo = algo
         delete_file(self.algo+'_'+str(self.N)+'_'+'prefix'+'.yaml')
         delete_file(self.algo+'_'+str(self.N)+'_'+'suffix'+'.yaml')    
 
-        # self.product = ProdAut(self.ts, mission_to_buchi(self.hard_spec, self.soft_spec), self.beta)
-        # self.product.graph['ts'].build_full()
-
-        self.product = product_automaton
+        self.product = ProdAut(self.ts, mission_to_buchi(self.hard_spec, self.soft_spec), self.beta)
+        self.product.graph['ts'].build_full()
         
         if algo == 'dstar' or algo == "dstar-relaxed":
             print("in dstar")
-            # start_time = time.time()
-            # self.product.build_full()
-            # elapsed_time = time.time() - start_time
-            # print(f"Product automaton constuction took {elapsed_time} seconds to run.")
+            start_time = time.time()
+            self.product.build_full()
+            elapsed_time = time.time() - start_time
+            print(f"Product automaton constuction took {elapsed_time} seconds to run.")
             
             if algo == 'dstar':
                 self.dstar = DStar(self.product, "manhattan", relaxation=False)
@@ -75,19 +74,19 @@ class LTLPlanner(object):
             print(self.run)
             print("Dstar initial run compute time: ", plantime)
         elif algo == 'brute-force' or algo == 'local':
-            # start_time = time.time()
-            # self.product.build_full()
-            # elapsed_time = time.time() - start_time
-            # print(f"Product automaton constuction took {elapsed_time} seconds to run.")
+            start_time = time.time()
+            self.product.build_full()
+            elapsed_time = time.time() - start_time
+            print(f"Product automaton constuction took {elapsed_time} seconds to run.")
             self.dijkstra = Dijkstra()
             self.run, plantime = self.dijkstra.dijkstra_plan_networkX(self.product, self.gamma)
             print("Dijkstra initial run compute time: ", plantime)
         elif algo == 'relaxed': 
-            # start_time = time.time()
-            # self.product.build_full_relaxed()
-            # end_time = time.time()
-            # elapsed_time = end_time - start_time
-            # print(f"The function took {elapsed_time} seconds to run.")
+            start_time = time.time()
+            self.product.build_full_relaxed()
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"The function took {elapsed_time} seconds to run.")
             self.dijkstra = Dijkstra()
             self.run, plantime = self.dijkstra.dijkstra_plan_networkX(self.product, self.gamma)
             print("Dijkstra relaxed initial run compute time: ", plantime)
@@ -130,13 +129,9 @@ class LTLPlanner(object):
             # self.run.suffix = self.run.suffix
         else:
             print("Suffix")
+            self.run, plantime = self.dijkstra.dijkstra_plan_with_initial(self.product, self.run.suffix[exec_index-len(self.run.line)+1], segment="suffix")
             print(self.run.prefix)
             print(self.run.suffix)
-            print(self.run.line)
-            print(exec_index)
-            self.run, plantime = self.dijkstra.dijkstra_plan_with_initial(self.product, self.run.suffix[exec_index-len(self.run.line)+1], segment="suffix")
-            # print(self.run.prefix)
-            # print(self.run.suffix)
             print("Dijkstra replanning suffix compute time: ", plantime)
             self.write_to_log([plantime, self.run.precost+self.gamma*self.run.sufcost], segment="suffix")
             self.run.prefix = self.old_run.prefix + self.old_run.suffix[:exec_index-len(self.old_run.prefix)+1] + self.run.prefix
@@ -243,7 +238,7 @@ class LTLPlanner(object):
         modified_pairs = update_info["modified"]
         deleted_pairs = update_info["deleted"]
         relabel_states = update_info["relabel"]
-        self.modified_edges = {}
+        modified_edges = {}
         
         # add transition tuple (from, to, cost) 
         # already including bidirectional transition, no need to worry about the duality
@@ -261,7 +256,7 @@ class LTLPlanner(object):
                             else:
                                 self.product.add_edge((ts_node, bu_node), (mod_pair[1], bu_succ), weight=mod_pair[2])
                             self.product.graph['ts'][ts_node][mod_pair[1]]['weight'] = mod_pair[2]   # Adjust the weight
-                            self.modified_edges[edge] = mod_pair[2]
+                            modified_edges[edge] = mod_pair[2]
         
         # remove transition (from, to)
         remove_list = list()
@@ -275,11 +270,9 @@ class LTLPlanner(object):
                         guard = self.product.graph['buchi'].edges[bu_node, bu_succ]['guard']
                         if guard.check(label):
                             remove_list.append(((ts_node, bu_node), (deleted_pair[1], bu_succ)))
-                            # self.remove_list.append(((deleted_pair[1], bu_succ), (ts_node, bu_node)))
         self.product.remove_edges_from(remove_list)
-        # print(f'========Remove list includes: {remove_list}=========')
         for edge in remove_list:
-            self.modified_edges[edge] = float("inf")
+            modified_edges[edge] = float("inf")
             
         # relabel (b, pi_j)/(label, state)
         remove_list_relabel = list()
@@ -302,5 +295,5 @@ class LTLPlanner(object):
                             if not guard.check(relabel_state[0]):
                                 remove_list_relabel.append(((ts_node, bu_node), (relabel_state[1], bu_succ)))
         self.product.remove_edges_from(remove_list_relabel)
-        return self.modified_edges
+        return modified_edges
 

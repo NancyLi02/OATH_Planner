@@ -4,8 +4,8 @@
 # The robot's unique identifier
 string robot_id
 
-# The current pose_index
-int32 pose_index
+# The current position of the robot, represented as a 2D coordinate (x, y)
+int32[] position
 
 # Current situation 'loaded' or 'unloaded'
 string current_state

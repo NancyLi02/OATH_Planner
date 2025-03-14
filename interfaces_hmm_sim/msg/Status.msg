@@ -1,4 +1,4 @@
-int32 agent
+string agent
 bool start
 bool arrived
-bool problem
+bool replan_received

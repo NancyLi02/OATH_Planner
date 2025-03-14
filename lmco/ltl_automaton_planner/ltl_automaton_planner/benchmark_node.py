@@ -7,13 +7,13 @@ import yaml
 import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequest, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
+from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, PositionRequest, TaskRequest, CurrentPosition, LTLPlan, RelayRequest, RelayResponse
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
-from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_hilton, check_in_block, check_in_bump
+from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers
 # Import modules for commanding the a1
-
-from geometry_msgs.msg import PoseStamped
+import re
+from geometry_msgs.msg import Point
 from std_msgs.msg import String, Bool
 import pygame
 from enum import Enum
@@ -21,8 +21,8 @@ import cv2
 import numpy as np
 import time
 import csv
-from shapely.geometry import Point, LineString, Polygon
 from example_interfaces.srv import AddTwoInts
+from interfaces_hmm_sim.msg import Status
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
 #                       -----------------
@@ -32,6 +32,7 @@ from example_interfaces.srv import AddTwoInts
 # action attributes defined in the TS config file
 #=================================================================
 
+USE_ISAAC = False
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -44,8 +45,8 @@ BLUE = (0, 0, 128)
 class EquipmentMode(Enum):
     UNLOADED = (0, 255, 0)
     LOADED = (0, 255, 255)
-    WAITTASK = (255, 100, 0)
     RESCUE = (255, 0, 0)
+    WAITTASK = (255, 100, 0)
 
 class GridWorld(object):
     def __init__(self, grid_size):
@@ -53,21 +54,21 @@ class GridWorld(object):
         self.grid_size = grid_size
         self.load_elements()
         
-        self.width, self.height = 800, 800
+        self.width, self.height = 780, 780
         self.cell_size = self.width // self.grid_size
 
-        # Initialize the screen==================================
-        # self.screen = pygame.display.set_mode((self.width, self.height))
-        # self.font = pygame.font.SysFont('timesnewroman',  20)
+        # Initialize the screen
+        self.screen = pygame.display.set_mode((self.width, self.height))
+        self.font = pygame.font.SysFont('timesnewroman',  20)
         
         # self.frame_count = 0 
         # filename = "screen_%04d.png" % (self.frame_count)
         # pygame.image.save(self.screen, filename)
         # time.sleep(5)
 
-        self.output_video = cv2.VideoWriter('/home/nanli/Isaac/planner/results/output_video.avi', cv2.VideoWriter_fourcc(*'XVID'), 30, (self.width, self.height))
+        self.output_video = cv2.VideoWriter('/home/haris/Isaac/planner/results/output_video.avi', cv2.VideoWriter_fourcc(*'XVID'), 30, (self.width, self.height))
         
-        # pygame.display.set_caption("Grid with Moving Circle") # =====================
+        pygame.display.set_caption("Grid with Moving Circle")
 
     
     def load_elements(self):
@@ -98,9 +99,7 @@ class GridWorld(object):
                     self.bump[(tuple(b[0]),tuple(b[1]))] = 0 
             else:
                 print("The YAML file does not contain a list.")    
-        
-        self.bump = dict()
-        self.block = dict()
+            
     
     # def background(self):
     #     for key, pos in self.loc.items():
@@ -143,131 +142,88 @@ class LTLControllerDrone(Node):
             10
         )
 
-        self.update_pose_sub = self.create_subscription(
-            PositionRequest,
-            'update_pose_request',
-            self.update_current_pos,
-            10
-        )
-
-        self.waiting_sub = self.create_subscription(
-            WaitingRequest,
-            'waiting_request',
-            self.waiting_request,
-            10
-        )
-
-        self.stop_waiting_sub = self.create_subscription(
-            StopWaiting,
-            'stop_waiting',
-            self.stop_waiting,
-            10
-        )
+        self.status_sub = self.create_subscription(
+            Status,
+            'status',
+            self.status_callback,
+            10)
         
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
-        self.update_pose_pub = self.create_publisher(CurrentPosition,'update_current_pose', 10)
         self.taskassignment_request_pub = self.create_publisher(TaskRequest, 'task_assignment_request', 10)
-        self.position_pub = self.create_publisher(ShowPosition, 'show_position', 10)
-        self.update_valid_tasks_pub = self.create_publisher(UpdateValidTasks, 'update_valid_tasks', 10)
+        self.timer_period = 2.0
         self.pub_assign = True
         self.on_hold = False
-        self.cur_task = 0
+
+        # self.delete_client = self.create_client(TaskReplanningDelete, 'replanning_delete')
+        # if not self.delete_client.wait_for_service(timeout_sec=1000.0):  # Set your desired timeout in seconds
+        #     self.get_logger().error('Service /replanning_delete not available after waiting')
+        # else:
+        #     self.get_logger().info('Service /replanning_delete is available')
+            
+        # self.modify_client = self.create_client(TaskReplanningModify, 'replanning_modify')
+        # if not self.modify_client.wait_for_service(timeout_sec=1000.0):  # Set your desired timeout in seconds
+        #     self.get_logger().error('Service /replanning_modify not available after waiting')
+        # else:
+        #     self.get_logger().info('Service /replanning_modify is available')
         
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
+        #print(self.transition_system)
         self.declare_parameter('agent_name', '')
         self.agent_name = self.get_parameter('agent_name').get_parameter_value().string_value
-        self.declare_parameter('init_state', 0)
-        self.init_pose = self.get_parameter('init_state').value
-
-        self.nodes, self.actions = build_graph_hilton(20, 20, 700)
-        self.transition_system ['state_models']['2d_pose_region']['nodes'] = self.nodes
-        self.transition_system ['actions'].update(self.actions)
-
+        
         self.mode = EquipmentMode.UNLOADED
         self.total_cost = 0
         self.if_obs = False
-
         if self.agent_name == 'robot_1':
-            self.pose = (1, 19)
+            self.pose = (0, 0)
         elif self.agent_name =='robot_2':
-            self.pose = (11, 19)
-        elif self.agent_name =='robot_3':
-            self.pose = (9, 11)
-        elif self.agent_name =='robot_4':
-            self.pose = (11, 9)
-        
-
-        self.pose_index = self.init_pose
-
+            self.pose = (4, 3)
         self.previous_pose = self.pose
-        self.previous_pose_index = self.pose_index
         self.pose_history = [(self.pose, 0)]
         self.t_sim = self.get_clock().now()  # Use the ROS2 clock for the current time
         self.plan_index = 0
         self.next_interval = 10
-
+        # self.get_logger().info("BN sending request")    
+        # response = self.send_request(2, 3)
+        # self.get_logger().info(
+        #         'BN Result of add_two_ints: for %d + %d = %d' %
+        #         (20, 32, response.sum))
         self.create_timer(1.0/10, self.simulate)
+        self.sim_arrived = False
+        self.sim_received = False
+        self.sim_start = False
         # self.simulate()
-    
-    def waiting_request(self, msg):
-        self.on_hold = True
-
-    def stop_waiting(self, msg):
-        self.on_hold = False
-
     
     def get_current_pos(self, msg=None):
         self.get_logger().info('Getting Current Position Now ................................')
         current_pos_msg = CurrentPosition()
         current_pos_msg.robot_id = self.agent_name
-        current_pos_msg.pose_index = self.pose_index
+        current_pos_msg.position = list(self.pose)
         if self.mode == EquipmentMode.LOADED:
             current_pos_msg.current_state = 'loaded'
         else:
             current_pos_msg.current_state = 'unloaded'
-            self.on_hold = True
         self.current_position_pub.publish(current_pos_msg)
-        self.get_logger().info(f"Publishing current position for {self.agent_name}: {self.pose_index}, with state {current_pos_msg.current_state}.")
-
-    def update_current_pos(self, msg=None):
-        self.get_logger().info('Updating Current Position Now ................................')
-        current_pos_msg = CurrentPosition()
-        current_pos_msg.robot_id = self.agent_name
-        current_pos_msg.pose_index = self.pose_index
-        if self.mode == EquipmentMode.LOADED:
-            current_pos_msg.current_state = 'loaded'
-        else:
-            current_pos_msg.current_state = 'unloaded'
-        self.update_pose_pub.publish(current_pos_msg)
-        self.get_logger().info(f"Publishing update current pose index for {self.agent_name}: {self.pose_index}, with state {current_pos_msg.current_state}.")
+        self.get_logger().info(f"Publishing current position for {self.agent_name}: {self.pose}, with state {current_pos_msg.current_state}.")
 
     def prefix_plan_callback(self, msg):
         self.plan_index = 0
-        self.on_hold = False
-        self.cur_task = msg.cur_task
-        self.world.block.clear()
-        self.world.bump.clear()
         self.mode = EquipmentMode.UNLOADED
         self.get_logger().info("receive data pre")
         self.prefix_action_list = msg.action_sequence
         self.get_logger().info(f"length prefix_action_list: {len(self.prefix_action_list)}")
         self.prefix_state_sequence = msg.ts_state_sequence
         self.get_logger().info("end data pre")
-        print(self.prefix_action_list)
-        
         # self.prefix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
 
     def suffix_plan_callback(self, msg):
-        # self.on_hold = False
         self.get_logger().info("receive data sub")
         self.suffix_action_list = msg.action_sequence
         self.get_logger().info(f"length suffix_action_list: {len(self.suffix_action_list)}")
         self.suffix_state_sequence = msg.ts_state_sequence
         self.get_logger().info("end data sub")
-        print(self.suffix_action_list)
-        
         # self.suffix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
         
     def relay_callback(self, msg):
@@ -280,6 +236,17 @@ class LTLControllerDrone(Node):
             self.suffix_state_sequence = msg.new_plan_suffix.ts_state_sequence
             self.on_hold = False
 
+    def status_callback(self, msg):
+        self.sim_arrived = msg.arrived
+        self.sim_received = msg.replan_received
+        self.sim_start = msg.start
+        if (self.sim_arrived):
+            self.get_logger().info("sim action complete")
+        elif (self.sim_received):
+            self.get_logger().info("sim replan received")
+        # elif (self.sim_start):
+        #     self.get_logger().info("sim started")
+
     def next_move(self):
         # if self.plan_index > 20 and self.pose == (grid_size/2-1, grid_size/2-1): #self.len(self.prefix_action_list) + len(self.suffix_action_list):
         #     sys.exit()
@@ -288,32 +255,51 @@ class LTLControllerDrone(Node):
         #--------------
         # self.get_logger().info("inside the next move")
         if (len(self.prefix_action_list) + len(self.suffix_action_list) != 0):
-            self.get_logger().info(f"plan index: {self.plan_index}")
+            # self.get_logger().info(f"plan index: {self.plan_index}")
             if self.plan_index < len(self.prefix_action_list):
                 self.pub_assign = True
                 #self.get_logger().info("beanchmark fix 0")
                 for act in self.transition_system['actions']:
                     #self.get_logger().info("beanchmark fix 0.1")
                     if str(act) == self.prefix_action_list[self.plan_index]:
-                        self.get_logger().info(str(act))
                         #self.get_logger().info("beanchmark fix 0.2")
                         # Extract action types, attributes, etc. in dictionary
                         action_dict = self.transition_system['actions'][str(act)]
                         # print(self.prefix_action_list)
-                        if str(act)[:4] == "from":
+                        if str(act)[:4] == "goto":
                             # self.get_logger().info("beanchmark fix 0.3")
                             self.previous_pose = self.pose
-                            self.previous_pose_index = self.pose_index
-                            self.pose_index = extract_numbers(str(act))[1]
-                            self.pose = self.nodes[f'{self.pose_index}']['attr']['pose']
-                            self.get_logger().info(f"previous pose: {self.previous_pose}")
-                            self.get_logger().info(f"pose: {self.pose}")
-                            
-                            if check_in_block(act, self.nodes) and str(act) not in self.world.block:
-                                self.get_logger().info("--------Block detected---------")
-                                self.world.block[str(act)] = 1
+                            self.pose = extract_numbers(str(act))
+                            # self.get_logger().info(f"previous pose: {self.previous_pose}")
+                            # self.get_logger().info(f"pose: {self.pose}")
+                            if (self.previous_pose, self.pose) in self.world.wall or (self.pose, self.previous_pose) in self.world.wall:
+                                self.get_logger().info("--------Obstacle detected---------")
+                                self.world.wall[((self.previous_pose, self.pose))] = 1
+                                self.world.wall[((self.pose, self.previous_pose))] = 1
                                 # self.if_obs = True
                                 try: 
+                                    # self.get_logger().info("checkpoint1")
+                                    # task_replanning_srv = TaskReplanningDelete.Request()
+                                    # # print(self.prefix_state_sequence[self.plan_index].states)
+                                    # task_replanning_srv.current_state = self.prefix_state_sequence[self.plan_index]
+                                    # # task_replanning_srv.delete_from = list()
+                                    # # task_replanning_srv.delete_to = list()
+                                    # task_replanning_srv.delete_from.append(0)
+                                    # task_replanning_srv.delete_to.append(0)
+                                    # task_replanning_srv.exec_index = self.plan_index
+                                    # self.future = self.delete_client.call_async(task_replanning_srv)
+                                    # rclpy.spin_until_future_complete(self, self.future)
+                                    # # while not self.future.done():
+                                    # #     self.get_logger().info("checkpoint1.5 " + str(self.future.result()))
+                                    # #     pass
+                                    # response = self.future.result()
+                                    # self.get_logger().info("checkpoint2")
+                                    # if response.success:
+                                    #     self.get_logger().info("successful received service!")
+                                    #     self.pose = self.previous_pose
+                                    #     self.prefix_plan_callback(response.new_plan_prefix)
+                                    #     self.suffix_plan_callback(response.new_plan_suffix)
+                                    #     return
                                     self.on_hold = True
                                     publish_msg = RelayRequest()
                                     # self.get_logger().info("checkpoint2")
@@ -327,24 +313,45 @@ class LTLControllerDrone(Node):
                                     self.relay_pub.publish(publish_msg)
                                     self.on_hold = True
                                     self.pose = self.previous_pose
-                                    self.pose_index = self.previous_pose_index
                                     return
                                 except Exception as e:
                                     self.get_logger().error(f'Failed to call service: {e}')
                                     exit(1)
                             # self.get_logger().info("beanchmark fix 0.4")       
-                            if check_in_bump(act, self.nodes) and str(act) not in self.world.bump:
-                                self.get_logger().info("--------Bump detected---------")
-                                self.world.bump[str(act)] = 1
+                            if self.world.bump.get((self.previous_pose, self.pose)) == 0 or self.world.bump.get((self.pose, self.previous_pose)) == 0 :
+                                self.get_logger().info("--------Obstacle detected---------")
+                                self.world.bump[((self.previous_pose, self.pose))] = 1
+                                self.world.bump[((self.pose, self.previous_pose))] = 1
                                 # self.if_obs = True
                                 try: 
+                                    # self.get_logger().info("checkpoint3")
+                                    # task_replanning_srv = TaskReplanningModify.Request()
+                                    # # print(self.prefix_state_sequence[self.plan_index].states)
+                                    # task_replanning_srv.current_state = self.prefix_state_sequence[self.plan_index]
+                                    # # task_replanning_srv.delete_from = list()
+                                    # # task_replanning_srv.delete_to = list()
+                                    # task_replanning_srv.mod_from.extend(list(self.previous_pose))
+                                    # task_replanning_srv.mod_to.extend(list(self.pose))
+                                    # task_replanning_srv.exec_index = self.plan_index
+                                    # task_replanning_srv.cost = 50
+                                    # response = self.modify_client.call(task_replanning_srv)
+                                    # # future = self.modify_client.call_async(task_replanning_srv)
+                                    # # rclpy.spin_until_future_complete(self, future)
+                                    # # response = self.future.result()
+                                    # self.get_logger().info("checkpoint4")
+                                    # if response.success:
+                                    #     self.get_logger().info("successful received service!")
+                                    #     self.pose = self.previous_pose
+                                    #     self.prefix_plan_callback(response.new_plan_prefix)
+                                    #     self.suffix_plan_callback(response.new_plan_suffix)
+                                    #     return
                                     publish_msg = RelayRequest()
                                     publish_msg.type = "modify"
                                     publish_msg.current_state = self.prefix_state_sequence[self.plan_index]
                                     publish_msg.from_pose.extend(list(self.previous_pose))
                                     publish_msg.to_pose.extend(list(self.pose))
                                     publish_msg.exec_index = self.plan_index
-                                    publish_msg.cost = self.actions[act]['weight']*5
+                                    publish_msg.cost = 50.0
                                     self.relay_pub.publish(publish_msg)
                                     self.on_hold = True
                                     self.pose = self.previous_pose
@@ -358,11 +365,6 @@ class LTLControllerDrone(Node):
                             self.mode = EquipmentMode.UNLOADED
                         elif str(act) == "load":
                             self.mode = EquipmentMode.LOADED
-                            msg = UpdateValidTasks()
-                            msg.robot_id = int(self.agent_name.split('_')[-1])
-                            msg.loaded_task = self.cur_task
-                            self.update_valid_tasks_pub.publish(msg)
-                            self.get_logger().info(f'==================Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}==================')
                         elif str(act) == "goto_rescue":
                             self.mode = EquipmentMode.RESCUE
                         else: # including action "stay", nothing particular needs to be done
@@ -371,33 +373,30 @@ class LTLControllerDrone(Node):
                         self.get_logger().info(f"plan index: {self.plan_index}")
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
-                        self.next_interval = action_dict['weight']*5 # +1
+                        self.next_interval = action_dict['weight'] # +1
                         # self.get_logger().info("beanchmark fix 0.6")
-                        
                         ##### Logging
                         last_round_time = 50 if (self.previous_pose, self.pose) in self.world.bump else 10
                         last_time = self.pose_history[-1][1]
                         future_step = len(self.prefix_state_sequence) + len(self.suffix_state_sequence) - self.plan_index
                         future_time = 0
                         for i in range(self.plan_index, len(self.prefix_state_sequence)-1):
-                            pose_ab = extract_numbers(str(act))
-                            
-                            # pose_a = extract_numbers(str(self.prefix_state_sequence[i].states[0]))
-                            # pose_b = extract_numbers(str(self.prefix_state_sequence[i+1].states[0]))
-                            if pose_ab not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
+                            pose_a = extract_numbers(str(self.prefix_state_sequence[i].states[0]))
+                            pose_b = extract_numbers(str(self.prefix_state_sequence[i+1].states[0]))
+                            if (pose_a, pose_b) not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
                                 future_time += 10
                             else:
                                 future_time += 50
                         for i in range(0, len(self.suffix_state_sequence)):
-                            pose_ab = extract_numbers(str(act))
-                            # pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
-                            # pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
-                            if pose_ab not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
+                            pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
+                            pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
+                            if (pose_a, pose_b) not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
                                 future_time += 10
                             else:
                                 future_time += 50
                         self.pose_history.append((self.pose, round(last_round_time+last_time), round(future_step), round(future_time)))
                         # self.get_logger().info("beanchmark fix 0.7")
+                        
                         return
 
             if self.plan_index >= len(self.prefix_action_list) and self.plan_index < len(self.prefix_action_list) + len(self.suffix_action_list):
@@ -412,17 +411,35 @@ class LTLControllerDrone(Node):
                         # print(self.suffix_action_list)
                         if str(act)[:4] == "goto":
                             self.previous_pose = self.pose
-                            self.previous_pose_index = self.pose_index
-                            self.pose_index = extract_numbers(str(act))[1]
-                            self.pose = self.nodes[f'{self.pose_index}']['attr']['pose']
-                            if check_in_block(act, self.nodes) and str(act) not in self.world.block:
-                                self.get_logger().info("--------Block detected---------")
-                                self.world.block[str(act)] = 1
-                                # self.if_obs = True
+                            self.pose = extract_numbers(str(act))
+                            if (self.previous_pose, self.pose) in self.world.wall or (self.pose, self.previous_pose) in self.world.wall:
+                                print("\n")
+                                print("----Obstacle detected----")
+                                self.world.wall[((self.previous_pose, self.pose))] = 1
+                                self.world.wall[((self.pose, self.previous_pose))] = 1
+                                self.if_obs = True
                                 try: 
-                                    self.on_hold = True
+                                    # task_replanning_srv = TaskReplanningDelete.Request()
+                                    # # print(self.suffix_state_sequence[self.plan_index].states)
+                                    # task_replanning_srv.current_state = self.suffix_state_sequence[suffix_index]
+                                    # # task_replanning_srv.delete_from = list()
+                                    # # task_replanning_srv.delete_to = list()
+                                    # task_replanning_srv.delete_from.extend(list(self.previous_pose))
+                                    # task_replanning_srv.delete_to.extend(list(self.pose))
+                                    # task_replanning_srv.exec_index = self.plan_index
+                                    # response = self.delete_client.call(task_replanning_srv)
+                                    # # future = self.delete_client.call_async(task_replanning_srv)
+                                    # # rclpy.spin_until_future_complete(self, future)
+                                    # # response = self.future.result()
+                                    # if response.success:
+                                    #     self.get_logger().info("successful received service!")
+                                    #     self.pose = self.previous_pose
+                                    #     self.prefix_plan_callback(response.new_plan_prefix)
+                                    #     self.suffix_plan_callback(response.new_plan_suffix)
+                                    #     print(self.pose)
+                                    #     # self.plan_index -= 1
+                                    #     return
                                     publish_msg = RelayRequest()
-                                    # self.get_logger().info("checkpoint2")
                                     publish_msg.type = "delete"
                                     publish_msg.current_state = self.prefix_state_sequence[self.plan_index]
                                     publish_msg.from_pose.extend(list(self.previous_pose))
@@ -432,24 +449,44 @@ class LTLControllerDrone(Node):
                                     self.relay_pub.publish(publish_msg)
                                     self.on_hold = True
                                     self.pose = self.previous_pose
-                                    self.pose_index = self.previous_pose_index
                                     return
                                 except Exception as e:
                                     self.get_logger().error(f'Failed to call service: {e}')
                                     exit(1)
-                            # self.get_logger().info("beanchmark fix 0.4")       
-                            if check_in_bump(act, self.nodes) and str(act) not in self.world.bump:
-                                self.get_logger().info("--------Bump detected---------")
-                                self.world.bump[str(act)] = 1
+                                    
+                            if self.world.bump.get((self.previous_pose, self.pose)) == 0 or self.world.bump.get((self.pose, self.previous_pose)) == 0 :
+                                print("\n")
+                                print("----Bump detected----")
+                                self.world.bump[((self.previous_pose, self.pose))] = 1
+                                self.world.bump[((self.pose, self.previous_pose))] = 1
                                 # self.if_obs = True
                                 try: 
+                                    # task_replanning_srv = TaskReplanningModify.Request()
+                                    # # print(self.prefix_state_sequence[self.plan_index].states)
+                                    # task_replanning_srv.current_state = self.suffix_state_sequence[suffix_index]
+                                    # # task_replanning_srv.delete_from = list()
+                                    # # task_replanning_srv.delete_to = list()
+                                    # task_replanning_srv.mod_from.extend(list(self.previous_pose))
+                                    # task_replanning_srv.mod_to.extend(list(self.pose))
+                                    # task_replanning_srv.exec_index = self.plan_index
+                                    # task_replanning_srv.cost = 50
+                                    # response = self.modify_client.call(task_replanning_srv)
+                                    # # future = self.modify_client.call_async(task_replanning_srv)
+                                    # # rclpy.spin_until_future_complete(self, future)
+                                    # # response = self.future.result()
+                                    # if response.success:
+                                    #     self.get_logger().info("successful received service!")
+                                    #     self.pose = self.previous_pose
+                                    #     self.prefix_plan_callback(response.new_plan_prefix)
+                                    #     self.suffix_plan_callback(response.new_plan_suffix)
+                                    #     return
                                     publish_msg = RelayRequest()
                                     publish_msg.type = "modify"
                                     publish_msg.current_state = self.prefix_state_sequence[self.plan_index]
                                     publish_msg.from_pose.extend(list(self.previous_pose))
                                     publish_msg.to_pose.extend(list(self.pose))
                                     publish_msg.exec_index = self.plan_index
-                                    publish_msg.cost = self.actions[act]['weight']*5
+                                    publish_msg.cost = 50.0
                                     self.relay_pub.publish(publish_msg)
                                     self.on_hold = True
                                     self.pose = self.previous_pose
@@ -457,16 +494,12 @@ class LTLControllerDrone(Node):
                                 except Exception as e:
                                     self.get_logger().error(f'Failed to call service: {e}')
                                     exit(1)
+                                    
+                            # self.pose = (int(str(act).split('c')[1]), int(str(act).split('r')[1]))
                         elif str(act) == "unload" or str(act) == "release":
                             self.mode = EquipmentMode.UNLOADED
                         elif str(act) == "load":
                             self.mode = EquipmentMode.LOADED
-                            msg = UpdateValidTasks()
-                            msg.robot_id = int(self.agent_name.split('_')[-1])
-                            msg.loaded_task = self.cur_task
-                            self.update_valid_tasks_pub.publish(msg)
-                            self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
-
                         elif str(act) == "goto_rescue":
                             self.mode = EquipmentMode.RESCUE
                         else: # including action "stay", nothing particular needs to be done
@@ -474,7 +507,7 @@ class LTLControllerDrone(Node):
                         self.plan_index += 1
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
-                        self.next_interval = action_dict['weight']*5 # +1
+                        self.next_interval = action_dict['weight'] # +1
                         
                         ########Logging
                         last_round_time = 50 if (self.previous_pose, self.pose) in self.world.bump else 10
@@ -482,28 +515,25 @@ class LTLControllerDrone(Node):
                         future_step = len(self.prefix_state_sequence) + len(self.suffix_state_sequence) - self.plan_index
                         future_time = 0
                         for i in range(self.plan_index, len(self.prefix_state_sequence)-1):
-                            pose_ab = extract_numbers(str(act))
-                            # pose_a = extract_numbers(str(self.prefix_state_sequence[i].states[0]))
-                            # pose_b = extract_numbers(str(self.prefix_state_sequence[i+1].states[0]))
-                            if pose_ab not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
+                            pose_a = extract_numbers(str(self.prefix_state_sequence[i].states[0]))
+                            pose_b = extract_numbers(str(self.prefix_state_sequence[i+1].states[0]))
+                            if (pose_a, pose_b) not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
                                 future_time += 10
                             else:
                                 future_time += 50
                         if self.plan_index <= len(self.prefix_state_sequence):
                             for i in range(0, len(self.suffix_state_sequence)):
-                                pose_ab = extract_numbers(str(act))
-                                # pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
-                                # pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
-                                if pose_ab not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
+                                pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
+                                pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
+                                if (pose_a, pose_b) not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
                                     future_time += 10
                                 else:
                                     future_time += 50
                         else:
                             for i in range(self.plan_index-len(self.prefix_state_sequence), len(self.suffix_state_sequence)):
-                                pose_ab = extract_numbers(str(act))
-                                # pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
-                                # pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
-                                if pose_ab not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
+                                pose_a = extract_numbers(str(self.suffix_state_sequence[i].states[0]))
+                                pose_b = extract_numbers(str(self.suffix_state_sequence[(i+1)%len(self.suffix_state_sequence)].states[0]))
+                                if (pose_a, pose_b) not in self.world.bump or self.world.bump.get((self.previous_pose, self.pose)) == 0:
                                     future_time += 10
                                 else:
                                     future_time += 50
@@ -522,154 +552,42 @@ class LTLControllerDrone(Node):
         task_request_msg = TaskRequest()
         task_request_msg.robot_id = robot_id
         task_request_msg.task_status = 1
-        # task_request_msg.pose_index = self.pose_index
-
+        task_request_msg.position_x = self.pose[0]
+        task_request_msg.position_y = self.pose[1]
         
         self.taskassignment_request_pub.publish(task_request_msg)
         self.get_logger().info('------------Publish Task Assignment Request-------------')
-    
-    def transform_coords(self, coord):
-        """Convert shapely coordinates to pygame coordinates."""
-        x, y = coord
-        return int(x * self.world.cell_size ), int(-y * self.world.cell_size + self.world.height)  # Flip y-axis for pygame
 
-    
+
     def simulate(self):
         #rate = self.create_rate(10)
         
-        # ====================================================================
-        # lines = [LineString([(0, 3), (2, 3), (2, 4)]),
-        #         LineString([(0, 5), (2, 5)]),
-        #         LineString([(0, 7), (2, 7), (2, 6)]),
-        #         LineString([(4, 9), (6, 9), (6, 10)]),
-        #         LineString([(6, 7), (4, 7), (4, 5)]),
-        #         LineString([(5, 5), (7, 5), (7, 7)]),
-        #         LineString([(8, 5), (8, 7), (10, 7)]),
-        #         LineString([(4, 2), (4, 4), (5, 4)]),
-        #         LineString([(6, 4), (7, 4), (7, 2), (5, 2)]),
+        try:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    raise ValueError("pygame shutdown")
 
-        #         LineString([(10, 3), (12, 3), (12, 4)]),
-        #         LineString([(10, 5), (12, 5)]),
-        #         LineString([(10, 7), (12, 7), (12, 6)]),
-        #         LineString([(14, 9), (16, 9), (16, 10)]),
-        #         LineString([(16, 7), (14, 7), (14, 5)]),
-        #         LineString([(15, 5), (17, 5), (17, 7)]),
-        #         LineString([(18, 5), (18, 7), (20, 7)]),
-        #         LineString([(14, 2), (14, 4), (15, 4)]),
-        #         LineString([(16, 4), (17, 4), (17, 2), (15, 2)]),
-
-        #         LineString([(0, 13), (2, 13), (2, 14)]),
-        #         LineString([(0, 15), (2, 15)]),
-        #         LineString([(0, 17), (2, 17), (2, 16)]),
-        #         LineString([(4, 19), (6, 19), (6, 20)]),
-        #         LineString([(6, 17), (4, 17), (4, 15)]),
-        #         LineString([(5, 15), (7, 15), (7, 17)]),
-        #         LineString([(8, 15), (8, 17), (10, 17)]),
-        #         LineString([(4, 12), (4, 14), (5, 14)]),
-        #         LineString([(6, 14), (7, 14), (7, 12), (5, 12)]),
-                
-        #         LineString([(10, 13), (12, 13), (12, 14)]),
-        #         LineString([(10, 15), (12, 15)]),
-        #         LineString([(10, 17), (12, 17), (12, 16)]),
-        #         LineString([(14, 19), (16, 19), (16, 20)]),
-        #         LineString([(16, 17), (14, 17), (14, 15)]),
-        #         LineString([(15, 15), (17, 15), (17, 17)]),
-        #         LineString([(18, 15), (18, 17), (20, 17)]),
-        #         LineString([(14, 12), (14, 14), (15, 14)]),
-        #         LineString([(16, 14), (17, 14), (17, 12), (15, 12)]),
-                
-        #         LineString([(0, 10), (6, 10)]),
-        #         LineString([(10, 0), (10, 7)]),
-        #         LineString([(14, 10), (20, 10)]),
-        #         LineString([(10, 13), (10, 20)])]
-
-        # # Create buffered obstacles
-        # obstacles = [line.buffer(distance=0.1, cap_style=3) for line in lines]
-        
-        
-        
-        # try:
-        #     for event in pygame.event.get():
-        #         if event.type == pygame.QUIT:
-        #             raise ValueError("pygame shutdown")
-
-        #     # Clear the screen
-        #     self.world.screen.fill(WHITE)
-        #     # self.world.background()
-        #     # Draw the grid
-        #     # for row in range(3):
-        #     #     for col in range(6):
-        #     #         pygame.draw.rect(self.world.screen, BLACK, (col * self.world.cell_size, row * self.world.cell_size, self.world.cell_size, self.world.cell_size), 1)
-            
-        #     for obstacle in obstacles:
-        #         if obstacle.geom_type == "Polygon":
-        #             polygon_coords = [self.transform_coords(coord) for coord in obstacle.exterior.coords]
-        #             pygame.draw.polygon(self.world.screen, RED, polygon_coords, 0)  # Filled polygon
-
-            
-        #     for action in self.actions:
-        #         pose_ab = extract_numbers(str(action))
-        #         pose_a = pose_ab[0]
-        #         pose_b = pose_ab[1]
-                
-        #         start_pos = (
-        #             int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
-        #             int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
-        #         )
-        #         end_pos = (
-        #             int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
-        #             int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
-        #         )
-
-        #         pygame.draw.line(self.world.screen, BLACK, start_pos, end_pos, 1)  # 
-            
-        #     for action in self.world.block:
-        #         pose_ab = extract_numbers(action)
-        #         pose_a = pose_ab[0]
-        #         pose_b = pose_ab[1]
-                
-        #         start_pos = (
-        #             int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
-        #             int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
-        #         )
-        #         end_pos = (
-        #             int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
-        #             int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
-        #         )
-
-        #         pygame.draw.line(self.world.screen, RED, start_pos, end_pos, 3)  # 
-                
-        #     for action in self.world.bump:
-        #         pose_ab = extract_numbers(action)
-        #         pose_a = pose_ab[0]
-        #         pose_b = pose_ab[1]
-                
-        #         start_pos = (
-        #             int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
-        #             int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
-        #         )
-        #         end_pos = (
-        #             int(self.nodes[str(pose_b)]['attr']['pose'][0] * self.world.cell_size),
-        #             int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
-        #         )
-
-        #         pygame.draw.line(self.world.screen, YELLOW, start_pos, end_pos, 3)  # 
-            
-        #     # Draw nodes
-        #     for node in self.nodes:
-        #         pygame.draw.circle(self.world.screen, BLUE, (self.nodes[node]['attr']['pose'][0]* self.world.cell_size, \
-        #                        self.world.height - (self.nodes[node]['attr']['pose'][1]* self.world.cell_size)), 5)
-            
-            # ========================================================================
-            
+            # Clear the screen
+            self.world.screen.fill(WHITE)
+            # self.world.background()
+            # Draw the grid
+            for row in range(self.world.grid_size):
+                for col in range(self.world.grid_size):
+                    pygame.draw.rect(self.world.screen, BLACK, (col * self.world.cell_size, row * self.world.cell_size, self.world.cell_size, self.world.cell_size), 1)
             # self.get_logger().info("inside b")    
             # # # Update to next action
             # self.get_logger.info(f"An error occurred: {e}")
-        try:    
-            if (self.get_clock().now().nanoseconds - self.t_sim.nanoseconds) / 1e9 >= self.next_interval/20:      
+            if (self.get_clock().now().nanoseconds - self.t_sim.nanoseconds) / 1e9 >= self.next_interval/50:      
                 # self.get_logger().info(f"self.on_hold: {self.on_hold}")
                 if self.on_hold == False:             
-                    self.next_move()
+                    if USE_ISAAC:
+                        if (self.sim_arrived or self.sim_received or self.sim_start):
+                            # self.get_logger().info(f"Sim status: {self.sim_arrived}")
+                            self.next_move()
+                            self.sim_arrived = False
+                            self.sim_received = False
+                            self.sim_start = False
+                    else: self.next_move()
                 self.t_sim = self.get_clock().now()    
                 if self.pose != self.previous_pose:
                     if (self.previous_pose, self.pose) in self.world.bump or (self.pose, self.pose) in self.world.bump:
@@ -677,46 +595,88 @@ class LTLControllerDrone(Node):
                     else:
                         self.total_cost += 10
                     try:
-                        with open('/home/nanli/robot_data_10.csv', mode='a', newline='') as file:
+                        with open('/home/haris/robot_data_10.csv', mode='a', newline='') as file:
                             writer = csv.writer(file)
                             writer.writerow(self.pose_history[-1])
                     except Exception as e:
                         print(f"An error occurred: {e}")
                 # print("total_cost: ", self.total_cost)
-               
-            # =================================================================
-            # pygame.draw.circle(self.world.screen, self.mode.value, (self.pose[0] * self.world.cell_size, \
-            #     self.world.height - (self.pose[1] * self.world.cell_size)), self.world.cell_size // 5)
-            # # self.world.screen.blit(text, text_)
-            # =================================================================
-
-            if self.mode == EquipmentMode.UNLOADED:
-                mode = 'unloaded'
-            elif self.mode == EquipmentMode.LOADED:
-                mode = 'loaded'
-            elif self.mode == EquipmentMode.WAITTASK:
-                mode = 'Waiting'
-
-            msg = ShowPosition()   # Create a new ShowPosition message instance
-            msg.robot_id = self.agent_name
-            msg.pose = [float(x) for x in self.pose]  # Convert tuple (1, 19) to list [1, 19] to match int32[] type
-            msg.mode = mode
-            self.position_pub.publish(msg)
-
-
-            # pygame_surface = pygame.display.get_surface()
-            # pygame_pixels = pygame.surfarray.array3d(pygame_surface)
-            # image = np.flipud(pygame_pixels)
-
-            # # Convert to BGR format (required by OpenCV)
-            # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-            # # Write the frame to the video file
-            # self.world.output_video.write(image)
             
-            # # Update the display
-            # pygame.display.flip()
+            # Draw the moving agent
+            # text = pygame.font.SysFont('timesnewroman', 10).render(str(self.mode), True, BLACK, WHITE)
+            # text_ = text.get_rect()
+            # text_.center = (int(self.pose[0] * self.world.cell_size + self.world.cell_size/2), \
+            #     self.world.height - int(self.pose[1] * self.world.cell_size + self.world.cell_size/2))
+            # self.get_logger().info(f"Pose in simulate: x={self.pose[0]}, y={self.pose[1]}")
+            # self.get_logger().info("----------------------------------------------------------------------------------")
+            # for i in range(1, self.world.grid_size-1):
+            #     pygame.draw.line(self.world.screen, BLACK,  
+            #                 (self.world.grid_size/2*self.world.cell_size, (i+1)*self.world.cell_size),\
+            #                 ((self.world.grid_size/2)*self.world.cell_size, i*self.world.cell_size), 5)
+            #     pygame.draw.line(self.world.screen, BLACK,  
+            #                 (i*self.world.cell_size, self.world.grid_size/2*self.world.cell_size),\
+            #                 ((i+1)*self.world.cell_size, (self.world.grid_size/2)*self.world.cell_size), 5)
+            
+            for wall, checked in self.world.wall.items():
+                if checked:
+                    if wall[0][1] == wall[1][1]: # vertical
+                        pygame.draw.line(self.world.screen, RED,  
+                            (max(wall[0][0], wall[1][0])*self.world.cell_size, self.world.height - (wall[0][1]+1)*self.world.cell_size),\
+                            (max(wall[0][0], wall[1][0])*self.world.cell_size, self.world.height - wall[0][1]*self.world.cell_size), 5)
+                    if wall[0][0] == wall[1][0]: # horizontal
+                        pygame.draw.line(self.world.screen, RED,  
+                            (wall[0][0]*self.world.cell_size, self.world.height - max(wall[0][1], wall[1][1])*self.world.cell_size),\
+                            ((wall[0][0]+1)*self.world.cell_size, self.world.height - max(wall[0][1], wall[1][1])*self.world.cell_size), 5)
+            
+            for wall, checked in self.world.bump.items():
+                if checked:
+                    if wall[0][1] == wall[1][1]: # vertical
+                        pygame.draw.line(self.world.screen, YELLOW,  
+                            (max(wall[0][0], wall[1][0])*self.world.cell_size, self.world.height - (wall[0][1]+1)*self.world.cell_size),\
+                            (max(wall[0][0], wall[1][0])*self.world.cell_size, self.world.height - wall[0][1]*self.world.cell_size), 5)
+                    if wall[0][0] == wall[1][0]: # horizontal
+                        pygame.draw.line(self.world.screen, YELLOW,  
+                            (wall[0][0]*self.world.cell_size, self.world.height - max(wall[0][1], wall[1][1])*self.world.cell_size),\
+                            ((wall[0][0]+1)*self.world.cell_size, self.world.height - max(wall[0][1], wall[1][1])*self.world.cell_size), 5)
+                    
+            
+            pygame.draw.circle(self.world.screen, self.mode.value, (int(self.pose[0] * self.world.cell_size + self.world.cell_size/2), \
+                self.world.height - int(self.pose[1] * self.world.cell_size + self.world.cell_size/2)), self.world.cell_size // 2)
+            # self.world.screen.blit(text, text_)
+            
+            
+            pygame_surface = pygame.display.get_surface()
+            pygame_pixels = pygame.surfarray.array3d(pygame_surface)
+            image = np.flipud(pygame_pixels)
 
+            # Convert to BGR format (required by OpenCV)
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+            # Write the frame to the video file
+            self.world.output_video.write(image)
+            
+            # Update the display
+            pygame.display.flip()
+            # self.get_logger().info("inside d")    
+
+            # if not (self.curr_ltl_state == self.prev_ltl_state):
+            #     # Update previous state
+            #     self.prev_ltl_state = deepcopy(self.curr_ltl_state)
+            #     # If all states are initialized (not None), publish message
+            #     if all([False for element in self.curr_ltl_state if element == None]):
+            #         # Publish msg
+            #         self.ltl_state_msg.header.stamp = rospy.Time.now()
+            #         self.ltl_state_msg.ts_state.states = self.curr_ltl_state
+            #         self.ltl_state_pub.publish(self.ltl_state_msg)
+
+            # If waiting for obstacles or acknowledgement, check again
+            # if self.next_action:
+            #     # If action returns true, action was carried out and is reset
+            #     if self.a1_action(self.next_action):
+            #         self.a1_action = {}
+                    
+            # rospy.loginfo("State is %s and prev state is %s" %(self.curr_ltl_state, self.prev_ltl_state))
+            # rate.sleep()    
         except KeyboardInterrupt:
             print(self.pose_history)
             csv_file_name = "example.csv"
@@ -729,11 +689,11 @@ class LTLControllerDrone(Node):
 #             Main
 #==============================
 def main(args=None):
-    # pygame.init()
+    pygame.init()
     rclpy.init(args=args)
     node = rclpy.create_node('benchmark_node_main')
 
-    grid_size = node.declare_parameter('N', 8).get_parameter_value().integer_value
+    grid_size = node.declare_parameter('N', 10).get_parameter_value().integer_value
     node.get_logger().info(f"grid_size: {grid_size}")
     
     env = GridWorld(grid_size)
@@ -742,14 +702,13 @@ def main(args=None):
     
     while(rclpy.ok()):
         try:
-            # ltl_drone = LTLControllerDrone(env)
             rclpy.spin_once(ltl_drone)
         except ValueError as e:
             node.get_logger().error(f"LTL drone node: {e}")
             env.output_video.release()
             break
 
-    # pygame.quit()
+    pygame.quit()
     node.destroy_node()
     rclpy.shutdown()
 

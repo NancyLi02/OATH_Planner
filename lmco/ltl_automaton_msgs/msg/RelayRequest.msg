@@ -1,5 +1,5 @@
-float64[] from_pose
-float64[] to_pose
+int32[] from_pose
+int32[] to_pose
 
 float64 cost
 TransitionSystemState current_state
