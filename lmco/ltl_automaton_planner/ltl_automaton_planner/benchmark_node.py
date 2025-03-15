@@ -10,7 +10,7 @@ from copy import deepcopy
 from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequest, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
-from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_hilton, check_in_block, check_in_bump
+from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
 # Import modules for commanding the a1
 
 from geometry_msgs.msg import PoseStamped
@@ -181,7 +181,7 @@ class LTLControllerDrone(Node):
         self.declare_parameter('init_state', 0)
         self.init_pose = self.get_parameter('init_state').value
 
-        self.nodes, self.actions = build_graph_hilton(20, 20, 700)
+        self.nodes, self.actions = build_graph_halton(20, 20, 700)
         self.transition_system ['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system ['actions'].update(self.actions)
 

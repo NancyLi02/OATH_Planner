@@ -49,7 +49,7 @@ def generate_launch_description():
         )
         declare_init_state_cmd = DeclareLaunchArgument(
             init_state_arg,
-            default_value=str(924 + i),
+            default_value=str(999 + i),
             description=f'Initial state for robot {i}'
         )
         

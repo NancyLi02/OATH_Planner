@@ -14,7 +14,7 @@ import std_msgs
 
 #import matplotlib.pyplot as plt
 import networkx as nx
-from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers, build_graph_hilton
+from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers, build_graph_halton
 
 # Import LTL automaton message definitions
 from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList
@@ -49,7 +49,7 @@ class MainPlanner(Node):
         self.task_data = self.load_tasks(self.ltl_formula_file)
         self.get_logger().info("MainPlanner node started")
 
-        self.nodes, self.actions = build_graph_hilton(20, 20, 180)
+        self.nodes, self.actions = build_graph_halton(20, 20, 180)
 
         start_time = time.time()
         self.initialize_automaton()

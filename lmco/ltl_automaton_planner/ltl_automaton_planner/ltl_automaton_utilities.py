@@ -26,8 +26,40 @@ def halton_sequence(size, base=2):
         sequence.append(r)
     return np.array(sequence)
 
+def point_to_lines_distance(point, lines):
+    return min(line.distance(point) for line in lines)
 
-def build_graph_hilton(x_length=20, y_length=20, n_points=700):
+# Probability density function based on distance
+def density_probability(d, d_min, d_opt, sigma, floor):
+    if d < d_min:
+        return 0
+    return floor + (1 - floor) * np.exp(-((d - d_opt) ** 2) / (2 * sigma ** 2))
+
+# Rejection sampling algorithm
+def rejection_sampling(n_samples, lines, area_size, d_min=0.3, d_opt=0.4, sigma=0.5, floor=0.2):
+    np.random.seed(42)
+    random_value = np.random.rand()
+    print(f'random_value is {random_value}')
+    samples = []
+    multiplier = 10
+    while len(samples) < n_samples:
+        halton_x = halton_sequence(n_samples * multiplier, 2) * area_size
+        halton_y = halton_sequence(n_samples * multiplier, 3) * area_size
+        for x, y in zip(halton_x, halton_y):
+            if len(samples) >= n_samples:
+                break
+            p = Point(x, y)
+            d = point_to_lines_distance(p, lines)
+            if d < d_min:
+                continue
+            prob = density_probability(d, d_min, d_opt, sigma, floor)
+            if np.random.rand() < prob:
+                samples.append(p)
+        multiplier += 5
+    return samples[:n_samples]
+
+
+def build_graph_halton(x_length=20, y_length=20, n_points=700):
     points_with_label = {(1, 19): 'a',
                          (11, 19): '' ,
                          (9, 11): '' ,
@@ -47,8 +79,8 @@ def build_graph_hilton(x_length=20, y_length=20, n_points=700):
                          (19, 6.5): 'n',
                          (16, 5.5): 'o'} # unload
 
-
-    n_points = 700
+    x_length = 20
+    n_points = 1000
     x = halton_sequence(n_points, 2) * 20
     y = halton_sequence(n_points, 3) * 20
     points = np.vstack((x, y)).T
@@ -104,7 +136,9 @@ def build_graph_hilton(x_length=20, y_length=20, n_points=700):
         buffered = line.buffer(distance=0.1, cap_style=3)
         obstacles.append(buffered)
         
-    valid_points = [Point(p) for p in points if not any(poly.contains(Point(p)) for poly in obstacles)]
+    # valid_points = [Point(p) for p in points if not any(poly.contains(Point(p)) for poly in obstacles)]
+    valid_points = rejection_sampling(n_points, lines, x_length)
+    # print(valid_points)
     nodes = dict()
     actions = dict()
     index = 0
@@ -131,7 +165,7 @@ def build_graph_hilton(x_length=20, y_length=20, n_points=700):
             'connected_to': {f'{index}':'stay'}
         }
         valid_points.append(Point(key))
-        print(f"Point {key} assigned index: {index}")
+        # print(f"Point {key} assigned index: {index}")
         index = index + 1
 
     # print(valid_points)
@@ -170,8 +204,8 @@ def check_in_block(action, nodes):
     to_pose = nodes[f'{to_pose_index}']['attr']['pose']
     
     blocks = []  # List of Shapely polygons
-    lines = [LineString([(4, 3), (5, 3)]),
-             LineString([(3, 4), (4, 4)])]
+    lines = [LineString([(5, 4), (6, 4)]),
+             LineString([(4, 15), (5, 15)])]
     for line in lines:
         buffered = line.buffer(distance=0.1, cap_style=3)
         blocks.append(buffered)
@@ -205,7 +239,7 @@ def check_in_bump(action, nodes):
 def state_models_from_ts(TS_dict, initial_states_dict=None):
     state_models = []
 
-    nodes, actions = build_graph_hilton(8, 8, 200)
+    nodes, actions = build_graph_halton(20, 20, 200)
     TS_dict['state_models']['2d_pose_region']['nodes'] = nodes
     TS_dict['actions'].update(actions)
     
