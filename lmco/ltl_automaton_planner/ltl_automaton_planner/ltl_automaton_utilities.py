@@ -66,14 +66,14 @@ def build_graph_halton(x_length=20, y_length=20, n_points=700):
                          (11, 9): '' ,
                          (1, 6.5): 'b', 
                          (5.5, 9.5): 'c',
-                         (8, 6.5): 'd',
-                         (6.5, 3): 'e', # unload
+                         (9, 6.5): 'd',
+                         (6, 3): 'e', # unload
                          (1, 13.5): 'f',
                          (9, 16.5): 'g',
                          (5, 16): 'h', # unload
                          (11, 13.5): 'i',
                          (11, 16.5): 'j',
-                         (18, 16.5): 'k',
+                         (19, 16.5): 'k',
                          (16, 13): 'l', # unload
                          (11, 4): 'm',
                          (19, 6.5): 'n',
@@ -203,19 +203,21 @@ def check_in_block(action, nodes):
     from_pose = nodes[f'{from_pose_index}']['attr']['pose']
     to_pose = nodes[f'{to_pose_index}']['attr']['pose']
     
-    blocks = []  # List of Shapely polygons
-    lines = [LineString([(5, 4), (6, 4)]),
-             LineString([(4, 15), (5, 15)])]
-    for line in lines:
-        buffered = line.buffer(distance=0.1, cap_style=3)
-        blocks.append(buffered)
+    # blocks = []  # List of Shapely polygons
+    blocks = [
+        Polygon([(5, 3.9), (6, 3.9), (6, 4.1), (5, 4.1)]),  
+        Polygon([(4, 14.9), (5, 14.9), (5, 15.1), (4, 15.1)])  
+    ]
         
     A = Point(from_pose)
     B = Point(to_pose)
+
+    if any(block.contains(A) or block.contains(B) for block in blocks):
+        return True
+    
     connection = LineString([A, B])
-    if not any(connection.intersects(block) for block in blocks):
-        return False
-    return True
+
+    return any(connection.intersects(block) for block in blocks)
         
 def check_in_bump(action, nodes):
     #from_pose_index = extract_numbers(str(action))[0]
@@ -224,10 +226,11 @@ def check_in_bump(action, nodes):
     to_pose = nodes[f'{to_pose_index}']['attr']['pose']
     
     bumps = []
-    coords = [[(4.1, 1.1), (4.1, 2.0), (6.0, 2.0), (6.0, 1.1)], \
-              [(1.1, 3.1), (1.1, 5.0), (2.0, 5.0), (2, 4), (3.0, 4.0), (3.0, 3.0)], \
-              [(6, 6), (6, 7), (7, 7), (7, 6)], \
-                [(7, 1), (7, 3), (8, 3), (8, 1)]]
+    # coords = [[(4.1, 1.1), (4.1, 2.0), (6.0, 2.0), (6.0, 1.1)], \
+    #           [(1.1, 3.1), (1.1, 5.0), (2.0, 5.0), (2, 4), (3.0, 4.0), (3.0, 3.0)], \
+    #           [(6, 6), (6, 7), (7, 7), (7, 6)], \
+    #             [(7, 1), (7, 3), (8, 3), (8, 1)]]
+    coords = []
     for coord in coords:
         polygon = Polygon(coord)
         bumps.append(polygon)

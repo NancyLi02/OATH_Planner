@@ -38,7 +38,6 @@ class CBAA:
             print(f"Robot {robot_index + 1}: Selected task index {best_task_index} with score {best_task_score:.2f}")
             return best_task_index
         else:
-            # print(f"Robot {robot_index + 1}: No valid task available.")
             return -1
 
     def conflict_resolve(self, task_index, assigned_tasks, x):
@@ -55,11 +54,11 @@ class CBAA:
         x = [[0] * task_count for _ in range(len(scores_list))]
         y = [0] * task_count
         assigned_tasks = []
+        unassigned_robots = []
 
         while any(sum(row) == 0 for row in x):
             for robot_index in range(len(scores_list)):
                 if sum(x[robot_index]) == 0:
-                    #print(f"\n****************Assigning task for Robot {robot_index + 1}:****************")
                     task_index = self.select_task(scores_list, y, robot_index)
                     if task_index != -1:
                         x, assigned_tasks = self.conflict_resolve(task_index, assigned_tasks, x)
@@ -67,14 +66,15 @@ class CBAA:
                         assigned_tasks.append((robot_index, task_index))
                     else:
                         x[robot_index][task_index] = -1
-
+                        unassigned_robots.append(robot_index)
 
         print("\nFinal y list:", y)
         print("x list (task assignment status for each robot):")
         for robot_index, task_assignments in enumerate(x):
             print(f"Robot {robot_index + 1}: {task_assignments}")
+        print(f"\nUnassigned Robots: {unassigned_robots}")
 
-        return assigned_tasks
+        return assigned_tasks, unassigned_robots
 
 
 # Task Assignment Node
@@ -104,14 +104,17 @@ class TaskAssignNode(Node):
         self.unloaded_robots = {robot: pose for robot, pose in self.robot_init_poses.items()}
         self.busy_robots = {}
         self.first_call = True
+        self.new_cycle = True
 
         self.declare_parameter('task_count', 10)
         task_count = self.get_parameter('task_count').value
         self.valid_tasks = [1] * task_count
 
-        self.positions = {}
         self.pose_index_list = {}
         self.score_list = {}
+
+        # 新增标志，记录是否有新任务请求到来
+        self.new_request_pending = False
 
         # Define robot list
         self.robots = [f'robot{i}' for i in range(1, self.robot_count + 1)]
@@ -125,12 +128,10 @@ class TaskAssignNode(Node):
         self.score_request_publishers = {}
         self.waiting_publishers = {}
         self.stop_waiting_publishers = {}
+        self.unassigned_robots_pubs = {}
 
         # Loop to create publishers
         for robot in self.robots:
-            # self.task_assignment_publishers[robot] = self.create_publisher(
-            #     TaskAssignment, f'{robot}/task_assignment', 10)
-            
             self.task_reassignment_publishers[robot] = self.create_publisher(
                 TaskReAssignment, f'{robot}/task_reassignment', 10)
             
@@ -148,11 +149,14 @@ class TaskAssignNode(Node):
             
             self.stop_waiting_publishers[robot] = self.create_publisher(
                 StopWaiting, f'{robot}/stop_waiting', 10)
+            
+            self.unassigned_robots_pubs[robot] = self.create_publisher(
+                WaitingRequest, f'{robot}/no_task', 10)
 
         # Dictionaries to store subscribers
         self.task_request_subscribers = {}
         self.position_receive_subscribers = {}
-        self.update_pose_sub = {}
+        # self.update_pose_sub = {}
         self.score_list_subscribers = {}
         self.loaded_task_sub = {}
 
@@ -179,12 +183,12 @@ class TaskAssignNode(Node):
                 10
             )
 
-            self.update_pose_sub[robot] = self.create_subscription(
-                CurrentPosition,
-                f'{robot}/update_current_pose',
-                self.update_pose_callback,
-                10
-            )
+            # self.update_pose_sub[robot] = self.create_subscription(
+            #     CurrentPosition,
+            #     f'{robot}/update_current_pose',
+            #     self.update_pose_callback,
+            #     10
+            # )
 
             self.score_list_subscribers[robot] = self.create_subscription(
                 ScoreList,
@@ -202,11 +206,7 @@ class TaskAssignNode(Node):
 
         self.get_logger().info('TaskAssignNode has been started.')
 
-        # if self.score_scheme == 'manhattan':
-        #     time.sleep(1)
-        #     # Publish Initial Task Assignments
-        #     self.pub_initial_tasks(self.robot_pos, self.task_pos)
-        #     self.get_logger().info('Initial tasks have been assigned.')
+        self.pose_timer = self.create_timer(0.1, self.process_task_assignment)
 
     def update_loaded_tasks(self, msg):
         loaded_task = msg.loaded_task - 1
@@ -223,6 +223,10 @@ class TaskAssignNode(Node):
         required_robots = set(self.unloaded_robots.keys())
         
         if required_robots.issubset(self.score_list.keys()):
+            # 如果有新任务请求在等待，则不进行任务分配，等待新加入机器人一起计算
+            if self.new_request_pending:
+                self.get_logger().info("New task request pending; postponing assignment to merge new robots.")
+                return
             self.get_logger().info('Sufficient robot score lists collected, assigning new task...')
             self.dstar_task_assign()
 
@@ -238,31 +242,30 @@ class TaskAssignNode(Node):
             f'Received pose index from {msg.robot_id}: {msg.pose_index}, state: {msg.current_state}'
         )
 
-        # Check if all required robots have reported their positions
+
+    def process_task_assignment(self):
         required_robots = {f'robot_{i}' for i in range(1, self.robot_count + 1)}
-        if required_robots.issubset(self.pose_index_list.keys()):  # Verify all robots have reported
+        if required_robots.issubset(self.pose_index_list.keys()):
             self.get_logger().info("All robot positions collected, assigning new task...")
             self.new_task_assign(self.pose_index_list)
-            self.pose_index_list.clear()  # Clear data after task assignment
-
-
+            self.pose_index_list.clear()
     
-    def update_pose_callback(self, msg):
-        # Update or store robot position information
-        self.pose_index_list[msg.robot_id] = {
-            "pose_index": msg.pose_index,
-            "current_state": msg.current_state
-        }
+    # def update_pose_callback(self, msg):
+    #     # Update or store robot position information
+    #     self.pose_index_list[msg.robot_id] = {
+    #         "pose_index": msg.pose_index,
+    #         "current_state": msg.current_state
+    #     }
 
-        self.get_logger().info(
-            f'Received update pose index from {msg.robot_id}: {msg.pose_index}, state: {msg.current_state}'
-        )
-        # Check if all required robots have reported their updated pose index
-        required_robots = {f'robot_{i}' for i in range(1, self.robot_count + 1)}
-        if required_robots.issubset(self.pose_index_list.keys()):  # Verify all robots have updated
-            self.get_logger().info("All robots update pose index collected, publishing new task...")
-            self.check_task_assign(self.pose_index_list)
-            self.pose_index_list.clear()  # Clear data after reassignment
+    #     self.get_logger().info(
+    #         f'Received update pose index from {msg.robot_id}: {msg.pose_index}, state: {msg.current_state}'
+    #     )
+    #     # Check if all required robots have reported their updated pose index
+    #     required_robots = {f'robot_{i}' for i in range(1, self.robot_count + 1)}
+    #     if required_robots.issubset(self.pose_index_list.keys()):  # Verify all robots have updated
+    #         self.get_logger().info("All robots update pose index collected, publishing new task...")
+    #         self.check_task_assign(self.pose_index_list)
+    #         self.pose_index_list.clear()  # Clear data after reassignment
 
 
     def construct_valid_tasks(self, busy_robots):
@@ -275,51 +278,91 @@ class TaskAssignNode(Node):
         self.get_logger().info(f"Updated valid tasks: {self.valid_tasks}")
         return self.valid_tasks
 
-    def check_task_assign(self, pose_index_list):
-        self.unloaded_robots_update = {}
-        self.busy_robots_update = {}
+    # def check_task_assign(self, pose_index_list):
+    #     self.unloaded_robots_update = {}
+    #     self.busy_robots_update = {}
 
-        self.get_logger().info('Checking update robot states...')
-        for robot_id, data in pose_index_list.items():
-            if data["current_state"] == "unloaded":
-                self.unloaded_robots_update[robot_id] = data["pose_index"]
-            else:
-                self.busy_robots_update[robot_id] = data["pose_index"]
+    #     self.get_logger().info('Checking update robot states...')
+    #     for robot_id, data in pose_index_list.items():
+    #         if data["current_state"] == "unloaded":
+    #             self.unloaded_robots_update[robot_id] = data["pose_index"]
+    #         else:
+    #             self.busy_robots_update[robot_id] = data["pose_index"]
         
-        self.publish_reassignment(self.unloaded_robots_update)
-
+    #     self.publish_reassignment(self.unloaded_robots_update)
 
     def new_task_assign(self, pose_index_list):
-        # Filter out all robots whose state is not 'unloaded'
-        self.unloaded_robots = {}
-        self.busy_robots = {}
-
-        self.get_logger().info('Using dstar as score scheme.........')
-        # self.get_logger().info(f'pose_index_list is {pose_index_list}.')
-        for robot_id, data in pose_index_list.items():
-            if data["current_state"] == "unloaded":
-                self.unloaded_robots[robot_id] = data["pose_index"]
-                
-                score_request_msg = ScoreRequest()
-                score_request_msg.pose_index = self.unloaded_robots[robot_id]
-                
-                wait_request_msg = WaitingRequest()
-                request_id = str(uuid.uuid4())
-                wait_request_msg.request_id = request_id
-
-                if robot_id in self.robots_:
-                    # Convert robot_id from format "robot_1" to "robot1"
-                    publisher_key = robot_id.replace("_", "")
-                    if publisher_key in self.score_request_publishers:
-                        self.score_request_publishers[publisher_key].publish(score_request_msg)
-                        self.waiting_publishers[publisher_key].publish(wait_request_msg)
-                        self.get_logger().info(f"Published score request and waiting signal for {robot_id}")
-            else:
-                self.busy_robots[robot_id] = data["pose_index"]
-
+        # 如果检测到有新任务请求，则不清空已有 score list，而只对新加入的机器人发送 ScoreRequest
+        if self.new_request_pending:
+            self.get_logger().info("Merging new robots into current task assignment cycle.")
+            new_robot_found = False
+            # 对于新加入的机器人（即在 pose_index_list 中，但不在 unloaded_robots 中），更新 unloaded_robots 并请求 ScoreList
+            for robot_id, data in pose_index_list.items():
+                if data["current_state"] == "unloaded" and robot_id not in self.unloaded_robots:
+                    new_robot_found = True
+                    self.unloaded_robots[robot_id] = data["pose_index"]
+                    score_request_msg = ScoreRequest()
+                    score_request_msg.pose_index = data["pose_index"]
+                    wait_request_msg = WaitingRequest()
+                    request_id = str(uuid.uuid4())
+                    wait_request_msg.request_id = request_id
+                    if robot_id in self.robots_:
+                        publisher_key = robot_id.replace("_", "")
+                        if publisher_key in self.score_request_publishers:
+                            self.score_request_publishers[publisher_key].publish(score_request_msg)
+                            self.waiting_publishers[publisher_key].publish(wait_request_msg)
+                            self.get_logger().info(f"Published score request and waiting signal for new {robot_id}")
+            # 如果没有新加入的 unloaded 机器人，则认为可能有多个机器人几乎同时发送任务分配请求，此时对所有 unloaded 机器人发送分数请求
+            if not new_robot_found:
+                self.get_logger().info("No new unloaded robots found; sending score requests to all unloaded robots.")
+                for robot_id, data in pose_index_list.items():
+                    if data["current_state"] == "unloaded":
+                        # 更新 pose_index（若有变化）
+                        self.unloaded_robots[robot_id] = data["pose_index"]
+                        score_request_msg = ScoreRequest()
+                        score_request_msg.pose_index = data["pose_index"]
+                        wait_request_msg = WaitingRequest()
+                        request_id = str(uuid.uuid4())
+                        wait_request_msg.request_id = request_id
+                        if robot_id in self.robots_:
+                            publisher_key = robot_id.replace("_", "")
+                            if publisher_key in self.score_request_publishers:
+                                self.score_request_publishers[publisher_key].publish(score_request_msg)
+                                self.waiting_publishers[publisher_key].publish(wait_request_msg)
+                                self.get_logger().info(f"Published score request and waiting signal for existing {robot_id}")
+            # 重置标志，新加入的机器人会陆续上报 score list，待全部收到后触发任务分配
+            self.new_request_pending = False
+        else:
+            # 新周期开始时，清空已有数据
+            self.score_list = {}
+            self.unloaded_robots = {}
+            self.busy_robots = {}
+            self.get_logger().info('Starting a new task assignment cycle using dstar...')
+            for robot_id, data in pose_index_list.items():
+                if data["current_state"] == "unloaded":
+                    self.unloaded_robots[robot_id] = data["pose_index"]
+                    score_request_msg = ScoreRequest()
+                    score_request_msg.pose_index = data["pose_index"]
+                    wait_request_msg = WaitingRequest()
+                    request_id = str(uuid.uuid4())
+                    wait_request_msg.request_id = request_id
+                    if robot_id in self.robots_:
+                        publisher_key = robot_id.replace("_", "")
+                        if publisher_key in self.score_request_publishers:
+                            self.score_request_publishers[publisher_key].publish(score_request_msg)
+                            self.waiting_publishers[publisher_key].publish(wait_request_msg)
+                            self.get_logger().info(f"Published score request and waiting signal for {robot_id}")
+                else:
+                    self.busy_robots[robot_id] = data["pose_index"]
+            # self.new_request_pending = False
 
 
     def dstar_task_assign(self):
+        # 若检测到有新任务请求，则不进行任务分配，而等待新机器人的 score list 收集
+        if self.new_request_pending:
+            self.get_logger().info("New task request is pending; postponing assignment to merge new robots.")
+            return
+
         self.valid_tasks = self.construct_valid_tasks(self.busy_robots)
         required_robots = set(self.unloaded_robots.keys())
 
@@ -335,12 +378,11 @@ class TaskAssignNode(Node):
             sorted_scores = [self.score_list.get(robot_id, []) for robot_id in sorted(self.unloaded_robots.keys(),
                                                                                     key=lambda x: int(x.split('_')[-1]))]
             self.get_logger().info(f'Sorted scores = {sorted_scores}')
-            # Perform task assignment
-            assigned_tasks = self.cbaa_algorithm.initial_task_assignment(sorted_scores)  # sorted_scores is a list
-            self.get_logger().info(f'This round assigned_tasks = {assigned_tasks}')
-            
 
-            # Sort unloaded_robots based on robot_id
+            assigned_tasks, unassigned_robots = self.cbaa_algorithm.initial_task_assignment(sorted_scores)
+
+            self.get_logger().info(f'This round assigned_tasks = {assigned_tasks}')
+            self.get_logger().info(f'This round unassigned_robots = {unassigned_robots}')
             sorted_unloaded_robots = dict(sorted(self.unloaded_robots.items(), key=lambda x: int(x[0].split('_')[-1])))
             
             # Create robot_id mappings
@@ -363,29 +405,46 @@ class TaskAssignNode(Node):
                 if not found:
                     self.assigned_tasks.append((assigned_robot_number, int(task_index)))
 
-
+            self.unassigned_robots = [reverse_robot_id_mapping[robot_index] - 1 for robot_index in unassigned_robots]
+            self.get_logger().info(f"Unassigned robots after mapping: {self.unassigned_robots}")
+            if self.unassigned_robots:
+                for robot_index in self.unassigned_robots:
+                    robot_name = f"robot{robot_index+1}"
+                    if robot_name in self.unassigned_robots_pubs:
+                        msg = WaitingRequest()
+                        msg.request_id = str(uuid.uuid4())
+                        self.unassigned_robots_pubs[robot_name].publish(msg)
+                        self.get_logger().info("Sent No task 'WaitingRequest'...............")
             self.get_logger().info(f"Final task assignments: {self.assigned_tasks}")
-            # Publish task assignment
-            if not self.first_call:
-                self.update_pose()
-            else:
-                self.first_call = False
-                self.publish_reassignment(self.unloaded_robots)
-                self.score_list = {}
-                self.positions = {}
 
-    def update_pose(self):
-        request_id = str(uuid.uuid4())
-        position_request_msg = PositionRequest()
-        position_request_msg.request_id = request_id
+            # Publish task assignment
+            # if not self.first_call:
+            #     self.update_pose()
+            # else:
+            #     self.first_call = False
+            self.publish_reassignment(self.unloaded_robots)
+            self.score_list = {}
+            self.unloaded_robots = {}
+            self.new_cycle = True
+            self.new_request_pending = False
+
+
+    # def update_pose(self):
+    #     request_id = str(uuid.uuid4())
+    #     position_request_msg = PositionRequest()
+    #     position_request_msg.request_id = request_id
         
-        for robot in self.robots:
-            if robot in self.update_pose_pub:
-                self.update_pose_pub[robot].publish(position_request_msg)
+    #     for robot in self.robots:
+    #         if robot in self.update_pose_pub:
+    #             self.update_pose_pub[robot].publish(position_request_msg)
         
-        self.get_logger().info(f'Sent update position request with ID: {request_id}')
+    #     self.get_logger().info(f'Sent update position request with ID: {request_id}')
     
     def pub_current_pos_request(self, msg):
+
+        if self.new_cycle == False: # 如果不是新一轮的任务分配，就在后面打断任务分配
+            self.new_request_pending = True
+
         robot_index = msg.robot_id - 1
         for assigned_robot, task_index in self.assigned_tasks:
             if assigned_robot == robot_index:
@@ -402,6 +461,8 @@ class TaskAssignNode(Node):
                 self.position_request_publishers[robot].publish(position_request_msg)
         
         self.get_logger().info(f'Sent position request with ID: {request_id}')
+
+        self.new_cycle = False # 后面的所有请求都是这一轮的请求，直到任务发布
 
 
     def publish_reassignment(self, unloaded_robot):
@@ -445,7 +506,7 @@ class TaskAssignNode(Node):
                 self.task_reassignment_publishers[robot].publish(task_assignment_msg)
         
         for i, robot in enumerate(self.robots):
-            if publish_flags.get(i, False) is False:
+            if not publish_flags.get(i, False):
                 stop_waiting_msg = StopWaiting()
                 request_id = str(uuid.uuid4())
                 stop_waiting_msg.request_id = request_id

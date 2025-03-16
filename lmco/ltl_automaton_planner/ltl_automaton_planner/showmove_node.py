@@ -25,6 +25,7 @@ import threading
 # Color definitions
 WHITE  = (255, 255, 255)
 BLACK  = (0, 0, 0)
+GREY   = (190, 190, 190)
 RED    = (255, 0, 0)
 YELLOW = (255, 255, 222)
 BLUE   = (0, 0, 128)
@@ -68,6 +69,7 @@ class ShowMoveNode(Node):
                        'unloaded': (255, 155, 246)} # Light Pink
         }
         self.waiting_color = (255, 165, 0)  # Orange
+        self.notask_color = (96, 96, 96)
 
         # Define obstacles: using a single LineString as an example
         self.lines = [LineString([(0, 3), (2, 3), (2, 4)]),
@@ -130,6 +132,7 @@ class ShowMoveNode(Node):
 
         # List of robot IDs
         self.robot_ids = ['robot1', 'robot2', 'robot3', 'robot4']
+        # self.robot_ids = ['robot1', 'robot2', 'robot3']
         # Create subscribers for each robot topic (e.g., "/robot1/show_position")
         # Create subscribers for each robot topic (e.g., "/robot1/show_position")
         self.position_subscriptions = []
@@ -168,6 +171,8 @@ class ShowMoveNode(Node):
         """
         if mode == "Waiting":
             return self.waiting_color
+        elif mode == 'NoTask':
+            return self.notask_color
         elif mode == "loaded":
             return self.color_mapping.get(robot_id, {}).get("loaded", (255, 255, 255))
         elif mode == "unloaded":
@@ -213,6 +218,23 @@ class ShowMoveNode(Node):
 
 
         # Define the points dictionary with labels.
+        # points = {
+        #     (1, 6.5): 'b', 
+        #     (5.5, 9.5): 'c',
+        #     (9, 6.5): 'd',
+        #     (6, 3): 'e', # unload
+        #     (1, 13.5): 'f',
+        #     (9, 16.5): 'g',
+        #     (5, 16): 'h',     # unload
+        #     (11, 13.5): 'i',
+        #     (11, 16.5): 'j',
+        #     (19, 16.5): 'k',
+        #     (16, 13): 'l',    # unload
+        #     (11, 4): 'm',
+        #     (19, 6.5): 'n',
+        #     (16, 5.5): 'o'    # unload
+        # }
+
         points = {
             (1, 6.5): 'b', 
             (5.5, 9.5): 'c',
@@ -234,8 +256,8 @@ class ShowMoveNode(Node):
         unloaded_points = {(6, 3), (5, 16), (16, 13), (16, 5.5)}
 
         # Define colors.
-        GREEN = (108, 247, 80)
-        SKY_BLUE = (135, 206, 235)  # 天蓝色
+        GREEN = (107, 142, 35)
+        SKY_BLUE = (135, 206, 235)
 
        # Iterate through all points, choose color based on unloaded status, and draw a square.
         for pt, label in points.items():
@@ -275,7 +297,7 @@ class ShowMoveNode(Node):
                 int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
             )
 
-            pygame.draw.line(self.world.screen, BLACK, start_pos, end_pos, 1)
+            pygame.draw.line(self.world.screen, GREY, start_pos, end_pos, 1)
         
         # Draw blocked lines
         for action in self.world.block:

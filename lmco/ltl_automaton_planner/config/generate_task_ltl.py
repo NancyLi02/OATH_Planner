@@ -1,13 +1,15 @@
 import yaml
 
 # Define all possible points
-all_points = ['b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n']
+all_points = ['b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o']
+# all_points = ['b', 'c', 'd', 'e', 'f', 'g', 'h','i', 'j', 'k', 'l']
 
 # Define groups of start points that share the same unload point
 grouped_tasks = {
     'e': ['b', 'c', 'd'],  # These points unload at 'e'
     'h': ['f', 'g'],       # These points unload at 'h'
     'l': ['i', 'j', 'k'],        # These points unload at 'l'
+    # 'l': ['j'],
     'o': ['m', 'n']
 }
 

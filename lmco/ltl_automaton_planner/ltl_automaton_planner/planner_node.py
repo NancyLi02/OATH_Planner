@@ -117,6 +117,7 @@ class MainPlanner(Node):
             self.product_automata = {}  # Initialize dictionary to store `ProdAut`
         if not hasattr(self, 'ltl_planners'):
             self.ltl_planners = {}  # Store LTLPlanner instances per task
+            self.score_planners = {}
 
         # Define four tasks, each with its own LTL specification
         for task_id in self.task_index:
@@ -146,6 +147,17 @@ class MainPlanner(Node):
             self.ltl_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
             self.ltl_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
 
+            # Seperate planner for score calculating
+            score_planner = LTLPlanner(robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
+            score_planner.optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
+
+            # Store the newly created product automaton and LTL planner
+            self.score_planners[task_id] = score_planner  # Store LTLPlanner for later use
+            
+            # Initialize storage for the set of possible runs in the product
+            self.score_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
+            self.score_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
+
     def update_and_run_automaton(self, task_id, new_initial_ts_state):
         # Check if `ProdAut` for `task_id` exists
         if task_id not in self.product_automata:
@@ -170,6 +182,31 @@ class MainPlanner(Node):
 
         # Use the corresponding LTLPlanner instance for this task
         self.ltl_planners[task_id].optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
+
+    def update_score_automaton(self, task_id, new_initial_ts_state):
+        # Check if `ProdAut` for `task_id` exists
+        if task_id not in self.product_automata:
+            raise ValueError(f"Product Automaton for task {task_id} has not been initialized. Call initialize_automaton first.")
+        
+        if task_id not in self.score_planners:
+            raise ValueError(f"LTLPlanner for task {task_id} has not been initialized. Call initialize_automaton first.")
+
+        product_automaton = self.product_automata[task_id]
+
+        # Ensure correct format if input is a dictionary
+        if isinstance(new_initial_ts_state, dict):
+            new_initial_ts_state = (new_initial_ts_state['2d_pose_region'], new_initial_ts_state['Drone_state'])
+
+        # Update the initial state in the expected format
+        product_automaton.graph['ts'].graph['initial'] = {new_initial_ts_state}
+        product_automaton.build_initial()  # Only update the initial state
+
+        # Update LTL Planner's current state and possible runs
+        self.score_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
+        self.score_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
+
+        # Use the corresponding LTLPlanner instance for this task
+        self.score_planners[task_id].optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
 
     
     # def build_automaton(self, task_id):
@@ -248,7 +285,7 @@ class MainPlanner(Node):
 
         for i in self.task_index:
             task_id = f'task{i}'
-            self.update_and_run_automaton(task_id, initial_state)
+            self.update_score_automaton(task_id, initial_state)
             self.score_list.append(self.build_score_list(task_id))  # Append scores to the list
 
         self.pub_score()
@@ -263,7 +300,7 @@ class MainPlanner(Node):
         self.score_list = []
         for i in self.task_index:
             task_id = f'task{i}'
-            self.update_and_run_automaton(task_id, initial_state)
+            self.update_score_automaton(task_id, initial_state)
             self.score_list.append(self.build_score_list(task_id))  # Append scores to the list
         self.pub_score()
 
@@ -277,38 +314,21 @@ class MainPlanner(Node):
         self.get_logger().info(f'Publish score list for {self.agent_name}...')
 
     def build_score_list(self, task_id):
-        if self.ltl_planners[task_id].run is not None:
+        if self.score_planners[task_id].run is not None:
             # Prefix Score
             cal_score_pre = LTLPlan()
-            cal_score_pre.action_sequence = self.ltl_planners[task_id].run.pre_plan
+            cal_score_pre.action_sequence = self.score_planners[task_id].run.pre_plan
             pre_score = len(cal_score_pre.action_sequence)  # Ensure correct length calculation
             
             # Suffix Score
             cal_score_suf = LTLPlan()
-            cal_score_suf.action_sequence = self.ltl_planners[task_id].run.suf_plan
+            cal_score_suf.action_sequence = self.score_planners[task_id].run.suf_plan
             suf_score = len(cal_score_suf.action_sequence)  # Ensure correct length calculation
             
-            score = max(0, 50 - (pre_score + suf_score))  # Prevent negative scores
+            score = max(0, 100 - (pre_score + suf_score))  # Prevent negative scores
             return score
         return 0  # Return 0 if no score is calculated
 
-
-    # def build_score_automaton(self, task_id, initial_state):
-    #     # Import state models from TS
-    #     state_models = state_models_from_ts(self.transition_system, initial_state)
-
-    #     # Get task ltl specification
-    #     hard_task = self.task_data[task_id]['hard_task']
-    #     soft_task = self.task_data[task_id]['soft_task']
-
-    #     # Build product automaton
-    #     robot_model = TSModel(state_models)
-    #     self.score_est = LTLPlanner(robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
-    #     self.score_est.optimal(algo=self.algo_type, N=self.grid_size)
-
-    #     # initialize storage of set of possible runs in product
-    #     self.score_est.curr_ts_state = list(self.score_est.product.graph['ts'].graph['initial'])[0]
-    #     self.score_est.posb_runs = set([(n,) for n in self.score_est.product.graph['initial']])
     
     def new_task_callback(self, msg):
         self.get_logger().info('---------------Task Reassignment Received---------------')
@@ -363,37 +383,6 @@ class MainPlanner(Node):
         # Publish the plan
         self.publish_plan(task_id)
         
-    
-    # def taskassignment_callback(self, msg):
-    #     self.get_logger().info('---------------start taskassignment callback function---------------')
-    #     # Determine the agent_name and extract the corresponding task
-    #     if self.agent_name == 'robot_1':
-    #         task_index = msg.robot_1_task
-    #         self.get_logger().info(f'Robot 1 has been assigned to task{task_index}')
-    #     elif self.agent_name == 'robot_2':
-    #         task_index = msg.robot_2_task
-    #         self.get_logger().info(f'Robot 2 has been assigned to task{task_index}')
-    #     else:
-    #         self.get_logger().error(f"Invalid agent name: {self.agent_name}")
-    #         return
-
-    #     # Ensure the task index is valid
-    #     if task_index is None:
-    #         self.get_logger().info(f"No task assigned to {self.agent_name}")
-    #         return
-
-    #     # Check if the task index is within a valid range
-    #     task_id = f'task{int(task_index)}'
-    #     if task_id not in self.task_data:
-    #         self.get_logger().error(f"Invalid task index received: {task_index}")
-    #         return
-
-    #     # Call the corresponding build_automaton method
-    #     self.get_logger().info(f"Building automaton for {task_id} assigned to {self.agent_name}")
-    #     self.build_automaton(task_id)
-
-    #     # Call the self.publish_plan() method to publish the plan
-    #     self.publish_plan()
     
     #----------------------------------------------
     # Publish prefix and suffix plans from planner

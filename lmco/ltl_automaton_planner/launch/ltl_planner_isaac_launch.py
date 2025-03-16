@@ -3,7 +3,11 @@ from launch.actions import DeclareLaunchArgument, GroupAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, PushRosNamespace
 import os
+import numpy as np
+import random
 
+random.seed(42)
+np.random.seed(42)
 def generate_launch_description():
     current_file_dir = os.path.dirname(os.path.realpath(__file__))
     workspace_dir = os.path.join('/home/nanli/ros2_ws/', 'src/lmco')

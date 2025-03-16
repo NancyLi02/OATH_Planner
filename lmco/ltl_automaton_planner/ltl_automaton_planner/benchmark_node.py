@@ -45,6 +45,7 @@ class EquipmentMode(Enum):
     UNLOADED = (0, 255, 0)
     LOADED = (0, 255, 255)
     WAITTASK = (255, 100, 0)
+    NOTASK = (96, 96, 96)
     RESCUE = (255, 0, 0)
 
 class GridWorld(object):
@@ -163,6 +164,13 @@ class LTLControllerDrone(Node):
             self.stop_waiting,
             10
         )
+
+        self.no_task_sub = self.create_subscription(
+            WaitingRequest,
+            'no_task',
+            self.no_task_callback,
+            10
+        )
         
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
@@ -172,6 +180,8 @@ class LTLControllerDrone(Node):
         self.update_valid_tasks_pub = self.create_publisher(UpdateValidTasks, 'update_valid_tasks', 10)
         self.pub_assign = True
         self.on_hold = False
+        self.final_on_hold = False
+        self.no_task = False
         self.cur_task = 0
         
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
@@ -217,6 +227,12 @@ class LTLControllerDrone(Node):
     def stop_waiting(self, msg):
         self.on_hold = False
 
+    def no_task_callback(self, msg):
+        self.no_task = True
+        self.final_on_hold = True
+        self.mode = EquipmentMode.NOTASK
+        
+
     
     def get_current_pos(self, msg=None):
         self.get_logger().info('Getting Current Position Now ................................')
@@ -245,17 +261,21 @@ class LTLControllerDrone(Node):
 
     def prefix_plan_callback(self, msg):
         self.plan_index = 0
-        self.on_hold = False
         self.cur_task = msg.cur_task
         self.world.block.clear()
         self.world.bump.clear()
-        self.mode = EquipmentMode.UNLOADED
+        if self.final_on_hold == False:
+            self.mode = EquipmentMode.UNLOADED
+            self.on_hold = False
+        else:
+            self.mode = EquipmentMode.NOTASK
+            # self.on_hold = True
         self.get_logger().info("receive data pre")
         self.prefix_action_list = msg.action_sequence
         self.get_logger().info(f"length prefix_action_list: {len(self.prefix_action_list)}")
         self.prefix_state_sequence = msg.ts_state_sequence
         self.get_logger().info("end data pre")
-        print(self.prefix_action_list)
+        self.get_logger().info(f'Prefix list received is {self.prefix_action_list}')
         
         # self.prefix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
 
@@ -266,7 +286,7 @@ class LTLControllerDrone(Node):
         self.get_logger().info(f"length suffix_action_list: {len(self.suffix_action_list)}")
         self.suffix_state_sequence = msg.ts_state_sequence
         self.get_logger().info("end data sub")
-        print(self.suffix_action_list)
+        self.get_logger().info(f'Suffix list received is {self.suffix_action_list}')
         
         # self.suffix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
         
@@ -668,7 +688,7 @@ class LTLControllerDrone(Node):
         try:    
             if (self.get_clock().now().nanoseconds - self.t_sim.nanoseconds) / 1e9 >= self.next_interval/20:      
                 # self.get_logger().info(f"self.on_hold: {self.on_hold}")
-                if self.on_hold == False:             
+                if self.on_hold == False and self.final_on_hold == False:          
                     self.next_move()
                 self.t_sim = self.get_clock().now()    
                 if self.pose != self.previous_pose:
@@ -696,6 +716,8 @@ class LTLControllerDrone(Node):
                 mode = 'loaded'
             elif self.mode == EquipmentMode.WAITTASK:
                 mode = 'Waiting'
+            elif self.mode == EquipmentMode.NOTASK:
+                mode = 'NoTask'
 
             msg = ShowPosition()   # Create a new ShowPosition message instance
             msg.robot_id = self.agent_name

@@ -38,7 +38,7 @@ class LTLPlanner(object):
     def write_to_log(self, data, segment="prefix"):
         file_name = self.algo+'_'+str(self.N)+'_'+segment+'.yaml'
         existing_data = read_yaml_file(file_name)
-        print(existing_data)
+        # print(existing_data)
         existing_data.append(data)
         write_to_yaml(existing_data, file_name)
     
@@ -124,6 +124,7 @@ class LTLPlanner(object):
             self.run, plantime = self.dijkstra.dijkstra_plan_with_initial(self.product, self.run.prefix[exec_index], segment="prefix")
             print(self.run.prefix)
             print(self.run.suffix)
+            print(exec_index)
             self.write_to_log([plantime, self.run.precost+self.gamma*self.run.sufcost], segment="prefix")
             print("Dijkstra replanning prefix compute time: ", plantime)
             self.run.prefix = self.old_run.prefix[:exec_index] + self.run.prefix
