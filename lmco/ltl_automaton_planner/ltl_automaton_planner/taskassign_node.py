@@ -113,7 +113,7 @@ class TaskAssignNode(Node):
         self.pose_index_list = {}
         self.score_list = {}
 
-        # 新增标志，记录是否有新任务请求到来
+        # To check whether new request pending
         self.new_request_pending = False
 
         # Define robot list
@@ -223,7 +223,7 @@ class TaskAssignNode(Node):
         required_robots = set(self.unloaded_robots.keys())
         
         if required_robots.issubset(self.score_list.keys()):
-            # 如果有新任务请求在等待，则不进行任务分配，等待新加入机器人一起计算
+            # Don't assign task if new request pending.
             if self.new_request_pending:
                 self.get_logger().info("New task request pending; postponing assignment to merge new robots.")
                 return
@@ -292,11 +292,11 @@ class TaskAssignNode(Node):
     #     self.publish_reassignment(self.unloaded_robots_update)
 
     def new_task_assign(self, pose_index_list):
-        # 如果检测到有新任务请求，则不清空已有 score list，而只对新加入的机器人发送 ScoreRequest
+        # Check new request pending
         if self.new_request_pending:
             self.get_logger().info("Merging new robots into current task assignment cycle.")
             new_robot_found = False
-            # 对于新加入的机器人（即在 pose_index_list 中，但不在 unloaded_robots 中），更新 unloaded_robots 并请求 ScoreList
+            # Only request score to new robots
             for robot_id, data in pose_index_list.items():
                 if data["current_state"] == "unloaded" and robot_id not in self.unloaded_robots:
                     new_robot_found = True
@@ -312,7 +312,7 @@ class TaskAssignNode(Node):
                             self.score_request_publishers[publisher_key].publish(score_request_msg)
                             self.waiting_publishers[publisher_key].publish(wait_request_msg)
                             self.get_logger().info(f"Published score request and waiting signal for new {robot_id}")
-            # 如果没有新加入的 unloaded 机器人，则认为可能有多个机器人几乎同时发送任务分配请求，此时对所有 unloaded 机器人发送分数请求
+            # If no new robots means arrived at same time.
             if not new_robot_found:
                 self.get_logger().info("No new unloaded robots found; sending score requests to all unloaded robots.")
                 for robot_id, data in pose_index_list.items():
@@ -330,10 +330,10 @@ class TaskAssignNode(Node):
                                 self.score_request_publishers[publisher_key].publish(score_request_msg)
                                 self.waiting_publishers[publisher_key].publish(wait_request_msg)
                                 self.get_logger().info(f"Published score request and waiting signal for existing {robot_id}")
-            # 重置标志，新加入的机器人会陆续上报 score list，待全部收到后触发任务分配
+            # Reset
             self.new_request_pending = False
         else:
-            # 新周期开始时，清空已有数据
+            # New cycle start
             self.score_list = {}
             self.unloaded_robots = {}
             self.busy_robots = {}
@@ -358,7 +358,7 @@ class TaskAssignNode(Node):
 
 
     def dstar_task_assign(self):
-        # 若检测到有新任务请求，则不进行任务分配，而等待新机器人的 score list 收集
+        # Check new request pending
         if self.new_request_pending:
             self.get_logger().info("New task request is pending; postponing assignment to merge new robots.")
             return
@@ -462,7 +462,7 @@ class TaskAssignNode(Node):
         
         self.get_logger().info(f'Sent position request with ID: {request_id}')
 
-        self.new_cycle = False # 后面的所有请求都是这一轮的请求，直到任务发布
+        self.new_cycle = False # start checking new request
 
 
     def publish_reassignment(self, unloaded_robot):
