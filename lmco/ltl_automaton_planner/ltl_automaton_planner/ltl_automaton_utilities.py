@@ -7,6 +7,18 @@ from shapely.geometry import Point, LineString, Polygon
 import math
 import numpy as np
 
+def load_lines_from_yaml():
+    parent_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner')
+    )
+    file_path = os.path.join(parent_dir, 'config', 'wall.yaml')
+
+    with open(file_path, 'r') as file:
+        yaml_data = yaml.safe_load(file)
+
+    line_coords = yaml_data.get('lines', [])
+    return [LineString(coords) for coords in line_coords]
+
 # Import TS and action attributes from file
 def import_ts_from_file(transition_system_textfile):
     try:
@@ -60,24 +72,35 @@ def rejection_sampling(n_samples, lines, area_size, d_min=0.3, d_opt=0.4, sigma=
 
 
 def build_graph_halton(x_length=20, y_length=20, n_points=700):
-    points_with_label = {(1, 19): 'a',
-                         (11, 19): '' ,
-                         (9, 11): '' ,
-                         (11, 9): '' ,
-                         (1, 6.5): 'b', 
-                         (5.5, 9.5): 'c',
-                         (9, 6.5): 'd',
-                         (6, 3): 'e', # unload
-                         (1, 13.5): 'f',
-                         (9, 16.5): 'g',
-                         (5, 16): 'h', # unload
-                         (11, 13.5): 'i',
-                         (11, 16.5): 'j',
-                         (19, 16.5): 'k',
-                         (16, 13): 'l', # unload
-                         (11, 4): 'm',
-                         (19, 6.5): 'n',
-                         (16, 5.5): 'o'} # unload
+    points_with_label = {
+                        (1, 19): 'a',
+                        (11, 19): '' ,
+                        (9, 11): '' ,
+                        (11, 9): '' ,
+                        (17, 14.5): '',
+                        (1, 4): 'bb', 
+                        (6, 6): 'cb',
+                        (1, 6.5): 'db', 
+                        (5.5, 9.5): 'eb',
+                        (9, 6.5): 'fb',
+                        (6, 3): 'b', # unload
+                        (1, 13.5): 'bc',
+                        (9, 16.5): 'cc',
+                        (1, 16): 'dc', 
+                        (6, 13): 'ec',
+                        (5, 16): 'c', # unload
+                        (11, 13.5): 'bd',
+                        (11, 16.5): 'cd',
+                        (19, 16.5): 'dd',
+                        (19, 19): 'ed', 
+                        (15, 19.5): 'fd',
+                        (16, 13): 'd', # unload
+                        (11, 4): 'be',
+                        (19, 6.5): 'ce',
+                        (16, 3): 'de', 
+                        (19, 1): 'ee',
+                        (16, 5.5): 'e' # unload
+                    }
 
     x_length = 20
     n_points = 1000
@@ -87,50 +110,7 @@ def build_graph_halton(x_length=20, y_length=20, n_points=700):
 
     # Filter points (pseudo-code)
     obstacles = []  # List of Shapely polygons
-    lines = [LineString([(0, 3), (2, 3), (2, 4)]),
-            LineString([(0, 5), (2, 5)]),
-            LineString([(0, 7), (2, 7), (2, 6)]),
-            LineString([(4, 9), (6, 9), (6, 10)]),
-            LineString([(6, 7), (4, 7), (4, 5)]),
-            LineString([(5, 5), (7, 5), (7, 7)]),
-            LineString([(8, 5), (8, 7), (10, 7)]),
-            LineString([(4, 2), (4, 4), (5, 4)]),
-            LineString([(6, 4), (7, 4), (7, 2), (5, 2)]),
-
-            LineString([(10, 3), (12, 3), (12, 4)]),
-            LineString([(10, 5), (12, 5)]),
-            LineString([(10, 7), (12, 7), (12, 6)]),
-            LineString([(14, 9), (16, 9), (16, 10)]),
-            LineString([(16, 7), (14, 7), (14, 5)]),
-            LineString([(15, 5), (17, 5), (17, 7)]),
-            LineString([(18, 5), (18, 7), (20, 7)]),
-            LineString([(14, 2), (14, 4), (15, 4)]),
-            LineString([(16, 4), (17, 4), (17, 2), (15, 2)]),
-
-            LineString([(0, 13), (2, 13), (2, 14)]),
-            LineString([(0, 15), (2, 15)]),
-            LineString([(0, 17), (2, 17), (2, 16)]),
-            LineString([(4, 19), (6, 19), (6, 20)]),
-            LineString([(6, 17), (4, 17), (4, 15)]),
-            LineString([(5, 15), (7, 15), (7, 17)]),
-            LineString([(8, 15), (8, 17), (10, 17)]),
-            LineString([(4, 12), (4, 14), (5, 14)]),
-            LineString([(6, 14), (7, 14), (7, 12), (5, 12)]),
-            
-            LineString([(10, 13), (12, 13), (12, 14)]),
-            LineString([(10, 15), (12, 15)]),
-            LineString([(10, 17), (12, 17), (12, 16)]),
-            LineString([(14, 19), (16, 19), (16, 20)]),
-            LineString([(16, 17), (14, 17), (14, 15)]),
-            LineString([(15, 15), (17, 15), (17, 17)]),
-            LineString([(18, 15), (18, 17), (20, 17)]),
-            LineString([(14, 12), (14, 14), (15, 14)]),
-            LineString([(16, 14), (17, 14), (17, 12), (15, 12)]),
-            
-            LineString([(0, 10), (6, 10)]),
-            LineString([(10, 0), (10, 7)]),
-            LineString([(14, 10), (20, 10)]),
-            LineString([(10, 13), (10, 20)])]
+    lines = load_lines_from_yaml()
     
     for line in lines:
         buffered = line.buffer(distance=0.1, cap_style=3)

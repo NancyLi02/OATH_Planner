@@ -106,7 +106,7 @@ class TaskAssignNode(Node):
         self.first_call = True
         self.new_cycle = True
 
-        self.declare_parameter('task_count', 10)
+        self.declare_parameter('task_count', 18)
         task_count = self.get_parameter('task_count').value
         self.valid_tasks = [1] * task_count
 
@@ -317,7 +317,7 @@ class TaskAssignNode(Node):
                 self.get_logger().info("No new unloaded robots found; sending score requests to all unloaded robots.")
                 for robot_id, data in pose_index_list.items():
                     if data["current_state"] == "unloaded":
-                        # 更新 pose_index（若有变化）
+                        # update pose_index（if changes）
                         self.unloaded_robots[robot_id] = data["pose_index"]
                         score_request_msg = ScoreRequest()
                         score_request_msg.pose_index = data["pose_index"]
@@ -442,7 +442,7 @@ class TaskAssignNode(Node):
     
     def pub_current_pos_request(self, msg):
 
-        if self.new_cycle == False: # 如果不是新一轮的任务分配，就在后面打断任务分配
+        if self.new_cycle == False: 
             self.new_request_pending = True
 
         robot_index = msg.robot_id - 1

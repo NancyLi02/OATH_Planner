@@ -31,7 +31,10 @@ setup(
             'benchmark_node = ltl_automaton_planner.benchmark_node:main',
             'relay_node = ltl_automaton_planner.relay_node:main',
             'taskassign_node = ltl_automaton_planner.taskassign_node:main',
-            'showmove_node = ltl_automaton_planner.showmove_node:main'
+            'showmove_node = ltl_automaton_planner.showmove_node:main',
+            'planner_cluster_node = ltl_automaton_planner.planner_cluster_node:main',
+            'benchmark_cluster_node = ltl_automaton_planner.benchmark_cluster_node:main',
+            'taskassign_cluster_node = ltl_automaton_planner.taskassign_cluster_node:main'
         ],
     },
 )

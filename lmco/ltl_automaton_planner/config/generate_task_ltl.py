@@ -1,17 +1,14 @@
 import yaml
 
-# Define all possible points
-all_points = ['b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o']
-# all_points = ['b', 'c', 'd', 'e', 'f', 'g', 'h','i', 'j', 'k', 'l']
+all_points = ['bb', 'cb', 'db', 'eb', 'fb', 'bc', 'cc', 'dc', 'ec',
+              'bd', 'cd', 'dd', 'ed', 'fd', 'be', 'ce', 'de', 'ee', 'b', 'c', 'd', 'e']
 
-# Define groups of start points that share the same unload point
 grouped_tasks = {
-    'e': ['b', 'c', 'd'],  # These points unload at 'e'
-    'h': ['f', 'g'],       # These points unload at 'h'
-    'l': ['i', 'j', 'k'],        # These points unload at 'l'
-    # 'l': ['j'],
-    'o': ['m', 'n']
-}
+    'b': ['bb', 'cb', 'db', 'eb', 'fb'],
+    'c': ['bc', 'cc', 'dc', 'ec'],
+    'd': ['bd', 'cd', 'dd', 'ed', 'fd'],
+    'e': ['be', 'ce', 'de', 'ee']
+    }
 
 def generate_formula(start, end, all_points):
     """

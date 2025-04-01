@@ -7,7 +7,7 @@ import yaml
 import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequest, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
+from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
@@ -175,7 +175,7 @@ class LTLControllerDrone(Node):
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
         self.update_pose_pub = self.create_publisher(CurrentPosition,'update_current_pose', 10)
-        self.taskassignment_request_pub = self.create_publisher(TaskRequest, 'task_assignment_request', 10)
+        self.taskassignment_request_pub = self.create_publisher(TaskRequestCluster, 'task_assignment_request', 10)
         self.position_pub = self.create_publisher(ShowPosition, 'show_position', 10)
         self.update_valid_tasks_pub = self.create_publisher(UpdateValidTasks, 'update_valid_tasks', 10)
         self.pub_assign = True
@@ -539,10 +539,10 @@ class LTLControllerDrone(Node):
 
     def publish_task_request(self):
         robot_id = int(self.agent_name.split('_')[-1])
-        task_request_msg = TaskRequest()
+        task_request_msg = TaskRequestCluster()
         task_request_msg.robot_id = robot_id
         task_request_msg.task_status = 1
-        # task_request_msg.pose_index = self.pose_index
+        task_request_msg.pose_index = self.pose_index
 
         
         self.taskassignment_request_pub.publish(task_request_msg)

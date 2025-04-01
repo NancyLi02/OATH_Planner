@@ -26,7 +26,7 @@ def generate_launch_description():
     )
     declare_task_count_cmd = DeclareLaunchArgument(
         'task_count',
-        default_value='10',
+        default_value='18',
         description='Number of tasks to launch'
     )
 
@@ -64,8 +64,10 @@ def generate_launch_description():
             PushRosNamespace(LaunchConfiguration(f'{robot_namespace}_namespace')),
             Node(
                 package='ltl_automaton_planner',
-                executable='benchmark_node',
-                name='benchmark_node',
+                # executable='benchmark_node',
+                # name='benchmark_node',
+                executable='benchmark_cluster_node',
+                name='benchmark_cluster_node',
                 output='screen',
                 parameters=[
                     {'agent_name': agent_name},
@@ -76,8 +78,10 @@ def generate_launch_description():
             ),
             Node(
                 package='ltl_automaton_planner',
-                executable='planner_node',
-                name='planner_node',
+                # executable='planner_node',
+                # name='planner_node',
+                executable='planner_cluster_node',
+                name='planner_cluster_node',
                 output='screen',
                 parameters=[
                     {'agent_name': agent_name},
@@ -93,8 +97,10 @@ def generate_launch_description():
     
     taskassign_node = Node(
         package='ltl_automaton_planner',
-        executable='taskassign_node',
-        name='taskassign_node',
+        # executable='taskassign_node',
+        # name='taskassign_node',
+        executable='taskassign_cluster_node',
+        name='taskassign_cluster_node',
         output='screen',
         parameters=[
             {'score_scheme': 'dstar'}
