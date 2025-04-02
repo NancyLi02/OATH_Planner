@@ -1,15 +1,14 @@
-# costmap_clusterer.py
-
 import os
 import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, box
 from shapely.ops import unary_union
 from sklearn.cluster import AgglomerativeClustering
 from scipy.spatial import cKDTree
 import networkx as nx
+from collections import defaultdict
 
 
 class CostMapClusterer:
@@ -40,22 +39,35 @@ class CostMapClusterer:
         G = nx.Graph()
         for i, line1 in enumerate(self.lines):
             for j, line2 in enumerate(self.lines):
-                if i >= j: continue
+                if i >= j:
+                    continue
                 if line1.touches(line2):
                     G.add_edge(i, j)
         G.add_nodes_from(range(len(self.lines)))
         components = list(nx.connected_components(G))
 
+        map_box = box(*self.map_bounds)
+        map_boundary = map_box.boundary
+
         for comp in components:
             group_lines = [self.lines[i] for i in comp]
             group_geom = unary_union(group_lines)
-            group_center = group_geom.centroid
             group_length = sum(line.length for line in group_lines)
-            base_cost = (group_length / 5) ** 1.5
-            dist_to_edge = min(group_center.x - self.map_bounds[0], self.map_bounds[2] - group_center.x,
-                               group_center.y - self.map_bounds[1], self.map_bounds[3] - group_center.y)
-            boundary_penalty = np.exp(-dist_to_edge / 2)
-            max_possible_cost = base_cost + 2.0
+
+            C_b = (group_length / 8) ** 1.8
+            C_max = C_b + 3.0
+            C_min = 0.3
+            r = 1.0
+            touches_boundary = group_geom.touches(map_boundary)
+
+            point_freq = defaultdict(int)
+            for line in group_lines:
+                coords = list(line.coords)
+                point_freq[coords[0]] += 1
+                point_freq[coords[-1]] += 1
+
+            endpoints = [Point(p) for p, freq in point_freq.items() if freq == 1]
+            junctions = [Point(p) for p, freq in point_freq.items() if freq > 1]
 
             for line in group_lines:
                 poly = line.buffer(self.wall_width / 2, cap_style=2, join_style=2)
@@ -67,17 +79,21 @@ class CostMapClusterer:
                     for y in y_vals:
                         pt = Point(x, y)
                         if poly.contains(pt):
-                            dist_to_center = pt.distance(group_center)
-                            min_cost = 0.3
-                            decay_radius = np.clip(group_length / 3, 0.2, 0.5)
-                            center_weight = np.exp(-dist_to_center / decay_radius)
-                            local_cost = min_cost + (base_cost - min_cost) * (center_weight ** 0.5)
-                            edge_dist = min(x - self.map_bounds[0], self.map_bounds[2] - x,
-                                            y - self.map_bounds[1], self.map_bounds[3] - y)
-                            edge_weight = 1 - np.clip(edge_dist / 2.0, 0, 1)
-                            local_cost = local_cost * (1 - edge_weight) + max_possible_cost * edge_weight
+                            d_j = min(pt.distance(j) for j in junctions) if junctions else 0
+                            w_j = np.exp(-d_j / r)
+                            C_pre = C_min + (C_b - C_min) * w_j
+
+                            if touches_boundary:
+                                d_e = min(x - self.map_bounds[0], self.map_bounds[2] - x,
+                                          y - self.map_bounds[1], self.map_bounds[3] - y)
+                                w_e = 1 - np.clip(d_e / 5.0, 0, 1)
+                                lambda_factor = np.clip(group_length / 10, 0.2, 1.0)
+                                C_final = (1 - w_e * lambda_factor) * C_pre + C_max * (w_e * lambda_factor)
+                            else:
+                                C_final = C_pre
+
                             self.sample_points.append((x, y))
-                            self.sample_values.append(local_cost)
+                            self.sample_values.append(C_final)
 
     def compute_distance_matrix(self):
         boosted_sample_values = [v * self.cost_boost_factor for v in self.sample_values]
@@ -89,7 +105,7 @@ class CostMapClusterer:
             for j in range(i + 1, n):
                 p1, p2 = self.task_points[i], self.task_points[j]
                 line = LineString([p1, p2])
-                num_samples = int(line.length / 0.01)
+                num_samples = int(line.length / 0.1)
                 sampled_points = [line.interpolate(t, normalized=True) for t in np.linspace(0, 1, num_samples)]
                 cost_along_path = sum(boosted_sample_values[cost_tree.query((pt.x, pt.y))[1]] for pt in sampled_points)
                 manhattan = abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
@@ -114,12 +130,9 @@ class CostMapClusterer:
             center = cluster_coords.mean(axis=0)
             cluster_centers.append(tuple(center))
             cluster_points.append([tuple(map(float, p)) for p in cluster_coords])
-        
-        self.plot_clusters
 
+        self.plot_clusters()
         return cluster_centers, cluster_points
-
-
 
     def plot_clusters(self):
         cmap = plt.get_cmap("tab10")
@@ -150,7 +163,10 @@ class CostMapClusterer:
         plt.xlim(0, 20)
         plt.ylim(0, 20)
         plt.title(f'Cost-Aware Clustering ({self.num_clusters} Clusters)', fontsize=14)
-        plt.xticks([]); plt.yticks([]); plt.axis('equal'); plt.tight_layout()
+        plt.xticks([])
+        plt.yticks([])
+        plt.axis('equal')
+        plt.tight_layout()
         plt.show()
 
     def plot_costmap(self):
@@ -169,5 +185,8 @@ class CostMapClusterer:
         plt.xlim(0, 20)
         plt.ylim(0, 20)
         plt.title("Wall CostMap Heatmap", fontsize=14)
-        plt.xticks([]); plt.yticks([]); plt.axis('equal'); plt.tight_layout()
+        plt.xticks([])
+        plt.yticks([])
+        plt.axis('equal')
+        plt.tight_layout()
         plt.show()

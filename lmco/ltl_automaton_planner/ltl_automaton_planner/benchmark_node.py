@@ -216,6 +216,9 @@ class LTLControllerDrone(Node):
         self.pose_history = [(self.pose, 0)]
         self.t_sim = self.get_clock().now()  # Use the ROS2 clock for the current time
         self.plan_index = 0
+
+        self.total_plan_index = 0
+
         self.next_interval = 10
 
         self.create_timer(1.0/10, self.simulate)
@@ -388,6 +391,7 @@ class LTLControllerDrone(Node):
                         else: # including action "stay", nothing particular needs to be done
                             pass
                         self.plan_index += 1
+                        self.total_plan_index += 1
                         self.get_logger().info(f"plan index: {self.plan_index}")
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
@@ -492,6 +496,7 @@ class LTLControllerDrone(Node):
                         else: # including action "stay", nothing particular needs to be done
                             pass
                         self.plan_index += 1
+                        self.total_plan_index += 1
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
                         self.next_interval = action_dict['weight']*5 # +1
@@ -588,8 +593,10 @@ class LTLControllerDrone(Node):
                 mode = 'loaded'
             elif self.mode == EquipmentMode.WAITTASK:
                 mode = 'Waiting'
+                # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
             elif self.mode == EquipmentMode.NOTASK:
                 mode = 'NoTask'
+                self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
 
             msg = ShowPosition()   # Create a new ShowPosition message instance
             msg.robot_id = self.agent_name

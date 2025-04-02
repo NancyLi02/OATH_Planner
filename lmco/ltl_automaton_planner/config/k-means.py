@@ -7,7 +7,7 @@ from sklearn.cluster import KMeans
 # ----------- Parameters -----------
 WALL_WIDTH = 0.3
 MAP_BOUNDS = (0, 0, 20, 20)
-kmeans_clusters = 6
+kmeans_clusters = 7
 
 # ----------- Task Points -----------
 points_with_label = {
@@ -80,7 +80,7 @@ plt.plot([x_min, x_max, x_max, x_min, x_min],
 
 plt.xlim(0, 20)
 plt.ylim(0, 20)
-plt.title("Vanilla KMeans Clustering (No CostMap)", fontsize=14)
+plt.title(f"Vanilla KMeans Clustering ({kmeans_clusters} Clusters)", fontsize=14)
 plt.xticks([]); plt.yticks([])
 plt.axis('equal')
 plt.tight_layout()
