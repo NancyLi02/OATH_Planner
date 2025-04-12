@@ -83,6 +83,17 @@ class CostMapClusterer:
                             w_j = np.exp(-d_j / r)
                             C_pre = C_min + (C_b - C_min) * w_j
 
+                            if len(group_lines) == 1 and len(junctions) > 0:
+                                line_center = LineString(group_lines[0].coords).centroid
+                                dist_to_center = pt.distance(line_center)
+                                center_penalty_weight = np.exp(-dist_to_center / (r * 0.6))
+
+                                max_penalty = 1.0
+                                scale = 3.0 
+                                penalty_strength = max_penalty * (1 - np.exp(-group_length / scale))
+
+                                C_pre += penalty_strength * center_penalty_weight
+
                             if touches_boundary:
                                 d_e = min(x - self.map_bounds[0], self.map_bounds[2] - x,
                                           y - self.map_bounds[1], self.map_bounds[3] - y)

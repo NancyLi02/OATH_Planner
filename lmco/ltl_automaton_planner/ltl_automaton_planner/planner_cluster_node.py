@@ -17,7 +17,7 @@ import networkx as nx
 from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers, build_graph_halton
 
 # Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID
+from ltl_automaton_msgs.msg import ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID
 from ltl_automaton_msgs.srv import * #TaskPlanning, TaskPlanningResponse, TaskReplanningAdd, TaskReplanningDelete, TaskReplanningRelabel, TaskReplanningAddResponse, TaskReplanningDeleteResponse
 
 # Import dynamic reconfigure components for dynamic parameters (see dynamic_reconfigure and dynamic_params package)
@@ -28,6 +28,7 @@ from ltl_automaton_planner.ltl_tools.ltl_planner import LTLPlanner
 import time
 import yaml
 from example_interfaces.srv import AddTwoInts
+import re
 
 def show_automaton(automaton_graph):
     pos=nx.spring_layout(automaton_graph)
@@ -99,6 +100,7 @@ class MainPlanner(Node):
         self.task_number = 0
         self.current_task_list = []
         self.pose_index = self.init_state
+        self.position = []
 
 
     def load_tasks(self, yaml_file):
@@ -250,7 +252,9 @@ class MainPlanner(Node):
         self.suffix_plan_pub = self.create_publisher(LTLPlan, 'suffix_plan', 10)
         self.publisher_ = self.create_publisher(RelayResponse, 'replanning_response', 10)   
         self.score_list_pub = self.create_publisher(ScoreList, 'score_list', qos_profile)
-        self.finish_build_auto_pub = self.create_publisher(RobotID, 'finish_building_auto', 10)     
+        self.finish_build_auto_pub = self.create_publisher(RobotID, 'finish_building_auto', 10)  
+        self.request_cluster_pub = self.create_publisher(ClusterRequest, 'cluster_request', 10)   
+        self.no_task_pub = self.create_publisher(NoTask, 'no_task', 10)
         
         # Initialize services 
         self.subscriber_ = self.create_subscription(
@@ -297,6 +301,7 @@ class MainPlanner(Node):
     def assign_new_task(self, msg):
         # Update current robot pose
         self.pose_index = msg.pose_index
+        self.position = msg.position
 
         # Remove the completed task from the list
         if self.current_task_list:
@@ -309,24 +314,34 @@ class MainPlanner(Node):
             self.get_logger().info(f"Assigning new task {self.task_number} to {self.agent_name}.")
             self.handle_task(self.task_number)
         else:
-            self.get_logger().info(f"No more tasks remaining for {self.agent_name}.")
+            self.request_cluster_msg = ClusterRequest()
+            self.request_cluster_msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
+            self.request_cluster_msg.position = self.position
+            self.request_cluster_pub.publish(self.request_cluster_msg)
+            self.get_logger().info(f"No more tasks remaining for {self.agent_name}, requesting for new cluster.......................................")
+
 
     def cluster_task_callback(self, msg):
         self.get_logger().info(f"Received task list for {self.agent_name}: {msg.task_sequence}")
         if not msg.task_sequence:
             self.get_logger().warn("Received empty task sequence.")
+            # Create and publish a NoTask message if the task sequence is empty.
+            no_task_msg = NoTask()
+            no_task_msg.robot_id = self.agent_name  # Set the robot_id (assume self.robot_id is defined)
+            self.no_task_pub.publish(no_task_msg)
             return
 
-        # Store task list
+        # Store the task list.
         self.current_task_list = list(msg.task_sequence)
-
-        # Take first task and process
+        
+        # Take the first task and process it.
         self.task_number = self.current_task_list[0]
         self.handle_task(self.task_number)
 
+
     def handle_task(self, task_index):
         # Get and format current pose
-        new_initial_pose = self.pose_index # 这里需要加入benchmarknode传回来的pose index
+        new_initial_pose = self.pose_index
         formatted_pose = f'{new_initial_pose}'
 
         # Prepare initial state
@@ -403,60 +418,6 @@ class MainPlanner(Node):
             score = max(0, 100 - (pre_score + suf_score))  # Prevent negative scores
             return score
         return 0  # Return 0 if no score is calculated
-
-    
-    # def new_task_callback(self, msg):
-    #     self.get_logger().info('---------------Task Reassignment Received---------------')
-
-    #     # Determine the agent name and extract the corresponding task
-    #     if self.agent_name == 'robot_1':
-    #         task_index = msg.robot_1_task
-    #         new_initial_pose = msg.robot_1_pos
-    #         self.get_logger().info(f'Robot 1 has been assigned to task {task_index}')
-    #     elif self.agent_name == 'robot_2':
-    #         task_index = msg.robot_2_task
-    #         new_initial_pose = msg.robot_2_pos
-    #         self.get_logger().info(f'Robot 2 has been assigned to task {task_index}')
-    #     elif self.agent_name == 'robot_3':
-    #         task_index = msg.robot_3_task
-    #         new_initial_pose = msg.robot_3_pos
-    #         self.get_logger().info(f'Robot 3 has been assigned to task {task_index}')
-    #     elif self.agent_name == 'robot_4':
-    #         task_index = msg.robot_4_task
-    #         new_initial_pose = msg.robot_4_pos
-    #         self.get_logger().info(f'Robot 4 has been assigned to task {task_index}')
-    #     else:
-    #         self.get_logger().error(f"Invalid agent name: {self.agent_name}")
-    #         return
-
-    #     # Ensure the task index is valid
-    #     if task_index is None:
-    #         self.get_logger().info(f"No task assigned to {self.agent_name}")
-    #         return
-        
-    #     self.task_number = task_index
-    #     # Format the pose_index into '' format
-    #     formatted_pose = f'{new_initial_pose}'
-
-    #     # Update initial state dictionary
-    #     self.initial_state_ts_dict = {
-    #         '2d_pose_region': formatted_pose,
-    #         'Drone_state': 'unloaded'
-    #     }
-
-    #     # Check if the task index is within a valid range
-    #     task_id = f'task{int(task_index)}'
-    #     self.cur_task = task_id
-    #     if task_id not in self.task_data:
-    #         self.get_logger().error(f"Invalid task index received: {task_index}")
-    #         return
-
-    #     # Build the automaton for the assigned task
-    #     self.get_logger().info(f"Calculating plan for {task_id} assigned to {self.agent_name}")
-    #     self.update_and_run_automaton(task_id, self.initial_state_ts_dict)
-
-    #     # Publish the plan
-    #     self.publish_plan(task_id)
         
     
     #----------------------------------------------

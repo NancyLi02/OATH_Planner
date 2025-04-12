@@ -7,5 +7,7 @@ int32 robot_id
 # The robot's position represented as an index in the grid
 int32 pose_index
 
+float64[] position
+
 # Whether the robot finished the task, 1=finished, 0=failed
 int32 task_status

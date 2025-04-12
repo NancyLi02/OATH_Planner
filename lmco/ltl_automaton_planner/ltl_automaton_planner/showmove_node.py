@@ -74,14 +74,14 @@ class ShowMoveNode(Node):
         # The process to integrate self.nodes and self.actions into the transition system is omitted
 
         self.color_mapping = {
-            'robot_1': {'loaded': (0, 0, 255),     # Blue
-                       'unloaded': (83, 77, 255)},# Light Blue
-            'robot_2': {'loaded': (0, 255, 0),       # Green
-                       'unloaded': (107, 255, 107)},# Light Green
-            'robot_3': {'loaded': (255, 0, 0),     # Purple
-                       'unloaded': (255, 92, 92)},# Light Purple
-            'robot_4': {'loaded': (255, 6, 231),   # Pink
-                       'unloaded': (255, 155, 246)} # Light Pink
+            'robot1': {'loaded': (0, 0, 255),     # Blue
+                       'unloaded': (83, 77, 255)},  # Light Blue
+            'robot2': {'loaded': (255, 0, 0),
+                       'unloaded': (255, 92, 92)},
+            'robot3': {'loaded': (255, 0, 0),
+                       'unloaded': (255, 92, 92)},
+            'robot4': {'loaded': (0, 0, 255),      # Pink
+                       'unloaded': (83, 77, 255)}   # Light Pink
         }
         self.waiting_color = (255, 165, 0)  # Orange
         self.notask_color = (96, 96, 96)
@@ -102,8 +102,9 @@ class ShowMoveNode(Node):
 
         # List of robot IDs
         self.robot_ids = ['robot1', 'robot2', 'robot3', 'robot4']
-        # self.robot_ids = ['robot1', 'robot2', 'robot3']
-        # Create subscribers for each robot topic (e.g., "/robot1/show_position")
+        # 定义特殊机器人的列表（这里以 robot2 为例）
+        self.special_robot_ids = ['robot2', 'robot3']
+        
         # Create subscribers for each robot topic (e.g., "/robot1/show_position")
         self.position_subscriptions = []
         for robot_id in self.robot_ids:
@@ -117,10 +118,8 @@ class ShowMoveNode(Node):
             # self.get_logger().info(f"Subscribed to topic: {topic}")
             self.position_subscriptions.append(position_subscription)
 
-        
         # Create a timer for periodic simulation updates (e.g., every 0.1 seconds)
         self.timer = self.create_timer(0.1, self.simulate)
-
 
     def position_callback(self, msg):
         """
@@ -155,7 +154,7 @@ class ShowMoveNode(Node):
     def transform_coords(self, coord):
         """Convert shapely coordinates to pygame coordinates."""
         x, y = coord
-        return int(x * self.world.cell_size ), int(-y * self.world.cell_size + self.world.height)
+        return int(x * self.world.cell_size), int(-y * self.world.cell_size + self.world.height)
 
     def simulate(self):
         # Process pygame events
@@ -179,32 +178,10 @@ class ShowMoveNode(Node):
                 pygame.draw.polygon(self.world.screen, RED, polygon_coords, 0)  # Filled polygon
 
         bumps = []
-        # coords = [[(13.0, 10.5), (13, 12), (15, 12), (15, 10.5)], \
-        #         [(12, 3), (12, 7), (14, 7), (14, 3)], \
-        #         [(7, 1), (7, 3), (8, 3), (8, 1)]]
         coords = []
         for coord in coords:
             polygon = Polygon(coord)
             bumps.append(polygon)
-
-
-        # Define the points dictionary with labels.
-        # points = {
-        #     (1, 6.5): 'b', 
-        #     (5.5, 9.5): 'c',
-        #     (9, 6.5): 'd',
-        #     (6, 3): 'e', # unload
-        #     (1, 13.5): 'f',
-        #     (9, 16.5): 'g',
-        #     (5, 16): 'h',     # unload
-        #     (11, 13.5): 'i',
-        #     (11, 16.5): 'j',
-        #     (19, 16.5): 'k',
-        #     (16, 13): 'l',    # unload
-        #     (11, 4): 'm',
-        #     (19, 6.5): 'n',
-        #     (16, 5.5): 'o'    # unload
-        # }
 
         points = {
                 (1, 4): 'bb', 
@@ -230,6 +207,9 @@ class ShowMoveNode(Node):
                 (19, 1): 'ee',
                 (16, 5.5): 'e' # unload
                 }
+        
+        # 定义特殊任务标签的集合（注意这些标签需与 points 中的值对应）
+        special_points = {'db', 'eb', 'bb', 'cd', 'fd'}
 
         # Define the set of points that are marked as unloaded.
         unloaded_points = {(6, 3), (5, 16), (16, 13), (16, 5.5)}
@@ -238,20 +218,29 @@ class ShowMoveNode(Node):
         GREEN = (107, 142, 35)
         SKY_BLUE = (135, 206, 235)
 
-       # Iterate through all points, choose color based on unloaded status, and draw a square.
+       # Iterate through all points, choose color based on unloaded status, and draw a shape.
         for pt, label in points.items():
+            # Convert logical coordinate to pixel coordinate using transform_coords method.
+            pixel_pos = self.transform_coords(pt)
+            # Define side length
+            side = self.world.cell_size // 2
+            # 如果该点是卸载点，则用绿色，否则用天蓝色
             if pt in unloaded_points:
                 color = GREEN
             else:
                 color = SKY_BLUE
-            # Convert logical coordinate to pixel coordinate using transform_coords method.
-            pixel_pos = self.transform_coords(pt)
-            # Define square side length.
-            side = self.world.cell_size // 2
-            # Create a rectangle with center at pixel_pos.
-            rect = pygame.Rect(pixel_pos[0] - side // 2, pixel_pos[1] - side // 2, side, side)
-            pygame.draw.rect(self.world.screen, color, rect)
-            # Draw the label next to the square.
+
+            # 如果任务为特殊任务（任务标签在 special_points 中），绘制红色三角形
+            if label in special_points:
+                top_vertex = (pixel_pos[0], pixel_pos[1] - side // 2)
+                left_vertex = (pixel_pos[0] - side // 2, pixel_pos[1] + side // 2)
+                right_vertex = (pixel_pos[0] + side // 2, pixel_pos[1] + side // 2)
+                pygame.draw.polygon(self.world.screen, RED, [top_vertex, left_vertex, right_vertex], 0)
+            else:
+                # 创建一个正方形
+                rect = pygame.Rect(pixel_pos[0] - side // 2, pixel_pos[1] - side // 2, side, side)
+                pygame.draw.rect(self.world.screen, color, rect)
+            # Draw the label next to the shape.
             font = pygame.font.SysFont("Arial", 16)
             text_surface = font.render(label, True, BLACK)
             self.world.screen.blit(text_surface, (pixel_pos[0] + 5, pixel_pos[1] + 5))
@@ -323,18 +312,15 @@ class ShowMoveNode(Node):
                 pos = info['pose']
                 color = info['mode']
                 pixel_pos = ((pos[0] * self.world.cell_size), (self.world.height - pos[1] * self.world.cell_size))
-                pygame.draw.circle(self.world.screen, color, pixel_pos, self.world.cell_size // 3)
+                # 如果是特殊机器人则绘制更大的圆形
+                radius = self.world.cell_size // 3
+                if robot_id in self.special_robot_ids:
+                    radius = self.world.cell_size // 2
+                pygame.draw.circle(self.world.screen, color, pixel_pos, radius)
                 font = pygame.font.SysFont("Arial", 16)
                 text_surface = font.render(robot_id, True, BLACK)
                 self.world.screen.blit(text_surface, (pixel_pos[0] + 5, pixel_pos[1] + 5))
-        
-        # Capture the screen image for video saving (if needed)
-        # pygame_surface = pygame.display.get_surface()
-        # pygame_pixels = pygame.surfarray.array3d(pygame_surface)
-        # image = np.flipud(pygame_pixels)
-        # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        # self.world.output_video.write(image)
-        
+
         pygame.display.flip()
         self.world.clock.tick(30)
 

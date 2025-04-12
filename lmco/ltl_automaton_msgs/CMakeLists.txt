@@ -38,6 +38,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ClusterTaskassign.msg"
   "msg/RobotID.msg"
   "msg/TaskRequestCluster.msg"
+  "msg/ClusterRequest.msg"
+  "msg/NoTask.msg"
   
   # Generate services in the 'srv' folder
   "srv/TrapCheck.srv"

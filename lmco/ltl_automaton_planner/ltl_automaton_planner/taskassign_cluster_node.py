@@ -3,19 +3,29 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from ltl_automaton_planner.CostMapClusterer import CostMapClusterer
-from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID
+from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest
 
 # -------------------- CBAA Algorithm --------------------
 class CBAA:
     def __init__(self):
         pass
 
-    def select_task(self, scores_list, y, robot_index):
+    def select_task(self, scores_list, y, robot_index, robot_types, task_types):
+        """
+        Perform auction based on each robot's scores and task types:
+          - For normal robots, the score for special tasks is always 0.
+          - If a normal robot selects a special task, return -1.
+        """
         robot_scores = scores_list[robot_index]
         valid_task = [(1 if score > y_value else 0) for score, y_value in zip(robot_scores, y)]
-
+        
         if sum(valid_task) > 0:
             valid_indices = [i for i, valid in enumerate(valid_task) if valid == 1]
+            # If the robot is normal, filter out special tasks.
+            if robot_types[robot_index] == 'normal':
+                valid_indices = [i for i in valid_indices if task_types[i] != 'special']
+            if not valid_indices:
+                return -1
             best_task_index = max(valid_indices, key=lambda idx: robot_scores[idx])
             best_task_score = robot_scores[best_task_index]
             y[best_task_index] = best_task_score
@@ -33,17 +43,22 @@ class CBAA:
                 break
         return x, assigned_tasks
 
-    def initial_task_assignment(self, scores_list):
+    def initial_task_assignment(self, scores_list, robot_types, task_types):
+        """
+        Continue the auction process until every robot has been assigned a task.
+        """
         task_count = len(scores_list[0])
-        x = [[0] * task_count for _ in range(len(scores_list))]
+        num_robots = len(scores_list)
+        x = [[0] * task_count for _ in range(num_robots)]
         y = [0] * task_count
         assigned_tasks = []
         unassigned_robots = []
 
+        # Continue until each robot has a task assignment.
         while any(sum(row) == 0 for row in x):
-            for robot_index in range(len(scores_list)):
+            for robot_index in range(num_robots):
                 if sum(x[robot_index]) == 0:
-                    task_index = self.select_task(scores_list, y, robot_index)
+                    task_index = self.select_task(scores_list, y, robot_index, robot_types, task_types)
                     if task_index != -1:
                         x, assigned_tasks = self.conflict_resolve(task_index, assigned_tasks, x)
                         x[robot_index][task_index] = 1
@@ -65,24 +80,32 @@ class TaskAssignNode(Node):
     def __init__(self):
         super().__init__('taskassign_node')
 
-        # ----- Static robot poses -----
+        # ----- Static robot poses and names -----
         self.robot_count = 4
+        # Unified robot names: "robot1", "robot2", etc.
         self.robot_names = [f'robot{i}' for i in range(1, self.robot_count + 1)]
-        self.robot_names_ = [f'robot_{i}' for i in range(1, self.robot_count + 1)]
         self.robot_poses = [
-            (1, 19),  # robot_1
-            (11, 19), # robot_2
-            (9, 11),  # robot_3
-            (11, 9)   # robot_4
+            (1, 19),   # robot1 (normal robot)
+            (11, 19),  # robot2 (special robot)
+            (9, 11),   # robot3 (special robot)
+            (11, 9)    # robot4 (normal robot)
         ]
 
-        # Publishers per robot namespace
+        # Define robot types: only robot2 and robot3 are 'special'; others are 'normal'
+        self.robot_types = []
+        for i in range(self.robot_count):
+            if i in [1, 2]:
+                self.robot_types.append('special')
+            else:
+                self.robot_types.append('normal')
+
+        # Publishers for each robot namespace
         self.task_pubs = {}
         for idx, robot in enumerate(self.robot_names):
             topic = f"/{robot}/ClusterTaskassign"
             self.task_pubs[robot] = self.create_publisher(ClusterTaskassign, topic, 10)
 
-        # Subscriber to finish_building_auto
+        # Subscribers for finish_building_auto topic from each robot
         self.finished_robots = set()
         self.finish_subs = []
         for robot in self.robot_names:
@@ -90,69 +113,253 @@ class TaskAssignNode(Node):
             sub = self.create_subscription(RobotID, topic, self.finish_callback, 10)
             self.finish_subs.append(sub)
 
-        # ----- Load wall & task info -----
+        # Subscribers for new cluster request topics
+        self.new_cluster_request_subs = []
+        for robot in self.robot_names:
+            topic = f"/{robot}/cluster_request"
+            sub = self.create_subscription(ClusterRequest, topic, self.assign_new_cluster, 10)
+            self.new_cluster_request_subs.append(sub)
+
+        # ----- Load wall and task info -----
         parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner'))
         wall_path = os.path.join(parent_dir, 'config', 'wall.yaml')
 
         points_with_label = {
-            (1.0, 4): 'bb', (6, 6): 'cb', (1, 6.5): 'db', (5.5, 9.5): 'eb', (9, 6.5): 'fb',
-            (1.0, 13.5): 'bc', (9, 16.5): 'cc', (1, 16): 'dc', (6, 13): 'ec',
-            (11.0, 13.5): 'bd', (11, 16.5): 'cd', (19, 16.5): 'dd', (19, 19): 'ed', (15, 19.5): 'fd',
-            (11.0, 4.0): 'be', (19, 6.5): 'ce', (16, 3): 'de', (19, 1): 'ee'
+            (1, 4): 'bb', 
+            (6, 6): 'cb',
+            (1, 6.5): 'db', 
+            (5.5, 9.5): 'eb',
+            (9, 6.5): 'fb',
+
+            (1, 13.5): 'bc',
+            (9, 16.5): 'cc',
+            (1, 16): 'dc', 
+            (6, 13): 'ec',
+
+            (11, 13.5): 'bd',
+            (11, 16.5): 'cd',
+            (19, 16.5): 'dd',
+            (19, 19): 'ed', 
+            (15, 19.5): 'fd',
+
+            (11, 4): 'be',
+            (19, 6.5): 'ce',
+            (16, 3): 'de', 
+            (19, 1): 'ee'
         }
 
-        self.points_with_label = {
-            tuple(map(float, k)): v for k, v in points_with_label.items()
-        }
+        self.points_with_label = {tuple(map(float, k)): v for k, v in points_with_label.items()}
         self.label_to_index = {label: idx + 1 for idx, label in enumerate(self.points_with_label.values())}
-        self.clusterer = CostMapClusterer(wall_yaml_path=wall_path, points_with_label=self.points_with_label)
-        self.centers, self.clusters = self.clusterer.cluster()
+
+        # Define special task labels.
+        special_labels = {'db', 'eb', 'bb', 'cd', 'fd'}
+
+        # Load wall data from YAML file and perform task clustering, passing in special labels.
+        self.clusterer = CostMapClusterer(
+            wall_yaml_path=wall_path, 
+            points_with_label=self.points_with_label,
+            special_labels=special_labels
+        )
+        (self.centers_other, self.clusters_other), (self.centers_special, self.clusters_special) = self.clusterer.cluster()
+        # Add self.valid_cluster: an array with length equal to the total number of clusters, each initialized to 1.
+        self.valid_cluster = [1] * (len(self.clusters_other) + len(self.clusters_special))
+        self.robot_cluster_indices = {}
+
+        # Create CBAA auction algorithm object.
         self.cbaa_algorithm = CBAA()
+
+    def assign_new_cluster(self, msg):
+        self.get_logger().info(f"Received new cluster assign request from Robot{msg.robot_id}.")
+        robot_id = msg.robot_id  # robot_id is an integer (1,2,3,4)
+        robot_index = robot_id - 1
+        robot_name = self.robot_names[robot_index]
+        
+        # Initialize robot_cluster_indices if it does not exist.
+        if not hasattr(self, 'robot_cluster_indices'):
+            self.robot_cluster_indices = {}
+
+        # Update valid_cluster: set the previous cluster assignment for this robot to 0.
+        if self.robot_cluster_indices.get(robot_name, -1) != -1:
+            finished_cluster_index = self.robot_cluster_indices[robot_name]
+            self.get_logger().info(f"Updating valid_cluster: setting cluster {finished_cluster_index} to 0 for {robot_name}.")
+            self.valid_cluster[finished_cluster_index] = 0
+
+        # Update the robot's position using the position information from the message.
+        # msg.position is already in float64[] format.
+        new_position = msg.position
+        self.robot_poses[robot_index] = new_position
+        self.get_logger().info(f"Updated position for {robot_name} to {new_position}.")
+
+        # Prepare clustering information.
+        all_clusters = self.clusters_other + self.clusters_special
+        task_types = ['normal'] * len(self.centers_other) + ['special'] * len(self.centers_special)
+        
+        # Compute the score for the requested robot only.
+        scores = []
+        for j, (center, t_type) in enumerate(zip(all_clusters, task_types)):
+            # If the cluster is invalid (already assigned), set the score to 0.
+            if self.valid_cluster[j] == 0:
+                scores.append(0.0)
+                continue
+            dist = np.linalg.norm(np.array(new_position) - np.array(center))
+            base_score = 100.0 / (dist + 1e-5)
+            if t_type == 'special':
+                if self.robot_types[robot_index] == 'special':
+                    score = base_score * 1.5  # Bonus for special tasks
+                else:
+                    score = 0.0  # Normal robot gets 0 for special tasks
+            else:
+                score = base_score
+            scores.append(score)
+
+        # Select the best candidate index for this robot.
+        best_index = -1
+        best_score = 0.0
+        for j, sc in enumerate(scores):
+            if sc > best_score:
+                best_score = sc
+                best_index = j
+
+        if best_index == -1 or best_score == 0.0:
+            self.robot_cluster_map[robot_name] = []
+            self.robot_cluster_indices[robot_name] = -1
+            self.get_logger().info(f"No valid cluster found for {robot_name}. Assignment is empty.")
+        else:
+            self.robot_cluster_map[robot_name] = all_clusters[best_index]
+            self.robot_cluster_indices[robot_name] = best_index
+            # Mark the selected cluster as used by updating its valid_cluster flag to 0.
+            self.valid_cluster[best_index] = 0
+            self.get_logger().info(f"Assigned cluster {best_index} with score {best_score:.2f} to {robot_name}.")
+
+        # Record this robot as the one that was just re-assigned.
+        self.last_assigned_robot = robot_name
+
+        # Generate task sequences and publish re-assignment only for the updated robot.
+        self.generate_task_sequences()
+        self.publish_task_reassignments()
+
+
 
     def finish_callback(self, msg):
         self.get_logger().info(f"Received finish_building_auto from {msg.robot_id}")
         self.finished_robots.add(msg.robot_id)
-        if all(name in self.finished_robots for name in self.robot_names_):
+        # When all robots have finished building, start task assignment.
+        if all(name in self.finished_robots for name in self.robot_names):
             self.get_logger().info("All robots finished building, starting task assignment...")
             self.init_task_assign()
             self.generate_task_sequences()
             self.publish_task_assignments()
 
     def init_task_assign(self):
+        # Combine normal and special task centers and construct the task type list.
+        all_centers = self.centers_other + self.centers_special
+        self.all_clusters = all_centers
+        task_types = ['normal'] * len(self.centers_other) + ['special'] * len(self.centers_special)
+        self.task_types = task_types
+
+        # Compute each robot's score for every task center.
+        # Score = 100 / (distance + epsilon).
+        # For special tasks: if the robot is special, the score is multiplied by 1.5; if normal, score is 0.
         scores = []
-        for robot_pose in self.robot_poses:
+        for i, robot_pose in enumerate(self.robot_poses):
             robot_scores = []
-            for center in self.centers:
+            for j, (center, t_type) in enumerate(zip(self.all_clusters, self.task_types)):
                 dist = np.linalg.norm(np.array(robot_pose) - np.array(center))
-                score = 100.0 / (dist + 1e-5)
+                base_score = 100.0 / (dist + 1e-5)
+                if t_type == 'special':
+                    if self.robot_types[i] == 'special':
+                        score = base_score * 1.5
+                    else:
+                        score = 0.0
+                else:
+                    score = base_score
                 robot_scores.append(score)
             scores.append(robot_scores)
 
-        assigned, _ = self.cbaa_algorithm.initial_task_assignment(scores)
+        # Call the auction algorithm for initial task assignment.
+        assigned, _ = self.cbaa_algorithm.initial_task_assignment(scores, self.robot_types, task_types)
 
+        # Map the auction results with the clustering data:
+        # Combine the clustering results from both parts.
+        all_clusters = self.clusters_other + self.clusters_special
         self.robot_cluster_map = {name: [] for name in self.robot_names}
-        for robot_index, cluster_index in assigned:
+        for robot_index, task_index in assigned:
             robot_name = self.robot_names[robot_index]
-            cluster_labels = self.clusters[cluster_index]
-            self.robot_cluster_map[robot_name] = cluster_labels
+            if task_index == -1:
+                # If a normal robot wins a special task (or no valid task), mark assignment as empty.
+                self.robot_cluster_map[robot_name] = []
+            else:
+                self.robot_cluster_map[robot_name] = all_clusters[task_index]
+                # Update valid_cluster: mark the assigned cluster as used by setting its valid_cluster flag to 0.
+                self.valid_cluster[task_index] = 0
 
         print("\n=== Final Cluster Assignment ===")
         for robot, tasks in self.robot_cluster_map.items():
             print(f"{robot}: {tasks}")
 
+
+
+    # def init_task_assign(self):
+    #     # Combine clustering centers of normal tasks and special tasks; construct task type list.
+    #     all_centers = self.centers_other + self.centers_special
+    #     task_types = ['normal'] * len(self.centers_other) + ['special'] * len(self.centers_special)
+
+    #     # Calculate each robot's score for every task center.
+    #     # Score = 100 / (distance + epsilon).
+    #     # For special tasks, if the robot is special, the score is increased 1.5x;
+    #     # If the robot is normal, the score for special tasks is 0.
+    #     scores = []
+    #     for i, robot_pose in enumerate(self.robot_poses):
+    #         robot_scores = []
+    #         for center, task_type in zip(all_centers, task_types):
+    #             dist = np.linalg.norm(np.array(robot_pose) - np.array(center))
+    #             base_score = 100.0 / (dist + 1e-5)
+    #             if task_type == 'special' and self.robot_types[i] == 'special':
+    #                 score = base_score * 1.5  # Special task bonus
+    #             elif task_type == 'special' and self.robot_types[i] == 'normal':
+    #                 score = 0.0  # Normal robot gets 0 for special tasks
+    #             else:
+    #                 score = base_score
+    #             robot_scores.append(score)
+    #         scores.append(robot_scores)
+
+    #     # Call the auction algorithm for initial task assignment.
+    #     assigned, _ = self.cbaa_algorithm.initial_task_assignment(scores, self.robot_types, task_types)
+
+    #     # Map the auction results with the clustering data:
+    #     # Combine the clustering results from both parts.
+    #     all_clusters = self.clusters_other + self.clusters_special
+    #     self.robot_cluster_map = {name: [] for name in self.robot_names}
+    #     for robot_index, task_index in assigned:
+    #         robot_name = self.robot_names[robot_index]
+    #         if task_index == -1:
+    #             # If a normal robot wins a special task (or no valid task), mark assignment as empty.
+    #             self.robot_cluster_map[robot_name] = []
+    #         else:
+    #             self.robot_cluster_map[robot_name] = all_clusters[task_index]
+
+    #     print("\n=== Final Cluster Assignment ===")
+    #     for robot, tasks in self.robot_cluster_map.items():
+    #         print(f"{robot}: {tasks}")
+        
+    #     # 这里加一个更新self.valid_cluster，把所有分配完的cluster的valid_cluster对应的1都改成0
+
+
+
     def generate_task_sequences(self):
         self.robot_task_sequence = {}
+        # Build mappings: label to coordinate, and coordinate to label.
         label_to_point = {v: k for k, v in self.points_with_label.items()}  # label -> point
-        point_to_label = {k: v for k, v in self.points_with_label.items()}  # point -> label ✅
-
+        point_to_label = {k: v for k, v in self.points_with_label.items()}  # point -> label
 
         for robot_name, task_points in self.robot_cluster_map.items():
             current_pos = self.robot_poses[self.robot_names.index(robot_name)]
-            remaining = task_points[:]  # These are points like (1.0, 13.5)
+            # If the cluster is empty, assign an empty sequence.
+            remaining = task_points[:] if isinstance(task_points, list) else []
             sequence = []
 
             while remaining:
-                # Find the closest point
+                # Select the nearest task point to the current position.
                 nearest = min(remaining, key=lambda pt: np.linalg.norm(np.array(current_pos) - np.array(pt)))
                 label = point_to_label.get(tuple(map(float, nearest)))
                 if label is None:
@@ -166,19 +373,30 @@ class TaskAssignNode(Node):
 
             self.robot_task_sequence[robot_name] = sequence
 
-        print("\n=== Task Execution Sequences (NNH, by task index) ===")
+        print("\n=== Task Execution Sequences (by task index) ===")
         for robot, seq in self.robot_task_sequence.items():
             print(f"{robot}: {seq}")
-
 
     def publish_task_assignments(self):
         for idx, robot in enumerate(self.robot_names):
             msg = ClusterTaskassign()
             msg.robot_id = idx + 1
-            msg.task_sequence = self.robot_task_sequence[robot]
+            msg.task_sequence = self.robot_task_sequence.get(robot, [])
             self.task_pubs[robot].publish(msg)
             print(f"Published task sequence to {robot}: {msg.task_sequence}")
-
+    
+    def publish_task_reassignments(self):
+        # Publish task assignment only for the newly assigned robot.
+        if hasattr(self, "last_assigned_robot"):
+            robot = self.last_assigned_robot
+            idx = self.robot_names.index(robot)
+            msg = ClusterTaskassign()
+            msg.robot_id = idx
+            msg.task_sequence = self.robot_task_sequence.get(robot, [])
+            self.task_pubs[robot].publish(msg)
+            print(f"Published task sequence to {robot}: {msg.task_sequence}")
+        else:
+            self.get_logger().warn("No new assignment available to publish.")
 
 def main(args=None):
     rclpy.init(args=args)
@@ -190,7 +408,6 @@ def main(args=None):
     finally:
         task_assign_node.destroy_node()
         rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()

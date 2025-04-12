@@ -199,6 +199,12 @@ class LTLControllerDrone(Node):
         self.total_cost = 0
         self.if_obs = False
 
+        self.running_time = 0
+        self.start_time = 0
+        self.end_time = 0
+        self.first_call = True
+        self.last_call = True
+
         if self.agent_name == 'robot_1':
             self.pose = (1, 19)
         elif self.agent_name =='robot_2':
@@ -234,6 +240,10 @@ class LTLControllerDrone(Node):
         self.no_task = True
         self.final_on_hold = True
         self.mode = EquipmentMode.NOTASK
+        if self.last_call:
+                self.end_time = time.time()
+                self.running_time = self.end_time - self.start_time
+                self.last_call = False
         
 
     
@@ -263,6 +273,9 @@ class LTLControllerDrone(Node):
         self.get_logger().info(f"Publishing update current pose index for {self.agent_name}: {self.pose_index}, with state {current_pos_msg.current_state}.")
 
     def prefix_plan_callback(self, msg):
+        if self.first_call:
+            self.start_time = time.time()
+            self.first_call = False
         self.plan_index = 0
         self.cur_task = msg.cur_task
         self.world.block.clear()
@@ -597,6 +610,7 @@ class LTLControllerDrone(Node):
             elif self.mode == EquipmentMode.NOTASK:
                 mode = 'NoTask'
                 self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
+                self.get_logger().info(f'Total running time is {self.running_time}seconds.')
 
             msg = ShowPosition()   # Create a new ShowPosition message instance
             msg.robot_id = self.agent_name

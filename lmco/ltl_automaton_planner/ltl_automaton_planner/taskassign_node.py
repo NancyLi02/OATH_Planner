@@ -113,6 +113,10 @@ class TaskAssignNode(Node):
         self.pose_index_list = {}
         self.score_list = {}
 
+        self.task_assign_time = 0.0
+        self.start_time = 0.0
+        self.end_time = 0.0
+
         # To check whether new request pending
         self.new_request_pending = False
 
@@ -214,6 +218,11 @@ class TaskAssignNode(Node):
         self.get_logger().info(f'Updated valid tasks: {self.valid_tasks}.')
 
     def score_list_receive_callback(self, msg): 
+
+        if self.first_call:
+            self.start_time = time.time()
+            self.first_call = False
+
         robot_id = msg.robot_id  # Keep robot_id as a string, e.g., 'robot_1'
         self.get_logger().info(f'Received score list from {robot_id}')
         
@@ -427,6 +436,8 @@ class TaskAssignNode(Node):
             self.unloaded_robots = {}
             self.new_cycle = True
             self.new_request_pending = False
+            self.start_time = 0
+            self.end_time = 0
 
 
     # def update_pose(self):
@@ -461,6 +472,9 @@ class TaskAssignNode(Node):
                 self.position_request_publishers[robot].publish(position_request_msg)
         
         self.get_logger().info(f'Sent position request with ID: {request_id}')
+
+        if self.new_cycle:
+            self.start_time = time.time()
 
         self.new_cycle = False # start checking new request
 
@@ -513,6 +527,10 @@ class TaskAssignNode(Node):
                 self.stop_waiting_publishers[robot].publish(stop_waiting_msg)
 
         self.previous_assigned_tasks = copy.deepcopy(self.assigned_tasks)
+
+        self.end_time = time.time()
+        self.task_assign_time += (self.end_time - self.start_time)
+        self.get_logger().info(f'===========Total Task Reassignment Time is {self.task_assign_time} seconds.==========================')
 
 
 

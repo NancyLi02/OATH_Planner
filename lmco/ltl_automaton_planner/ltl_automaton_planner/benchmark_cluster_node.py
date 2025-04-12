@@ -7,7 +7,7 @@ import yaml
 import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
+from ltl_automaton_msgs.msg import NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
@@ -23,6 +23,7 @@ import time
 import csv
 from shapely.geometry import Point, LineString, Polygon
 from example_interfaces.srv import AddTwoInts
+import re
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
 #                       -----------------
@@ -166,7 +167,7 @@ class LTLControllerDrone(Node):
         )
 
         self.no_task_sub = self.create_subscription(
-            WaitingRequest,
+            NoTask,
             'no_task',
             self.no_task_callback,
             10
@@ -199,13 +200,13 @@ class LTLControllerDrone(Node):
         self.total_cost = 0
         self.if_obs = False
 
-        if self.agent_name == 'robot_1':
+        if self.agent_name == 'robot1':
             self.pose = (1, 19)
-        elif self.agent_name =='robot_2':
+        elif self.agent_name =='robot2':
             self.pose = (11, 19)
-        elif self.agent_name =='robot_3':
+        elif self.agent_name =='robot3':
             self.pose = (9, 11)
-        elif self.agent_name =='robot_4':
+        elif self.agent_name =='robot4':
             self.pose = (11, 9)
         
 
@@ -273,10 +274,10 @@ class LTLControllerDrone(Node):
             # self.on_hold = True
         self.get_logger().info("receive data pre")
         self.prefix_action_list = msg.action_sequence
-        self.get_logger().info(f"length prefix_action_list: {len(self.prefix_action_list)}")
+        # self.get_logger().info(f"length prefix_action_list: {len(self.prefix_action_list)}")
         self.prefix_state_sequence = msg.ts_state_sequence
-        self.get_logger().info("end data pre")
-        self.get_logger().info(f'Prefix list received is {self.prefix_action_list}')
+        # self.get_logger().info("end data pre")
+        # self.get_logger().info(f'Prefix list received is {self.prefix_action_list}')
         
         # self.prefix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
 
@@ -284,10 +285,10 @@ class LTLControllerDrone(Node):
         # self.on_hold = False
         self.get_logger().info("receive data sub")
         self.suffix_action_list = msg.action_sequence
-        self.get_logger().info(f"length suffix_action_list: {len(self.suffix_action_list)}")
+        # self.get_logger().info(f"length suffix_action_list: {len(self.suffix_action_list)}")
         self.suffix_state_sequence = msg.ts_state_sequence
-        self.get_logger().info("end data sub")
-        self.get_logger().info(f'Suffix list received is {self.suffix_action_list}')
+        # self.get_logger().info("end data sub")
+        # self.get_logger().info(f'Suffix list received is {self.suffix_action_list}')
         
         # self.suffix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
         
@@ -380,10 +381,10 @@ class LTLControllerDrone(Node):
                         elif str(act) == "load":
                             self.mode = EquipmentMode.LOADED
                             msg = UpdateValidTasks()
-                            msg.robot_id = int(self.agent_name.split('_')[-1])
+                            msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
                             msg.loaded_task = self.cur_task
                             self.update_valid_tasks_pub.publish(msg)
-                            self.get_logger().info(f'==================Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}==================')
+                            # self.get_logger().info(f'==================Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}==================')
                         elif str(act) == "goto_rescue":
                             self.mode = EquipmentMode.RESCUE
                         else: # including action "stay", nothing particular needs to be done
@@ -484,7 +485,7 @@ class LTLControllerDrone(Node):
                         elif str(act) == "load":
                             self.mode = EquipmentMode.LOADED
                             msg = UpdateValidTasks()
-                            msg.robot_id = int(self.agent_name.split('_')[-1])
+                            msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
                             msg.loaded_task = self.cur_task
                             self.update_valid_tasks_pub.publish(msg)
                             self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
@@ -541,11 +542,12 @@ class LTLControllerDrone(Node):
 
 
     def publish_task_request(self):
-        robot_id = int(self.agent_name.split('_')[-1])
+        robot_id = int(re.findall(r'\d+', self.agent_name)[0])
         task_request_msg = TaskRequestCluster()
         task_request_msg.robot_id = robot_id
         task_request_msg.task_status = 1
         task_request_msg.pose_index = self.pose_index
+        task_request_msg.position = [float(x) for x in self.pose]
 
         
         self.taskassignment_request_pub.publish(task_request_msg)
@@ -591,10 +593,10 @@ class LTLControllerDrone(Node):
                 mode = 'loaded'
             elif self.mode == EquipmentMode.WAITTASK:
                 mode = 'Waiting'
-                self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
+                # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
             elif self.mode == EquipmentMode.NOTASK:
                 mode = 'NoTask'
-                self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
+                # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
 
             msg = ShowPosition()   # Create a new ShowPosition message instance
             msg.robot_id = self.agent_name

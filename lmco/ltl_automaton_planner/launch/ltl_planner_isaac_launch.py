@@ -43,7 +43,7 @@ def generate_launch_description():
     
     for i in range(1, 5):  # 4 robots
         robot_namespace = f'robot{i}'
-        agent_name = f'robot_{i}'
+        agent_name = f'robot{i}'
         init_state_arg = f'robot{i}_init_state'
         
         declare_namespace_cmd = DeclareLaunchArgument(
