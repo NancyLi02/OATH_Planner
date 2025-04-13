@@ -355,7 +355,7 @@ class LTLControllerDrone(Node):
                                     self.get_logger().error(f'Failed to call service: {e}')
                                     exit(1)
                             # self.get_logger().info("beanchmark fix 0.4")       
-                            if check_in_bump(act, self.nodes) and str(act) not in self.world.bump:
+                            if check_in_bump(act, self.nodes, self.agent_name) and str(act) not in self.world.bump:
                                 self.get_logger().info("--------Bump detected---------")
                                 self.world.bump[str(act)] = 1
                                 # self.if_obs = True
@@ -463,7 +463,7 @@ class LTLControllerDrone(Node):
                                     self.get_logger().error(f'Failed to call service: {e}')
                                     exit(1)
                             # self.get_logger().info("beanchmark fix 0.4")       
-                            if check_in_bump(act, self.nodes) and str(act) not in self.world.bump:
+                            if check_in_bump(act, self.nodes, self.agent_name) and str(act) not in self.world.bump:
                                 self.get_logger().info("--------Bump detected---------")
                                 self.world.bump[str(act)] = 1
                                 # self.if_obs = True

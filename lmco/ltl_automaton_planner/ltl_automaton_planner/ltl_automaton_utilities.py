@@ -202,25 +202,31 @@ def check_in_block(action, nodes):
 
     return any(connection.intersects(block) for block in blocks)
         
-def check_in_bump(action, nodes):
-    #from_pose_index = extract_numbers(str(action))[0]
+def check_in_bump(action, nodes, agent_name):
+    # Only 'robot2' and 'robot3' can possibly trigger a bump check; others always return False.
+    if agent_name not in ['robot2', 'robot3']:
+        return False
+
     to_pose_index = extract_numbers(str(action))[1]
-    #from_pose = nodes[f'{from_pose_index}']['attr']['pose']
     to_pose = nodes[f'{to_pose_index}']['attr']['pose']
+
+    # Define bump polygon coordinates
+    coords = [
+        [(4.1, 1.1), (4.1, 2.0), (2.5, 2.0), (2.5, 1.1)],
+        [(17.5, 15), (20, 15), (20, 13), (17.5, 13)],
+        [(17.5, 5), (20, 5), (20, 3), (17.5, 3)]
+    ]
     
     bumps = []
-    # coords = [[(4.1, 1.1), (4.1, 2.0), (6.0, 2.0), (6.0, 1.1)], \
-    #           [(1.1, 3.1), (1.1, 5.0), (2.0, 5.0), (2, 4), (3.0, 4.0), (3.0, 3.0)], \
-    #           [(6, 6), (6, 7), (7, 7), (7, 6)], \
-    #             [(7, 1), (7, 3), (8, 3), (8, 1)]]
-    coords = []
     for coord in coords:
         polygon = Polygon(coord)
         bumps.append(polygon)
-    
-    if not any(poly.contains(Point(to_pose)) for poly in bumps):
-        return False
-    return True
+
+    # Return True if the to_pose is contained within any of the bump polygons, otherwise return False.
+    if any(poly.contains(Point(to_pose)) for poly in bumps):
+        return True
+    return False
+
 
 def state_models_from_ts(TS_dict, initial_states_dict=None):
     state_models = []

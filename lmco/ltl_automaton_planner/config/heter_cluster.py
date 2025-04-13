@@ -14,7 +14,7 @@ GRID_SPACING = 0.1
 MAP_BOUNDS = (0, 0, 20, 20)
 cost_boost_factor = 6
 # Define the number of clusters for each task type
-num_clusters_other = 4
+num_clusters_other = 6
 num_clusters_special = 2
 
 # ---------- Task Points ----------
@@ -80,6 +80,7 @@ for comp in components:
     group_geom = unary_union(group_lines)
     group_length = sum(line.length for line in group_lines)
     base_cost = (group_length / 6) ** 2
+    # base_cost = group_length
     max_possible_cost = base_cost + 3.0
     min_cost = 0.3
     decay_radius = 1

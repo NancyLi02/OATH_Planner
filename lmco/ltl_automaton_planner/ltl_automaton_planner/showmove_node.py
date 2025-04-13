@@ -28,7 +28,7 @@ WHITE  = (255, 255, 255)
 BLACK  = (0, 0, 0)
 GREY   = (190, 190, 190)
 RED    = (255, 0, 0)
-YELLOW = (255, 255, 222)
+YELLOW = (255, 255, 100)
 BLUE   = (0, 0, 128)
 
 # Additional colors for tasks (loaded/unloaded)
@@ -214,7 +214,11 @@ class ShowMoveNode(Node):
 
         # If there are bump coordinates, you can construct bump polygons here (currently, coords is empty)
         bumps = []
-        coords = []
+        coords = [
+            [(4.1, 1.1), (4.1, 2.0), (2.5, 2.0), (2.5, 1.1)],
+            [(17.5, 15), (20, 15), (20, 13), (17.5, 13)],
+            [(17.5, 5), (20, 5), (20, 3), (17.5, 3)]
+        ]
         for coord in coords:
             polygon = Polygon(coord)
             bumps.append(polygon)
