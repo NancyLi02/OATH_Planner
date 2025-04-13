@@ -342,7 +342,6 @@ class TaskAssignNode(Node):
     #     for robot, tasks in self.robot_cluster_map.items():
     #         print(f"{robot}: {tasks}")
         
-    #     # 这里加一个更新self.valid_cluster，把所有分配完的cluster的valid_cluster对应的1都改成0
 
 
 

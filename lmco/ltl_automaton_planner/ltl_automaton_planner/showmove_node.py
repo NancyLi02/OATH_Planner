@@ -8,7 +8,7 @@ from shapely.geometry import LineString, Polygon
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
 import sys
 import cv2
-from ltl_automaton_msgs.msg import ShowPosition
+from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks
 from enum import Enum
 import threading
 import yaml
@@ -31,6 +31,11 @@ RED    = (255, 0, 0)
 YELLOW = (255, 255, 222)
 BLUE   = (0, 0, 128)
 
+# Additional colors for tasks (loaded/unloaded)
+GREEN    = (107, 142, 35)      # For unload task points
+SKY_BLUE = (135, 206, 235)     # For unfinished load task points
+# notask_color already defined as grey, used to indicate finished (or no task) task points
+NOTASK_COLOR = (96, 96, 96)
 
 # ---------- Walls ----------
 def load_lines_from_yaml():
@@ -84,7 +89,7 @@ class ShowMoveNode(Node):
                        'unloaded': (83, 77, 255)}   # Light Pink
         }
         self.waiting_color = (255, 165, 0)  # Orange
-        self.notask_color = (96, 96, 96)
+        self.notask_color = NOTASK_COLOR     # Grey color for finished tasks
 
         self.lines = load_lines_from_yaml()        
 
@@ -92,7 +97,7 @@ class ShowMoveNode(Node):
 
         self.check_in_blocks = [LineString([(5, 4), (6, 4)]),
                                 LineString([(4, 15), (5, 15)])]
-        self.blocks= [block.buffer(distance=0.1, cap_style=3) for block in self.check_in_blocks]
+        self.blocks = [block.buffer(distance=0.1, cap_style=3) for block in self.check_in_blocks]
 
         # Dictionary to store all robot states in the format:
         # {'robot_id': {'pose': (x, y), 'mode': (R, G, B)}}
@@ -102,11 +107,16 @@ class ShowMoveNode(Node):
 
         # List of robot IDs
         self.robot_ids = ['robot1', 'robot2', 'robot3', 'robot4']
-        # 定义特殊机器人的列表（这里以 robot2 为例）
         self.special_robot_ids = ['robot2', 'robot3']
         
-        # Create subscribers for each robot topic (e.g., "/robot1/show_position")
+        # Initialize subscriptions lists
         self.position_subscriptions = []
+        self.update_valid_tasks_subs = []
+        
+        # Initialize finished tasks set to store completed task indices
+        self.finished_tasks = set()
+
+        # Create subscribers for each robot topic (e.g., "/robot1/show_position")
         for robot_id in self.robot_ids:
             topic = f"/{robot_id}/show_position"
             position_subscription = self.create_subscription(
@@ -118,8 +128,32 @@ class ShowMoveNode(Node):
             # self.get_logger().info(f"Subscribed to topic: {topic}")
             self.position_subscriptions.append(position_subscription)
 
+        # Create subscribers for update_valid_tasks on separate list
+        for robot_id in self.robot_ids:
+            topic = f"/{robot_id}/update_valid_tasks"
+            valid_tasks_subscription = self.create_subscription(
+                UpdateValidTasks,
+                topic,
+                self.update_valid_tasks,
+                10
+            )
+            # self.get_logger().info(f"Subscribed to topic: {topic}")
+            self.update_valid_tasks_subs.append(valid_tasks_subscription)
+
         # Create a timer for periodic simulation updates (e.g., every 0.1 seconds)
         self.timer = self.create_timer(0.1, self.simulate)
+
+    def update_valid_tasks(self, msg):
+        """
+        Callback for update_valid_tasks topic.
+        The received message is an integer representing the index of the completed task.
+        For example: 1 corresponds to 'bb', 2 corresponds to 'bc' (for loading task points, excluding those marked as unload).
+        When a task-completion message is received, the task index is recorded in the finished_tasks set,
+        and later the corresponding task point will be displayed in grey in the simulation.
+        """
+        # Add the completed task number to finished_tasks
+        self.finished_tasks.add(msg.loaded_task)
+        # self.get_logger().info(f"Task {msg.loaded_task} completed.")
 
     def position_callback(self, msg):
         """
@@ -172,17 +206,20 @@ class ShowMoveNode(Node):
                 polygon_coords = [self.transform_coords(coord) for coord in obstacle.exterior.coords]
                 pygame.draw.polygon(self.world.screen, BLACK, polygon_coords, 0)  # Filled polygon
         
+        # Draw blocks for check-in areas
         for block in self.blocks:
             if block.geom_type == "Polygon":
                 polygon_coords = [self.transform_coords(coord) for coord in block.exterior.coords]
                 pygame.draw.polygon(self.world.screen, RED, polygon_coords, 0)  # Filled polygon
 
+        # If there are bump coordinates, you can construct bump polygons here (currently, coords is empty)
         bumps = []
         coords = []
         for coord in coords:
             polygon = Polygon(coord)
             bumps.append(polygon)
 
+        # Define all task points and their labels, where some points are marked as unload points
         points = {
                 (1, 4): 'bb', 
                 (6, 6): 'cb',
@@ -208,36 +245,41 @@ class ShowMoveNode(Node):
                 (16, 5.5): 'e' # unload
                 }
         
-        # 定义特殊任务标签的集合（注意这些标签需与 points 中的值对应）
-        special_points = {'db', 'eb', 'bb', 'cd', 'fd'}
-
-        # Define the set of points that are marked as unloaded.
+        # Define the set of unload points
         unloaded_points = {(6, 3), (5, 16), (16, 13), (16, 5.5)}
 
-        # Define colors.
-        GREEN = (107, 142, 35)
-        SKY_BLUE = (135, 206, 235)
+        loaded_labels = [label for pt, label in points.items() if pt not in unloaded_points]
+        special_points = {'db', 'eb', 'bb', 'cd', 'fd'}
 
-       # Iterate through all points, choose color based on unloaded status, and draw a shape.
+        # Iterate through all points, choose color based on status:
+        # - For unload points, use GREEN directly.
+        # - For loading task points, if its order (starting from 1) in the sorted list is in finished_tasks, draw in grey; otherwise use SKY_BLUE.
         for pt, label in points.items():
-            # Convert logical coordinate to pixel coordinate using transform_coords method.
             pixel_pos = self.transform_coords(pt)
-            # Define side length
             side = self.world.cell_size // 2
-            # 如果该点是卸载点，则用绿色，否则用天蓝色
+
             if pt in unloaded_points:
                 color = GREEN
             else:
-                color = SKY_BLUE
+                # Calculate the order (starting from 1) of the current task point in the sorted loading task list
+                try:
+                    rank = loaded_labels.index(label) + 1
+                except ValueError:
+                    rank = None
+                if rank is not None and rank in self.finished_tasks:
+                    color = self.notask_color   # Draw completed task in grey
+                    special_color = self.notask_color
+                else:
+                    color = SKY_BLUE
+                    special_color = RED
 
-            # 如果任务为特殊任务（任务标签在 special_points 中），绘制红色三角形
+            # Draw the task point (special task points as triangles, others as rectangles)
             if label in special_points:
                 top_vertex = (pixel_pos[0], pixel_pos[1] - side // 2)
                 left_vertex = (pixel_pos[0] - side // 2, pixel_pos[1] + side // 2)
                 right_vertex = (pixel_pos[0] + side // 2, pixel_pos[1] + side // 2)
-                pygame.draw.polygon(self.world.screen, RED, [top_vertex, left_vertex, right_vertex], 0)
+                pygame.draw.polygon(self.world.screen, special_color, [top_vertex, left_vertex, right_vertex], 0)
             else:
-                # 创建一个正方形
                 rect = pygame.Rect(pixel_pos[0] - side // 2, pixel_pos[1] - side // 2, side, side)
                 pygame.draw.rect(self.world.screen, color, rect)
             # Draw the label next to the shape.
@@ -250,7 +292,6 @@ class ShowMoveNode(Node):
                 bump_coords = [self.transform_coords(pt) for pt in bump.exterior.coords]
                 pygame.draw.polygon(self.world.screen, YELLOW, bump_coords, 0)
         
-        # Draw actions (if available, drawing lines between nodes)
         for action in self.actions:
             pose_ab = extract_numbers(str(action))
             pose_a = pose_ab[0]
@@ -303,8 +344,12 @@ class ShowMoveNode(Node):
             
         # Draw nodes
         for node in self.nodes:
-            pygame.draw.circle(self.world.screen, BLUE, (self.nodes[node]['attr']['pose'][0]* self.world.cell_size, \
-                            self.world.height - (self.nodes[node]['attr']['pose'][1]* self.world.cell_size)), 3)
+            pygame.draw.circle(
+                self.world.screen, BLUE,
+                (self.nodes[node]['attr']['pose'][0] * self.world.cell_size,
+                 self.world.height - (self.nodes[node]['attr']['pose'][1] * self.world.cell_size)),
+                3
+            )
     
         # Draw all robot positions (reading shared data under lock)
         with self.lock:
@@ -312,7 +357,7 @@ class ShowMoveNode(Node):
                 pos = info['pose']
                 color = info['mode']
                 pixel_pos = ((pos[0] * self.world.cell_size), (self.world.height - pos[1] * self.world.cell_size))
-                # 如果是特殊机器人则绘制更大的圆形
+                # Larger circle for special robots
                 radius = self.world.cell_size // 3
                 if robot_id in self.special_robot_ids:
                     radius = self.world.cell_size // 2

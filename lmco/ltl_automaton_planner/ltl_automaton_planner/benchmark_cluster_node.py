@@ -385,6 +385,8 @@ class LTLControllerDrone(Node):
                             msg.loaded_task = self.cur_task
                             self.update_valid_tasks_pub.publish(msg)
                             # self.get_logger().info(f'==================Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}==================')
+
+
                         elif str(act) == "goto_rescue":
                             self.mode = EquipmentMode.RESCUE
                         else: # including action "stay", nothing particular needs to be done
