@@ -165,6 +165,7 @@ class MainPlanner(Node):
             self.score_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
             self.score_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
 
+
     def update_and_run_automaton(self, task_id, new_initial_ts_state):
         # Check if `ProdAut` for `task_id` exists
         if task_id not in self.product_automata:
