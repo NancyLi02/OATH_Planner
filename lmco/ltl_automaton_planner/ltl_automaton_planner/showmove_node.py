@@ -8,10 +8,11 @@ from shapely.geometry import LineString, Polygon
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
 import sys
 import cv2
-from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks
+from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks, TaskFail
 from enum import Enum
 import threading
 import yaml
+from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 
 #=======================================================================
 #  Interfaces between ShowMoveNode and other nodes
@@ -112,10 +113,45 @@ class ShowMoveNode(Node):
         # List of robot IDs
         self.robot_ids = ['robot1', 'robot2', 'robot3', 'robot4']
         self.special_robot_ids = ['robot2', 'robot3']
+
+        self.failed_task_list = []
+
+        self.points = {
+            (1, 4): 'bb',
+            (6, 6): 'cb',
+            (1, 6.5): 'db',
+            (5.5, 9.5): 'eb',
+            (9, 6.5): 'fb',
+            (6, 3): 'b',    # unload
+            (1, 13.5): 'bc',
+            (9, 16.5): 'cc',
+            (1, 16): 'dc',
+            (6, 13): 'ec',
+            (5, 16): 'c',   # unload
+            (11, 13.5): 'bd',
+            (11, 16.5): 'cd',
+            (19, 16.5): 'dd',
+            (19, 19): 'ed',
+            (15, 19.5): 'fd',
+            (16, 13): 'd',  # unload
+            (11, 4): 'be',
+            (19, 6.5): 'ce',
+            (16, 3): 'de',
+            (19, 1): 'ee',
+            (16, 5.5): 'e'  # unload
+        }
+        # Set of unload points for quick lookup
+        self.unloaded_points = {(6, 3), (5, 16), (16, 13), (16, 5.5)}
+        # Precompute loading-task labels in order to map between label and index
+        self.loaded_labels = [
+            label for pt, label in self.points.items()
+            if pt not in self.unloaded_points
+        ]
         
         # Initialize subscriptions lists
         self.position_subscriptions = []
         self.update_valid_tasks_subs = []
+        self.task_failure_subs = []
         
         # Initialize finished tasks set to store completed task indices
         self.finished_tasks = set()
@@ -144,8 +180,39 @@ class ShowMoveNode(Node):
             # self.get_logger().info(f"Subscribed to topic: {topic}")
             self.update_valid_tasks_subs.append(valid_tasks_subscription)
 
+        qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+
+        for robot_id in self.robot_ids:
+            topic = f"/{robot_id}/task_failure"
+            task_fail_sub = self.create_subscription(
+                TaskFail,
+                topic,
+                self.task_fail_callback,
+                qos
+            )
+            # self.get_logger().info(f"Subscribed to topic: {topic}")
+            self.task_failure_subs.append(task_fail_sub)
+
         # Create a timer for periodic simulation updates (e.g., every 0.1 seconds)
         self.timer = self.create_timer(0.1, self.simulate)
+    
+    def task_fail_callback(self, msg):
+        # Convert failed task label to its loading-task index
+        try:
+            rank = self.loaded_labels.index(msg.task_label) + 1
+            # If it was previously marked as finished, remove it
+            if rank in self.finished_tasks:
+                self.finished_tasks.remove(rank)
+            # Add to failed list if not already present
+            if rank not in self.failed_task_list:
+                self.failed_task_list.append(rank)  # Store failed-task index
+        except ValueError:
+            # msg.task_label not in loaded tasks; ignore
+            pass
 
     def update_valid_tasks(self, msg):
         """
@@ -155,9 +222,12 @@ class ShowMoveNode(Node):
         When a task-completion message is received, the task index is recorded in the finished_tasks set,
         and later the corresponding task point will be displayed in grey in the simulation.
         """
+        # If this task was in failed list, remove it now
+        if msg.loaded_task in self.failed_task_list:
+            self.failed_task_list.remove(msg.loaded_task)
+
         # Add the completed task number to finished_tasks
         self.finished_tasks.add(msg.loaded_task)
-        # self.get_logger().info(f"Task {msg.loaded_task} completed.")
 
     def position_callback(self, msg):
         """
@@ -230,40 +300,15 @@ class ShowMoveNode(Node):
             bumps.append(polygon)
 
         # Define all task points and their labels, where some points are marked as unload points
-        points = {
-                (1, 4): 'bb', 
-                (6, 6): 'cb',
-                (1, 6.5): 'db', 
-                (5.5, 9.5): 'eb',
-                (9, 6.5): 'fb',
-                (6, 3): 'b', # unload
-                (1, 13.5): 'bc',
-                (9, 16.5): 'cc',
-                (1, 16): 'dc', 
-                (6, 13): 'ec',
-                (5, 16): 'c', # unload
-                (11, 13.5): 'bd',
-                (11, 16.5): 'cd',
-                (19, 16.5): 'dd',
-                (19, 19): 'ed', 
-                (15, 19.5): 'fd',
-                (16, 13): 'd', # unload
-                (11, 4): 'be',
-                (19, 6.5): 'ce',
-                (16, 3): 'de', 
-                (19, 1): 'ee',
-                (16, 5.5): 'e' # unload
-                }
-        
-        # Define the set of unload points
-        unloaded_points = {(6, 3), (5, 16), (16, 13), (16, 5.5)}
-
-        loaded_labels = [label for pt, label in points.items() if pt not in unloaded_points]
+        points = self.points
+        unloaded_points = self.unloaded_points
+        loaded_labels = self.loaded_labels
         special_points = {'db', 'eb', 'bb', 'cd', 'fd'}
 
         # Iterate through all points, choose color based on status:
         # - For unload points, use GREEN directly.
         # - For loading task points, if its order (starting from 1) in the sorted list is in finished_tasks, draw in grey; otherwise use SKY_BLUE.
+        # Iterate through all points, choose color based on status:
         for pt, label in points.items():
             pixel_pos = self.transform_coords(pt)
             side = self.world.cell_size // 2
@@ -271,28 +316,32 @@ class ShowMoveNode(Node):
             if pt in unloaded_points:
                 color = GREEN
             else:
-                # Calculate the order (starting from 1) of the current task point in the sorted loading task list
-                try:
-                    rank = loaded_labels.index(label) + 1
-                except ValueError:
-                    rank = None
-                if rank is not None and rank in self.finished_tasks:
-                    color = self.finished_tasks_color   # Draw completed task in grey
+                # Calculate the order (starting from 1) of the current task point
+                rank = loaded_labels.index(label) + 1
+                if rank in self.finished_tasks:
+                    color = self.finished_tasks_color
                     special_color = self.finished_tasks_color
                 else:
                     color = SKY_BLUE
                     special_color = RED
 
-            # Draw the task point (special task points as triangles, others as rectangles)
+            # Draw the task point (special tasks as triangles, others as rectangles)
             if label in special_points:
-                top_vertex = (pixel_pos[0], pixel_pos[1] - side // 2)
-                left_vertex = (pixel_pos[0] - side // 2, pixel_pos[1] + side // 2)
-                right_vertex = (pixel_pos[0] + side // 2, pixel_pos[1] + side // 2)
-                pygame.draw.polygon(self.world.screen, special_color, [top_vertex, left_vertex, right_vertex], 0)
+                top = (pixel_pos[0], pixel_pos[1] - side // 2)
+                left = (pixel_pos[0] - side // 2, pixel_pos[1] + side // 2)
+                right = (pixel_pos[0] + side // 2, pixel_pos[1] + side // 2)
+                pygame.draw.polygon(self.world.screen, special_color, [top, left, right], 0)
             else:
                 rect = pygame.Rect(pixel_pos[0] - side // 2, pixel_pos[1] - side // 2, side, side)
                 pygame.draw.rect(self.world.screen, color, rect)
-            # Draw the label next to the shape.
+
+            # Draw red circle around failed loading tasks
+            if pt not in unloaded_points:
+                rank = loaded_labels.index(label) + 1
+                if rank in self.failed_task_list:
+                    pygame.draw.circle(self.world.screen, RED, pixel_pos, side, 2)
+
+            # Draw the label
             font = pygame.font.SysFont("Arial", 16)
             text_surface = font.render(label, True, BLACK)
             self.world.screen.blit(text_surface, (pixel_pos[0] + 5, pixel_pos[1] + 5))

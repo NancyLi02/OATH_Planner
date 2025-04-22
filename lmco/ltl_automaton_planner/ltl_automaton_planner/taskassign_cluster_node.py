@@ -3,7 +3,8 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from ltl_automaton_planner.CostMapClusterer import CostMapClusterer
-from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, AgentFailTask
+from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, AgentFailTask, TaskFail
+from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 
 # -------------------- CBAA Algorithm --------------------
 class CBAA:
@@ -126,6 +127,12 @@ class TaskAssignNode(Node):
             sub = self.create_subscription(AgentFailTask, topic, self.agent_fail_callback, 10)
             self.robot_fail_subs.append(sub)
 
+        self.task_fail_subs = []
+        for robot in self.robot_names:
+            topic = f"/{robot}/task_failure_cluster"
+            sub = self.create_subscription(TaskFail, topic, self.task_fail_callback, 10)
+            self.task_fail_subs.append(sub)
+
         self.broke_agents = []
 
         # ----- Load wall and task info -----
@@ -161,6 +168,7 @@ class TaskAssignNode(Node):
 
         # Define special task labels.
         special_labels = {'db', 'eb', 'bb', 'cd', 'fd'}
+        self.special_labels = special_labels
 
         # Load wall data from YAML file and perform task clustering, passing in special labels.
         self.clusterer = CostMapClusterer(
@@ -172,9 +180,38 @@ class TaskAssignNode(Node):
         # Add self.valid_cluster: an array with length equal to the total number of clusters, each initialized to 1.
         self.valid_cluster = [1] * (len(self.clusters_other) + len(self.clusters_special))
         self.robot_cluster_indices = {}
+        self.failed_task_owners = {}
 
         # Create CBAA auction algorithm object.
         self.cbaa_algorithm = CBAA()
+
+    def task_fail_callback(self, msg):  # Called when a task failure is reported
+        self.solo_failure_task = msg.task_label
+        self.corresponding_robot = msg.agent_id
+
+        # Map label to point
+        label_to_pt = {lbl:pt for pt,lbl in self.points_with_label.items()}
+        pt = label_to_pt.get(self.solo_failure_task)
+        if pt is None:
+            self.get_logger().error(f"Failed task label {self.solo_failure_task} not found.")
+            return
+        
+        # Determine cluster list and index for new single-task cluster
+        if self.solo_failure_task in self.special_labels:
+            self.clusters_special.append([pt])
+            self.centers_special.append(tuple(pt))
+            new_idx = len(self.clusters_other) + len(self.clusters_special) - 1
+        else:
+            self.clusters_other.append([pt])
+            self.centers_other.append(tuple(pt))
+            new_idx = len(self.clusters_other) - 1
+
+        # Mark new cluster valid at its index
+        self.valid_cluster.insert(new_idx, 1)
+        
+        # Record ownership so this robot gets zero score on this cluster
+        self.failed_task_owners[new_idx] = self.corresponding_robot
+        self.get_logger().info(f"Created failed-task cluster {new_idx} for robot {self.corresponding_robot}.")
 
     def agent_fail_callback(self, msg):
         self.get_logger().info(f'Task assignment node receive agent fail msg from {msg.robot_id}....')
@@ -264,6 +301,10 @@ class TaskAssignNode(Node):
             scores = [0.0] * len(all_clusters)
         else:
             for j, (center, t_type) in enumerate(zip(all_clusters, task_types)):
+                # If this is a failed-task cluster owned by this robot, score = 0
+                if self.failed_task_owners.get(j) == robot_id:
+                    scores.append(0.0)
+                    continue
                 # If the cluster is invalid (already assigned), set the score to 0.
                 if self.valid_cluster[j] == 0:
                     scores.append(0.0)

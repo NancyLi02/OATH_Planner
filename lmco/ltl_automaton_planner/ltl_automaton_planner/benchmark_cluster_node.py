@@ -7,7 +7,7 @@ import yaml
 import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import AgentFail, AgentFailTask, NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
+from ltl_automaton_msgs.msg import TaskFail, AgentFail, AgentFailTask, NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
@@ -24,6 +24,8 @@ import csv
 from shapely.geometry import Point, LineString, Polygon
 from example_interfaces.srv import AddTwoInts
 import re
+from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
+
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
 #                       -----------------
@@ -180,6 +182,19 @@ class LTLControllerDrone(Node):
             self.agent_fail_callback,
             10
         )
+
+        qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+
+        self.task_failed_sub = self.create_subscription(
+            TaskFail,
+            'task_failure',
+            self.task_failed_callback,
+            qos
+        )
         
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
@@ -188,6 +203,7 @@ class LTLControllerDrone(Node):
         self.position_pub = self.create_publisher(ShowPosition, 'show_position', 10)
         self.update_valid_tasks_pub = self.create_publisher(UpdateValidTasks, 'update_valid_tasks', 10)
         self.agent_failed_task_pub = self.create_publisher(AgentFailTask, 'agent_fail_task', 10)
+        self.task_failed_task_new_cluster_pub = self.create_publisher(TaskFail, 'task_failure_cluster', 10)
         self.pub_assign = True
         self.on_hold = False
         self.final_on_hold = False
@@ -241,7 +257,16 @@ class LTLControllerDrone(Node):
         agent_fail_task.task_id = self.cur_task
         self.agent_failed_task_pub.publish(agent_fail_task)
 
-    
+    def task_failed_callback(self, msg):
+        self.get_logger().info(f'{self.agent_name} fail to complete task{self.cur_task}, finding new agents finish this task!!!!!!!!!!!!!!!!!')
+        task_fail_msg = TaskFail()
+        task_fail_msg.agent_id = msg.agent_id
+        task_fail_msg.task_label = msg.task_label
+        self.task_failed_task_new_cluster_pub.publish(task_fail_msg)
+        self.on_hold = True
+        self.publish_task_request()
+        self.mode = EquipmentMode.UNLOADED
+
     def waiting_request(self, msg):
         self.on_hold = True
 
