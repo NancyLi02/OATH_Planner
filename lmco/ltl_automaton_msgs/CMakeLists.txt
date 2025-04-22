@@ -40,6 +40,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/TaskRequestCluster.msg"
   "msg/ClusterRequest.msg"
   "msg/NoTask.msg"
+  "msg/AgentFail.msg"
+  "msg/TaskFail.msg"
+  "msg/LimitedZone.msg"
+  "msg/AgentFailTask.msg"
   
   # Generate services in the 'srv' folder
   "srv/TrapCheck.srv"

@@ -51,7 +51,7 @@ def density_probability(d, d_min, d_opt, sigma, floor):
 def rejection_sampling(n_samples, lines, area_size, d_min=0.3, d_opt=0.4, sigma=0.5, floor=0.2):
     np.random.seed(42)
     random_value = np.random.rand()
-    print(f'random_value is {random_value}')
+    # print(f'random_value is {random_value}')
     samples = []
     multiplier = 10
     while len(samples) < n_samples:
@@ -347,9 +347,9 @@ def delete_file(file_name):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     script_dir_ = os.path.dirname(script_dir)
     parent_dir = os.path.abspath(os.path.join(script_dir_, '..', 'log/'))
-    print(parent_dir)
+    # print(parent_dir)
     file_path = parent_dir +'/'+ file_name
-    print(file_path)
+    # print(file_path)
     try:
         os.remove(file_path)
     except FileNotFoundError:

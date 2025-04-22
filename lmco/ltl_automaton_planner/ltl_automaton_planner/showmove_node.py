@@ -28,14 +28,16 @@ WHITE  = (255, 255, 255)
 BLACK  = (0, 0, 0)
 GREY   = (190, 190, 190)
 RED    = (255, 0, 0)
-YELLOW = (255, 255, 100)
+YELLOW = (152, 251, 152)
 BLUE   = (0, 0, 128)
 
 # Additional colors for tasks (loaded/unloaded)
 GREEN    = (107, 142, 35)      # For unload task points
 SKY_BLUE = (135, 206, 235)     # For unfinished load task points
 # notask_color already defined as grey, used to indicate finished (or no task) task points
-NOTASK_COLOR = (96, 96, 96)
+NOTASK_COLOR = (0, 255, 0)
+FINISHED_TASK = (190, 190, 190)
+FAIL = (0, 0, 0)
 
 # ---------- Walls ----------
 def load_lines_from_yaml():
@@ -90,6 +92,8 @@ class ShowMoveNode(Node):
         }
         self.waiting_color = (255, 165, 0)  # Orange
         self.notask_color = NOTASK_COLOR     # Grey color for finished tasks
+        self.finished_tasks_color = FINISHED_TASK
+        self.fail_color = FAIL
 
         self.lines = load_lines_from_yaml()        
 
@@ -181,6 +185,8 @@ class ShowMoveNode(Node):
             return self.color_mapping.get(robot_id, {}).get("loaded", (255, 255, 255))
         elif mode == "unloaded":
             return self.color_mapping.get(robot_id, {}).get("unloaded", (211, 211, 211))
+        elif mode == "Fail":
+            return self.fail_color
         else:
             # Default color: white
             return (255, 255, 255)
@@ -271,8 +277,8 @@ class ShowMoveNode(Node):
                 except ValueError:
                     rank = None
                 if rank is not None and rank in self.finished_tasks:
-                    color = self.notask_color   # Draw completed task in grey
-                    special_color = self.notask_color
+                    color = self.finished_tasks_color   # Draw completed task in grey
+                    special_color = self.finished_tasks_color
                 else:
                     color = SKY_BLUE
                     special_color = RED

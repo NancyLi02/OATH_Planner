@@ -17,7 +17,7 @@ import networkx as nx
 from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers, build_graph_halton
 
 # Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID
+from ltl_automaton_msgs.msg import AgentFail, ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID
 from ltl_automaton_msgs.srv import * #TaskPlanning, TaskPlanningResponse, TaskReplanningAdd, TaskReplanningDelete, TaskReplanningRelabel, TaskReplanningAddResponse, TaskReplanningDeleteResponse
 
 # Import dynamic reconfigure components for dynamic parameters (see dynamic_reconfigure and dynamic_params package)
@@ -299,6 +299,21 @@ class MainPlanner(Node):
             10
         )
 
+        # self.agent_fail_sub = self.create_subscription(
+        #     AgentFail,
+        #     'agent_failure',
+        #     self.agent_fail_callback,
+        #     10
+        # )
+    
+    # def agent_fail_callback(self, msg):
+    #     self.get_logger().info(f'{self.agent_name} is fail, calling for new plann......')
+    #     self.current_task_list
+    #     # self.current_task_list = list(msg.task_sequence)
+    #     self.cur_task # int32
+    #     # 请帮我完成这个函数把这个current_task_list从self.cur_task（包括这个cur_task后面的所有task列为未完成task，然后用）
+
+
     def assign_new_task(self, msg):
         # Update current robot pose
         self.pose_index = msg.pose_index
@@ -359,7 +374,7 @@ class MainPlanner(Node):
             return
 
         # Run automaton and plan
-        self.get_logger().info(f"Calculating plan for {task_id} assigned to {self.agent_name}")
+        # self.get_logger().info(f"Calculating plan for {task_id} assigned to {self.agent_name}")
         self.update_and_run_automaton(task_id, self.initial_state_ts_dict)
 
         # Publish result
@@ -440,7 +455,7 @@ class MainPlanner(Node):
 
 
         if self.ltl_planners[task_id].run is not None:
-            self.get_logger().info("in push plan...")
+            # self.get_logger().info("in push plan...")
             # Prefix plan
             #-------------
             self.prefix_plan_msg = LTLPlan()
@@ -462,7 +477,7 @@ class MainPlanner(Node):
                 self.prefix_plan_msg.ts_state_sequence.append(ts_state_msg)
 
             # Publish
-            self.get_logger().info("Publish Prefix Plan")
+            # self.get_logger().info("Publish Prefix Plan")
             # print(prefix_plan_msg.action_sequence)
             self.prefix_plan_pub.publish(self.prefix_plan_msg)
 
@@ -487,13 +502,13 @@ class MainPlanner(Node):
                 self.suffix_plan_msg.ts_state_sequence.append(ts_state_msg)
 
             # Publish
-            self.get_logger().info("Publish Suffix Plan")
+            # self.get_logger().info("Publish Suffix Plan")
             self.suffix_plan_pub.publish(self.suffix_plan_msg)
 
 
     def replanning_modify_callback(self, task_replanning_req):
         if task_replanning_req:
-            self.get_logger().info("Replanning [modify] Callback")
+            # self.get_logger().info("Replanning [modify] Callback")
             update_info = dict()
             update_info["modified"] = set()
             update_info["deleted"] = set()
@@ -511,7 +526,7 @@ class MainPlanner(Node):
                             update_info["modified"].add((node, succ_node, task_replanning_req.cost))
             # print(update_info["modified"])
             modified_edges_dict = self.ltl_planners[self.cur_task].revise_product(update_info)
-            self.get_logger().info("Finished revise")
+            # self.get_logger().info("Finished revise")
             
             success = False
             if self.algo_type == 'dstar' or self.algo_type =="dstar-relaxed":
@@ -559,7 +574,7 @@ class MainPlanner(Node):
                         ts_state_msg.states = [ts_state]
                     # Add to plan TS state sequence
                     res.new_plan_suffix.ts_state_sequence.append(ts_state_msg)
-                self.get_logger().info("service has been transmitted")
+                # self.get_logger().info("service has been transmitted")
                 self.publisher_.publish(res)
                 return
             
@@ -570,7 +585,7 @@ class MainPlanner(Node):
         
     def replanning_delete_callback(self, task_replanning_req):
         if task_replanning_req:
-            self.get_logger().info("Replanning [Delete] Callback")
+            # self.get_logger().info("Replanning [Delete] Callback")
             update_info = dict()
             update_info["modified"] = set()
             update_info["deleted"] = set()
@@ -588,7 +603,7 @@ class MainPlanner(Node):
                             update_info["deleted"].add((node, succ_node))
             # print(update_info["deleted"])
             modified_edges_dict = self.ltl_planners[self.cur_task].revise_product(update_info)
-            self.get_logger().info("finished revise")
+            # self.get_logger().info("finished revise")
             
             success = False
             if self.algo_type == 'dstar' or self.algo_type =="dstar-relaxed":
@@ -600,11 +615,11 @@ class MainPlanner(Node):
             elif self.algo_type == 'brute-force' or self.algo_type == "relaxed":
                 if self.ltl_planners[self.cur_task].dijkstra_rewire(task_replanning_req.exec_index):
                     success = True
-            self.get_logger().info("finished revise successfully")
+            # self.get_logger().info("finished revise successfully")
             
             res = RelayResponse()
             if success:
-                self.get_logger().info("start preparing for the ")
+                # self.get_logger().info("start preparing for the ")
                 # print("new_prefix", self.ltl_planner.prefix)
                 res.success = True
                 res.new_plan_prefix = LTLPlan()
@@ -637,7 +652,7 @@ class MainPlanner(Node):
                     # Add to plan TS state sequence
                     res.new_plan_suffix.ts_state_sequence.append(ts_state_msg)
                 self.publisher_.publish(res)
-                self.get_logger().info("service has been transmitted ")
+                # self.get_logger().info("service has been transmitted ")
                 return
             
         self.get_logger().error("Error in replanning modify callback")

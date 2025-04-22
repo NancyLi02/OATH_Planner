@@ -66,14 +66,14 @@ class LTLPlanner(object):
                 self.dstar = DStar(self.product, "manhattan", relaxation=True)                 
             run, run_cost, plantime = self.dstar.dstar_plan()
             prefix = run[:-1]
-            print(prefix)
+            # print(prefix)
             precost = run_cost
             sufcost, suffix = self.dstar.get_suffix(prefix[-1])
-            print(suffix)
+            # print(suffix)
             precost -= sufcost
             self.run = ProdAut_Run(self.product, prefix, precost, suffix, sufcost, precost+self.gamma*sufcost)
-            print(self.run)
-            print("Dstar initial run compute time: ", plantime)
+            # print(self.run)
+            # print("Dstar initial run compute time: ", plantime)
         elif algo == 'brute-force' or algo == 'local':
             # start_time = time.time()
             # self.product.build_full()
@@ -81,7 +81,7 @@ class LTLPlanner(object):
             # print(f"Product automaton constuction took {elapsed_time} seconds to run.")
             self.dijkstra = Dijkstra()
             self.run, plantime = self.dijkstra.dijkstra_plan_networkX(self.product, self.gamma)
-            print("Dijkstra initial run compute time: ", plantime)
+            # print("Dijkstra initial run compute time: ", plantime)
         elif algo == 'relaxed': 
             # start_time = time.time()
             # self.product.build_full_relaxed()
@@ -90,7 +90,7 @@ class LTLPlanner(object):
             # print(f"The function took {elapsed_time} seconds to run.")
             self.dijkstra = Dijkstra()
             self.run, plantime = self.dijkstra.dijkstra_plan_networkX(self.product, self.gamma)
-            print("Dijkstra relaxed initial run compute time: ", plantime)
+            # print("Dijkstra relaxed initial run compute time: ", plantime)
         elif algo == "relaxed-dstar":
             pass 
 
@@ -120,29 +120,29 @@ class LTLPlanner(object):
     def dijkstra_rewire(self, exec_index): # baseline benchmark for bruteforce and relaxed
         self.old_run = self.run
         if exec_index <= len(self.run.line):
-            print("Prefix")
+            # print("Prefix")
             self.run, plantime = self.dijkstra.dijkstra_plan_with_initial(self.product, self.run.prefix[exec_index], segment="prefix")
-            print(self.run.prefix)
-            print(self.run.suffix)
-            print(exec_index)
+            # print(self.run.prefix)
+            # print(self.run.suffix)
+            # print(exec_index)
             self.write_to_log([plantime, self.run.precost+self.gamma*self.run.sufcost], segment="prefix")
-            print("Dijkstra replanning prefix compute time: ", plantime)
+            # print("Dijkstra replanning prefix compute time: ", plantime)
             self.run.prefix = self.old_run.prefix[:exec_index] + self.run.prefix
             # self.run.suffix = self.run.suffix
         else:
-            print("Suffix")
-            print(self.run.prefix)
-            print(self.run.suffix)
-            print(self.run.line)
-            print(exec_index)
+            # print("Suffix")
+            # print(self.run.prefix)
+            # print(self.run.suffix)
+            # print(self.run.line)
+            # print(exec_index)
             self.run, plantime = self.dijkstra.dijkstra_plan_with_initial(self.product, self.run.suffix[exec_index-len(self.run.line)+1], segment="suffix")
             # print(self.run.prefix)
             # print(self.run.suffix)
-            print("Dijkstra replanning suffix compute time: ", plantime)
+            # print("Dijkstra replanning suffix compute time: ", plantime)
             self.write_to_log([plantime, self.run.precost+self.gamma*self.run.sufcost], segment="suffix")
             self.run.prefix = self.old_run.prefix + self.old_run.suffix[:exec_index-len(self.old_run.prefix)+1] + self.run.prefix
-            print('\n')
-            print(self.run.prefix)
+            # print('\n')
+            # print(self.run.prefix)
             self.run.suffix = self.run.suffix
         if self.run == None:
             # rospy.logerr("LTL Planner: No valid plan has been found! Check you FTS or task")
@@ -180,7 +180,7 @@ class LTLPlanner(object):
             self.run.prod_run_to_prod_edges()
             self.run.plan_output(self.product)
                 
-            print("Dijkstra replanning prefix compute time: ", pre_plantime+suf_plantime)
+            # print("Dijkstra replanning prefix compute time: ", pre_plantime+suf_plantime)
             return True
         else:
             # target_preds = []
@@ -199,7 +199,7 @@ class LTLPlanner(object):
             
             self.write_to_log([suf_plantime, precost+self.gamma*self.run.sufcost], segment="suffix")
                 
-            print("Dijkstra replanning suffix compute time: ", suf_plantime)
+            # print("Dijkstra replanning suffix compute time: ", suf_plantime)
             return True
         return False
     
@@ -267,7 +267,7 @@ class LTLPlanner(object):
         # remove transition (from, to)
         remove_list = list()
         for deleted_pair in deleted_pairs:
-            print("deleted_pair:", deleted_pair)
+            # print("deleted_pair:", deleted_pair)
             for pa_node in self.product.nodes:
                 ts_node, bu_node = self.product.projection(pa_node)
                 if ts_node == deleted_pair[0]:

@@ -3,7 +3,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from ltl_automaton_planner.CostMapClusterer import CostMapClusterer
-from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest
+from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, AgentFailTask
 
 # -------------------- CBAA Algorithm --------------------
 class CBAA:
@@ -120,6 +120,14 @@ class TaskAssignNode(Node):
             sub = self.create_subscription(ClusterRequest, topic, self.assign_new_cluster, 10)
             self.new_cluster_request_subs.append(sub)
 
+        self.robot_fail_subs = []
+        for robot in self.robot_names:
+            topic = f"/{robot}/agent_fail_task"
+            sub = self.create_subscription(AgentFailTask, topic, self.agent_fail_callback, 10)
+            self.robot_fail_subs.append(sub)
+
+        self.broke_agents = []
+
         # ----- Load wall and task info -----
         parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner'))
         wall_path = os.path.join(parent_dir, 'config', 'wall.yaml')
@@ -168,6 +176,60 @@ class TaskAssignNode(Node):
         # Create CBAA auction algorithm object.
         self.cbaa_algorithm = CBAA()
 
+    def agent_fail_callback(self, msg):
+        self.get_logger().info(f'Task assignment node receive agent fail msg from {msg.robot_id}....')
+        self.fail_task = msg.task_id  # int32
+        self.fail_agent = msg.robot_id  # int32
+
+        # Find which cluster contains this failed task
+        all_clusters = self.clusters_other + self.clusters_special
+        fail_cluster_idx = None
+        for idx, cluster in enumerate(all_clusters):
+            # Map cluster points to task indices
+            indices = []
+            for pt in cluster:
+                label = self.points_with_label.get(tuple(map(float, pt)))
+                if label is not None:
+                    indices.append(self.label_to_index[label])
+            if self.fail_task in indices:
+                fail_cluster_idx = idx
+                break
+
+        if fail_cluster_idx is not None:
+            # Mark this cluster as valid again
+            self.valid_cluster[fail_cluster_idx] = 1
+
+        # Trim this robot's sequence: keep only from the failed task onward
+        robot_name = self.robot_names[self.fail_agent - 1]
+        seq = self.robot_task_sequence.get(robot_name, [])
+        if self.fail_task in seq:
+            pos = seq.index(self.fail_task)
+            onward_seq = seq[pos:]  # tasks from failure onward
+            self.robot_task_sequence[robot_name] = onward_seq
+
+            # Also trim the cluster itself so future assignments see only onward tasks
+            # Build inverse mapping: label -> point
+            label_to_point = {lbl: pt for pt, lbl in self.points_with_label.items()}
+            # Convert indices back to points
+            new_cluster_pts = [label_to_point[next(lbl for lbl, idx in self.label_to_index.items() if idx == task_id)]
+                               for task_id in onward_seq]
+
+            # Update clusters and centers for this index
+            if fail_cluster_idx < len(self.clusters_other):
+                # normal clusters
+                self.clusters_other[fail_cluster_idx] = new_cluster_pts
+                # recompute center
+                self.centers_other[fail_cluster_idx] = tuple(np.mean(new_cluster_pts, axis=0))
+            else:
+                # special clusters
+                sci = fail_cluster_idx - len(self.clusters_other)
+                self.clusters_special[sci] = new_cluster_pts
+                self.centers_special[sci] = tuple(np.mean(new_cluster_pts, axis=0))
+
+        # Record this agent as broken
+        if robot_name not in self.broke_agents:
+            self.broke_agents.append(robot_name)
+
     def assign_new_cluster(self, msg):
         self.get_logger().info(f"Received new cluster assign request from Robot{msg.robot_id}.")
         robot_id = msg.robot_id  # robot_id is an integer (1,2,3,4)
@@ -196,21 +258,26 @@ class TaskAssignNode(Node):
         
         # Compute the score for the requested robot only.
         scores = []
-        for j, (center, t_type) in enumerate(zip(all_clusters, task_types)):
-            # If the cluster is invalid (already assigned), set the score to 0.
-            if self.valid_cluster[j] == 0:
-                scores.append(0.0)
-                continue
-            dist = np.linalg.norm(np.array(new_position) - np.array(center))
-            base_score = 100.0 / (dist + 1e-5)
-            if t_type == 'special':
-                if self.robot_types[robot_index] == 'special':
-                    score = base_score * 1.5  # Bonus for special tasks
+
+         # If this robot has broken down, give zero score for all clusters
+        if hasattr(self, 'broke_agents') and robot_name in self.broke_agents:
+            scores = [0.0] * len(all_clusters)
+        else:
+            for j, (center, t_type) in enumerate(zip(all_clusters, task_types)):
+                # If the cluster is invalid (already assigned), set the score to 0.
+                if self.valid_cluster[j] == 0:
+                    scores.append(0.0)
+                    continue
+                dist = np.linalg.norm(np.array(new_position) - np.array(center))
+                base_score = 100.0 / (dist + 1e-5)
+                if t_type == 'special':
+                    if self.robot_types[robot_index] == 'special':
+                        score = base_score * 1.5  # Bonus for special tasks
+                    else:
+                        score = 0.0  # Normal robot gets 0 for special tasks
                 else:
-                    score = 0.0  # Normal robot gets 0 for special tasks
-            else:
-                score = base_score
-            scores.append(score)
+                    score = base_score
+                scores.append(score)
 
         # Select the best candidate index for this robot.
         best_index = -1
@@ -262,6 +329,12 @@ class TaskAssignNode(Node):
         # For special tasks: if the robot is special, the score is multiplied by 1.5; if normal, score is 0.
         scores = []
         for i, robot_pose in enumerate(self.robot_poses):
+            robot_name = self.robot_names[i]
+            # If this robot has broken down, all its scores are zero
+            if hasattr(self, 'broke_agents') and robot_name in self.broke_agents:
+                scores.append([0.0] * len(self.all_clusters))
+                continue
+
             robot_scores = []
             for j, (center, t_type) in enumerate(zip(self.all_clusters, self.task_types)):
                 dist = np.linalg.norm(np.array(robot_pose) - np.array(center))
@@ -295,55 +368,7 @@ class TaskAssignNode(Node):
 
         print("\n=== Final Cluster Assignment ===")
         for robot, tasks in self.robot_cluster_map.items():
-            print(f"{robot}: {tasks}")
-
-
-
-    # def init_task_assign(self):
-    #     # Combine clustering centers of normal tasks and special tasks; construct task type list.
-    #     all_centers = self.centers_other + self.centers_special
-    #     task_types = ['normal'] * len(self.centers_other) + ['special'] * len(self.centers_special)
-
-    #     # Calculate each robot's score for every task center.
-    #     # Score = 100 / (distance + epsilon).
-    #     # For special tasks, if the robot is special, the score is increased 1.5x;
-    #     # If the robot is normal, the score for special tasks is 0.
-    #     scores = []
-    #     for i, robot_pose in enumerate(self.robot_poses):
-    #         robot_scores = []
-    #         for center, task_type in zip(all_centers, task_types):
-    #             dist = np.linalg.norm(np.array(robot_pose) - np.array(center))
-    #             base_score = 100.0 / (dist + 1e-5)
-    #             if task_type == 'special' and self.robot_types[i] == 'special':
-    #                 score = base_score * 1.5  # Special task bonus
-    #             elif task_type == 'special' and self.robot_types[i] == 'normal':
-    #                 score = 0.0  # Normal robot gets 0 for special tasks
-    #             else:
-    #                 score = base_score
-    #             robot_scores.append(score)
-    #         scores.append(robot_scores)
-
-    #     # Call the auction algorithm for initial task assignment.
-    #     assigned, _ = self.cbaa_algorithm.initial_task_assignment(scores, self.robot_types, task_types)
-
-    #     # Map the auction results with the clustering data:
-    #     # Combine the clustering results from both parts.
-    #     all_clusters = self.clusters_other + self.clusters_special
-    #     self.robot_cluster_map = {name: [] for name in self.robot_names}
-    #     for robot_index, task_index in assigned:
-    #         robot_name = self.robot_names[robot_index]
-    #         if task_index == -1:
-    #             # If a normal robot wins a special task (or no valid task), mark assignment as empty.
-    #             self.robot_cluster_map[robot_name] = []
-    #         else:
-    #             self.robot_cluster_map[robot_name] = all_clusters[task_index]
-
-    #     print("\n=== Final Cluster Assignment ===")
-    #     for robot, tasks in self.robot_cluster_map.items():
-    #         print(f"{robot}: {tasks}")
-        
-
-
+            print(f"{robot}: {tasks}")     
 
     def generate_task_sequences(self):
         self.robot_task_sequence = {}

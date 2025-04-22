@@ -7,7 +7,7 @@ import yaml
 import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
+from ltl_automaton_msgs.msg import AgentFail, AgentFailTask, NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
@@ -48,6 +48,7 @@ class EquipmentMode(Enum):
     WAITTASK = (255, 100, 0)
     NOTASK = (96, 96, 96)
     RESCUE = (255, 0, 0)
+    FAIL = (0, 0, 0)
 
 class GridWorld(object):
     def __init__(self, grid_size):
@@ -172,6 +173,13 @@ class LTLControllerDrone(Node):
             self.no_task_callback,
             10
         )
+
+        self.agent_fail_sub = self.create_subscription(
+            AgentFail,
+            'agent_failure',
+            self.agent_fail_callback,
+            10
+        )
         
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
@@ -179,6 +187,7 @@ class LTLControllerDrone(Node):
         self.taskassignment_request_pub = self.create_publisher(TaskRequestCluster, 'task_assignment_request', 10)
         self.position_pub = self.create_publisher(ShowPosition, 'show_position', 10)
         self.update_valid_tasks_pub = self.create_publisher(UpdateValidTasks, 'update_valid_tasks', 10)
+        self.agent_failed_task_pub = self.create_publisher(AgentFailTask, 'agent_fail_task', 10)
         self.pub_assign = True
         self.on_hold = False
         self.final_on_hold = False
@@ -222,6 +231,16 @@ class LTLControllerDrone(Node):
 
         self.create_timer(1.0/10, self.simulate)
         # self.simulate()
+
+    def agent_fail_callback(self, msg):
+        self.get_logger().info(f'{self.agent_name} is fail, need find new agent compeleting remaining tasks....')
+        self.final_on_hold = True
+        self.mode = EquipmentMode.FAIL
+        agent_fail_task = AgentFailTask()
+        agent_fail_task.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
+        agent_fail_task.task_id = self.cur_task
+        self.agent_failed_task_pub.publish(agent_fail_task)
+
     
     def waiting_request(self, msg):
         self.on_hold = True
@@ -272,7 +291,7 @@ class LTLControllerDrone(Node):
         else:
             self.mode = EquipmentMode.NOTASK
             # self.on_hold = True
-        self.get_logger().info("receive data pre")
+        # self.get_logger().info("receive data pre")
         self.prefix_action_list = msg.action_sequence
         # self.get_logger().info(f"length prefix_action_list: {len(self.prefix_action_list)}")
         self.prefix_state_sequence = msg.ts_state_sequence
@@ -283,7 +302,7 @@ class LTLControllerDrone(Node):
 
     def suffix_plan_callback(self, msg):
         # self.on_hold = False
-        self.get_logger().info("receive data sub")
+        # self.get_logger().info("receive data sub")
         self.suffix_action_list = msg.action_sequence
         # self.get_logger().info(f"length suffix_action_list: {len(self.suffix_action_list)}")
         self.suffix_state_sequence = msg.ts_state_sequence
@@ -293,7 +312,7 @@ class LTLControllerDrone(Node):
         # self.suffix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
         
     def relay_callback(self, msg):
-        self.get_logger().info("receive relay sub")
+        # self.get_logger().info("receive relay sub")
         self.pose = self.previous_pose
         if msg.success:
             self.prefix_action_list = msg.new_plan_prefix.action_sequence
@@ -310,14 +329,14 @@ class LTLControllerDrone(Node):
         #--------------
         # self.get_logger().info("inside the next move")
         if (len(self.prefix_action_list) + len(self.suffix_action_list) != 0):
-            self.get_logger().info(f"plan index: {self.plan_index}")
+            # self.get_logger().info(f"plan index: {self.plan_index}")
             if self.plan_index < len(self.prefix_action_list):
                 self.pub_assign = True
                 #self.get_logger().info("beanchmark fix 0")
                 for act in self.transition_system['actions']:
                     #self.get_logger().info("beanchmark fix 0.1")
                     if str(act) == self.prefix_action_list[self.plan_index]:
-                        self.get_logger().info(str(act))
+                        # self.get_logger().info(str(act))
                         #self.get_logger().info("beanchmark fix 0.2")
                         # Extract action types, attributes, etc. in dictionary
                         action_dict = self.transition_system['actions'][str(act)]
@@ -328,11 +347,11 @@ class LTLControllerDrone(Node):
                             self.previous_pose_index = self.pose_index
                             self.pose_index = extract_numbers(str(act))[1]
                             self.pose = self.nodes[f'{self.pose_index}']['attr']['pose']
-                            self.get_logger().info(f"previous pose: {self.previous_pose}")
-                            self.get_logger().info(f"pose: {self.pose}")
+                            # self.get_logger().info(f"previous pose: {self.previous_pose}")
+                            # self.get_logger().info(f"pose: {self.pose}")
                             
                             if check_in_block(act, self.nodes) and str(act) not in self.world.block:
-                                self.get_logger().info("--------Block detected---------")
+                                # self.get_logger().info("--------Block detected---------")
                                 self.world.block[str(act)] = 1
                                 # self.if_obs = True
                                 try: 
@@ -356,7 +375,7 @@ class LTLControllerDrone(Node):
                                     exit(1)
                             # self.get_logger().info("beanchmark fix 0.4")       
                             if check_in_bump(act, self.nodes, self.agent_name) and str(act) not in self.world.bump:
-                                self.get_logger().info("--------Bump detected---------")
+                                # self.get_logger().info("--------Bump detected---------")
                                 self.world.bump[str(act)] = 1
                                 # self.if_obs = True
                                 try: 
@@ -393,7 +412,7 @@ class LTLControllerDrone(Node):
                             pass
                         self.plan_index += 1
                         self.total_plan_index += 1
-                        self.get_logger().info(f"plan index: {self.plan_index}")
+                        # self.get_logger().info(f"plan index: {self.plan_index}")
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
                         self.next_interval = action_dict['weight']*5 # +1
@@ -441,7 +460,7 @@ class LTLControllerDrone(Node):
                             self.pose_index = extract_numbers(str(act))[1]
                             self.pose = self.nodes[f'{self.pose_index}']['attr']['pose']
                             if check_in_block(act, self.nodes) and str(act) not in self.world.block:
-                                self.get_logger().info("--------Block detected---------")
+                                # self.get_logger().info("--------Block detected---------")
                                 self.world.block[str(act)] = 1
                                 # self.if_obs = True
                                 try: 
@@ -464,7 +483,7 @@ class LTLControllerDrone(Node):
                                     exit(1)
                             # self.get_logger().info("beanchmark fix 0.4")       
                             if check_in_bump(act, self.nodes, self.agent_name) and str(act) not in self.world.bump:
-                                self.get_logger().info("--------Bump detected---------")
+                                # self.get_logger().info("--------Bump detected---------")
                                 self.world.bump[str(act)] = 1
                                 # self.if_obs = True
                                 try: 
@@ -599,6 +618,8 @@ class LTLControllerDrone(Node):
             elif self.mode == EquipmentMode.NOTASK:
                 mode = 'NoTask'
                 # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
+            elif self.mode == EquipmentMode.FAIL:
+                mode = 'Fail'
 
             msg = ShowPosition()   # Create a new ShowPosition message instance
             msg.robot_id = self.agent_name

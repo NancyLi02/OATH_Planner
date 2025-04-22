@@ -223,7 +223,7 @@ class CostMapClusterer:
             cluster_centers_special.append(tuple(center))
             cluster_points_special.append([tuple(map(float, p)) for p in cluster_coords])
 
-        self.plot_clusters()
+        # self.plot_clusters()
         return (cluster_centers_other, cluster_points_other), (cluster_centers_special, cluster_points_special)
 
     def plot_clusters(self):
