@@ -25,6 +25,7 @@ from shapely.geometry import Point, LineString, Polygon
 from example_interfaces.srv import AddTwoInts
 import re
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
+from interfaces_hmm_sim.msg import Status, ReplanStatus
 
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
@@ -35,6 +36,7 @@ from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 # action attributes defined in the TS config file
 #=================================================================
 
+USE_ISAAC = False
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -61,18 +63,7 @@ class GridWorld(object):
         self.width, self.height = 800, 800
         self.cell_size = self.width // self.grid_size
 
-        # Initialize the screen==================================
-        # self.screen = pygame.display.set_mode((self.width, self.height))
-        # self.font = pygame.font.SysFont('timesnewroman',  20)
-        
-        # self.frame_count = 0 
-        # filename = "screen_%04d.png" % (self.frame_count)
-        # pygame.image.save(self.screen, filename)
-        # time.sleep(5)
-
-        self.output_video = cv2.VideoWriter('/home/nanli/Isaac/planner/results/output_video.avi', cv2.VideoWriter_fourcc(*'XVID'), 30, (self.width, self.height))
-        
-        # pygame.display.set_caption("Grid with Moving Circle") # =====================
+        home_directory = os.path.expanduser("~")
 
     
     def load_elements(self):
@@ -88,7 +79,7 @@ class GridWorld(object):
                 for w in wall:
                     self.wall[(tuple(w[0]),tuple(w[1]))] = 0 
             else:
-                print("The YAML file does not contain a list.")    
+                print("The YAML file does not contain a list.")     
         
         print(self.wall)
         # with open(parent_dir + '/config/benchmark_bump_'+str(self.grid_size)+'.yaml', 'r') as file:
@@ -106,12 +97,7 @@ class GridWorld(object):
         
         self.bump = dict()
         self.block = dict()
-    
-    # def background(self):
-    #     for key, pos in self.loc.items():
-    #         letter = self.font.render(key, False, ORANGE, YELLOW)
-    #         self.screen.blit(letter, (int(pos[0] * self.cell_size + self.cell_size/2), \
-    #             self.height - int(pos[1] * self.cell_size + self.cell_size/2)))
+
 
 
 class LTLControllerDrone(Node):
@@ -246,6 +232,23 @@ class LTLControllerDrone(Node):
         self.next_interval = 10
 
         self.create_timer(1.0/10, self.simulate)
+
+        self.status_sub = self.create_subscription(
+            Status,
+            'status',
+            self.status_callback,
+            10)
+        
+        self.replan_pub = self.create_publisher(
+            ReplanStatus,
+            'replan_status',
+            10
+        )
+
+        self.sim_arrived = False
+        self.sim_received = False
+        self.sim_start = False
+
         # self.simulate()
 
     def agent_fail_callback(self, msg):
@@ -345,6 +348,17 @@ class LTLControllerDrone(Node):
             self.suffix_action_list = msg.new_plan_suffix.action_sequence
             self.suffix_state_sequence = msg.new_plan_suffix.ts_state_sequence
             self.on_hold = False
+
+    def status_callback(self, msg):
+        self.sim_arrived = msg.arrived
+        self.sim_received = msg.replan_received
+        self.sim_start = msg.start
+        if (self.sim_arrived):
+            self.get_logger().info("sim action complete")
+        elif (self.sim_received):
+            self.get_logger().info("sim replan received")
+        # elif (self.sim_start):
+        #     self.get_logger().info("sim started")
 
     def next_move(self):
         # if self.plan_index > 20 and self.pose == (grid_size/2-1, grid_size/2-1): #self.len(self.prefix_action_list) + len(self.suffix_action_list):
@@ -611,8 +625,22 @@ class LTLControllerDrone(Node):
         try:    
             if (self.get_clock().now().nanoseconds - self.t_sim.nanoseconds) / 1e9 >= self.next_interval/20:      
                 # self.get_logger().info(f"self.on_hold: {self.on_hold}")
-                if self.on_hold == False and self.final_on_hold == False:          
-                    self.next_move()
+                if self.on_hold == False and self.final_on_hold == False:
+                    if USE_ISAAC:
+                        if (self.sim_arrived or self.sim_received or self.sim_start):
+                            # self.get_logger().info(f"Sim status: {self.sim_arrived}")
+                            self.next_move()
+                            self.sim_arrived = False
+                            self.sim_received = False
+                            self.sim_start = False
+                    else:           
+                        self.next_move()
+                else:
+                    replan_status_msg = ReplanStatus()
+                    replan_status_msg.on_hold = self.on_hold
+                    replan_status_msg.final_on_hold = self.final_on_hold
+
+                    self.replan_pub.publish(replan_status_msg)
                 self.t_sim = self.get_clock().now()    
                 if self.pose != self.previous_pose:
                     if (self.previous_pose, self.pose) in self.world.bump or (self.pose, self.pose) in self.world.bump:
@@ -620,7 +648,8 @@ class LTLControllerDrone(Node):
                     else:
                         self.total_cost += 10
                     try:
-                        with open('/home/nanli/robot_data_10.csv', mode='a', newline='') as file:
+                        home_directory = os.path.expanduser("~")
+                        with open(os.path.join(home_directory,'robot_data_10.csv'), mode='a', newline='') as file:
                             writer = csv.writer(file)
                             writer.writerow(self.pose_history[-1])
                     except Exception as e:

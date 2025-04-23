@@ -10,7 +10,7 @@ random.seed(42)
 np.random.seed(42)
 def generate_launch_description():
     current_file_dir = os.path.dirname(os.path.realpath(__file__))
-    workspace_dir = os.path.join('/home/nanli/ros2_ws/', 'src/lmco')
+    workspace_dir = os.path.join(current_file_dir.split('/install')[0], 'src/lmco')
     package_src_dir = os.path.join(workspace_dir, 'ltl_automaton_planner')
     config_dir = os.path.join(package_src_dir, 'config')
     
