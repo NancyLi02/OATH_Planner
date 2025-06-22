@@ -75,8 +75,13 @@ def density_probability(d, d_min, d_opt, sigma, floor):
         return 0
     return floor + (1 - floor) * np.exp(-((d - d_opt) ** 2) / (2 * sigma ** 2))
 
-# Rejection sampling algorithm
+# Rejection sampling algorithm - modified to match utilities behavior
 def rejection_sampling(n_samples, lines, area_size, d_min, d_opt, sigma, floor):
+    # Set random seed inside the function to match utilities behavior
+    np.random.seed(42)
+    # Add the random_value call to match utilities exactly
+    random_value = np.random.rand()
+    
     samples = []
     multiplier = 10
     while len(samples) < n_samples:
@@ -130,7 +135,7 @@ ax.scatter([p.x for p in valid_points], [p.y for p in valid_points], s=5, color=
 ax.set_xlim(0, x_length)
 ax.set_ylim(0, y_length)
 ax.set_aspect('equal')
-plt.title('Adaptive Halton Sequence Map')
+# plt.title('Adaptive Halton Sequence Map')
 plt.grid(True)
 plt.show()
 

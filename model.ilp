@@ -1,0 +1,8 @@
+\ Model cluster_task_planning_copy
+\ LP format - for model browsing. Use MPS format to capture full model detail.
+Minimize
+ 
+Subject To
+ pickup_before_delivery_ec: <= -1
+Bounds
+End
