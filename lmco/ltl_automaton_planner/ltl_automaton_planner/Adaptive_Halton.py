@@ -4,6 +4,8 @@ from shapely.geometry import Point, LineString
 import matplotlib.pyplot as plt
 import yaml
 import csv
+import os
+import re
 
 # Global parameter definitions
 d_min = 0.3       # Minimum allowed distance to avoid points being too close to obstacles
@@ -24,35 +26,33 @@ def halton_sequence(size, base=2):
         sequence.append(r)
     return np.array(sequence)
 
-points_with_label = {
-    (1, 19): 'a',
-    (11, 19): '' ,
-    (9, 11): '' ,
-    (11, 9): '' ,
-    (17, 14.5): '',
-    (1, 4): 'bb', 
-    (6, 6): 'cb',
-    (1, 6.5): 'db', 
-    (5.5, 9.5): 'eb',
-    (9, 6.5): 'fb',
-    (6, 3): 'b', # unload
-    (1, 13.5): 'bc',
-    (9, 16.5): 'cc',
-    (1, 16): 'dc', 
-    (6, 13): 'ec',
-    (5, 16): 'c', # unload
-    (11, 13.5): 'bd',
-    (11, 16.5): 'cd',
-    (19, 16.5): 'dd',
-    (19, 19): 'ed', 
-    (15, 19.5): 'fd',
-    (16, 13): 'd', # unload
-    (11, 4): 'be',
-    (19, 6.5): 'ce',
-    (16, 3): 'de', 
-    (19, 1): 'ee',
-    (16, 5.5): 'e' # unload
-}
+# === 从YAML读取机器人、pickup、delivery点 ===
+
+task_points_yaml = '/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/Task_Points.yaml'
+with open(task_points_yaml, 'r') as f:
+    yaml_data = yaml.safe_load(f)
+
+points_with_label = {}
+# 机器人初始点
+if 'robot_positions' in yaml_data:
+    for robot, coord_str in yaml_data['robot_positions'].items():
+        match = re.match(r"([\d\.]+),([\d\.]+)", coord_str)
+        if match:
+            x, y = float(match.group(1)), float(match.group(2))
+            points_with_label[(x, y)] = robot
+# pickup点
+for k, v in yaml_data['task_points'].items():
+    match = re.match(r"([\d\.]+),([\d\.]+)", k)
+    if match:
+        x, y = float(match.group(1)), float(match.group(2))
+        points_with_label[(x, y)] = v
+# delivery点
+if 'delivery_points' in yaml_data:
+    for k, v in yaml_data['delivery_points'].items():
+        match = re.match(r"([\d\.]+),([\d\.]+)", k)
+        if match:
+            x, y = float(match.group(1)), float(match.group(2))
+            points_with_label[(x, y)] = v
 
 x_length, y_length = 20, 20
 

@@ -11,6 +11,7 @@ from shapely.geometry import LineString, Point
 from scipy.spatial import Delaunay
 from sklearn.cluster import AgglomerativeClustering
 from matplotlib.patches import Rectangle
+import re
 
 # ----------------- Parameters -----------------
 input_csv = "/home/nanli/ros2_ws/src/multi_source_dijkstra_distances.csv"
@@ -21,26 +22,37 @@ halton_points_csv = "/home/nanli/ros2_ws/src/all_points_in_Halton.csv"
 wall_thick = 0.1
 n_clusters = 4
 
-# ----------------- Load Data -----------------
-points_with_label = {
-    (1, 19): 'a',
-    (11, 19): '',
-    (9, 11): '',
-    (11, 9): '',
-    (17, 14.5): '',
-    (1, 4): 'bb', (6, 6): 'cb', (1, 6.5): 'db', (5.5, 9.5): 'eb', (9, 6.5): 'fb',
-    (6, 3): 'b',
-    (1, 13.5): 'bc', (9, 16.5): 'cc', (1, 16): 'dc', (6, 13): 'ec',
-    (5, 16): 'c',
-    (11.0, 13.5): 'bd', (11, 16.5): 'cd', (19, 16.5): 'dd', (19, 19): 'ed', (15, 19.5): 'fd',
-    (16, 13): 'd',
-    (11.0, 4.0): 'be', (19, 6.5): 'ce', (16, 3): 'de', (19, 1): 'ee',
-    (16, 5.5): 'e'
-}
+# === 从YAML读取机器人、pickup、delivery点 ===
+task_points_yaml = '/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/Task_Points.yaml'
+with open(task_points_yaml, 'r') as f:
+    yaml_data = yaml.safe_load(f)
+
+points_with_label = {}
+# 机器人初始点
+if 'robot_positions' in yaml_data:
+    for robot, coord_str in yaml_data['robot_positions'].items():
+        match = re.match(r"([\d\.]+),([\d\.]+)", coord_str)
+        if match:
+            x, y = float(match.group(1)), float(match.group(2))
+            points_with_label[(x, y)] = robot
+# pickup点
+for k, v in yaml_data['task_points'].items():
+    match = re.match(r"([\d\.]+),([\d\.]+)", k)
+    if match:
+        x, y = float(match.group(1)), float(match.group(2))
+        points_with_label[(x, y)] = v
+# delivery点
+if 'delivery_points' in yaml_data:
+    for k, v in yaml_data['delivery_points'].items():
+        match = re.match(r"([\d\.]+),([\d\.]+)", k)
+        if match:
+            x, y = float(match.group(1)), float(match.group(2))
+            points_with_label[(x, y)] = v
+
 label_to_coord = {label: coord for coord, label in points_with_label.items()}
 
 df = pd.read_csv(input_csv)
-labels = pd.unique(df[['from', 'to']].values.ravel('K'))
+labels = [label for label in pd.unique(df[['from', 'to']].values.ravel('K')) if label in label_to_coord]
 label_to_index = {label: idx for idx, label in enumerate(labels)}
 index_to_label = {idx: label for label, idx in label_to_index.items()}
 n = len(labels)
@@ -48,6 +60,8 @@ n = len(labels)
 dist_matrix = np.full((n, n), np.inf)
 np.fill_diagonal(dist_matrix, 0.0)
 for _, row in df.iterrows():
+    if row['from'] not in label_to_index or row['to'] not in label_to_index:
+        continue
     i = label_to_index[row['from']]
     j = label_to_index[row['to']]
     dist_matrix[i][j] = row['distance']

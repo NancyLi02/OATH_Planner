@@ -13,6 +13,7 @@ from enum import Enum
 import threading
 import yaml
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
+import re
 
 #=======================================================================
 #  Interfaces between ShowMoveNode and other nodes
@@ -116,32 +117,33 @@ class ShowMoveNode(Node):
 
         self.failed_task_list = []
 
-        self.points = {
-            (1, 4): 'bb',
-            (6, 6): 'cb',
-            (1, 6.5): 'db',
-            (5.5, 9.5): 'eb',
-            (9, 6.5): 'fb',
-            (6, 3): 'b',    # unload
-            (1, 13.5): 'bc',
-            (9, 16.5): 'cc',
-            (1, 16): 'dc',
-            (6, 13): 'ec',
-            (5, 16): 'c',   # unload
-            (11, 13.5): 'bd',
-            (11, 16.5): 'cd',
-            (19, 16.5): 'dd',
-            (19, 19): 'ed',
-            (15, 19.5): 'fd',
-            (16, 13): 'd',  # unload
-            (11, 4): 'be',
-            (19, 6.5): 'ce',
-            (16, 3): 'de',
-            (19, 1): 'ee',
-            (16, 5.5): 'e'  # unload
-        }
+        # === 从YAML读取任务点、delivery点 ===
+        parent_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner')
+        )
+        task_points_yaml = os.path.join(parent_dir, 'config', 'Task_Points.yaml')
+        with open(task_points_yaml, 'r') as f:
+            yaml_data = yaml.safe_load(f)
+
+        # 解析任务点
+        points_with_label = {}
+        for k, v in yaml_data['task_points'].items():
+            match = re.match(r"([\d\.]+),([\d\.]+)", k)
+            if match:
+                x, y = float(match.group(1)), float(match.group(2))
+                points_with_label[(x, y)] = v
+        # 解析delivery点
+        delivery_points = {}
+        if 'delivery_points' in yaml_data:
+            for k, v in yaml_data['delivery_points'].items():
+                match = re.match(r"([\d\.]+),([\d\.]+)", k)
+                if match:
+                    x, y = float(match.group(1)), float(match.group(2))
+                    delivery_points[(x, y)] = v
+        # 合并所有点
+        self.points = {**points_with_label, **delivery_points}
         # Set of unload points for quick lookup
-        self.unloaded_points = {(6, 3), (5, 16), (16, 13), (16, 5.5)}
+        self.unloaded_points = set(delivery_points.keys())
         # Precompute loading-task labels in order to map between label and index
         self.loaded_labels = [
             label for pt, label in self.points.items()
@@ -201,33 +203,29 @@ class ShowMoveNode(Node):
         self.timer = self.create_timer(0.1, self.simulate)
     
     def task_fail_callback(self, msg):
-        # Convert failed task label to its loading-task index
+        # 直接用label字符串
         try:
-            rank = self.loaded_labels.index(msg.task_label) + 1
-            # If it was previously marked as finished, remove it
-            if rank in self.finished_tasks:
-                self.finished_tasks.remove(rank)
-            # Add to failed list if not already present
-            if rank not in self.failed_task_list:
-                self.failed_task_list.append(rank)  # Store failed-task index
-        except ValueError:
-            # msg.task_label not in loaded tasks; ignore
+            label = msg.task_label
+            # 如果之前标记为完成，移除
+            if label in self.finished_tasks:
+                self.finished_tasks.remove(label)
+            # 加入失败列表
+            if label not in self.failed_task_list:
+                self.failed_task_list.append(label)
+        except Exception:
             pass
 
     def update_valid_tasks(self, msg):
         """
         Callback for update_valid_tasks topic.
-        The received message is an integer representing the index of the completed task.
-        For example: 1 corresponds to 'bb', 2 corresponds to 'bc' (for loading task points, excluding those marked as unload).
-        When a task-completion message is received, the task index is recorded in the finished_tasks set,
-        and later the corresponding task point will be displayed in grey in the simulation.
+        现在直接用label字符串，不再用数字。
         """
-        # If this task was in failed list, remove it now
-        if msg.loaded_task in self.failed_task_list:
-            self.failed_task_list.remove(msg.loaded_task)
-
-        # Add the completed task number to finished_tasks
-        self.finished_tasks.add(msg.loaded_task)
+        label = msg.loaded_task
+        # 如果在失败列表，移除
+        if label in self.failed_task_list:
+            self.failed_task_list.remove(label)
+        # 加入完成列表
+        self.finished_tasks.add(label)
 
     def position_callback(self, msg):
         """
@@ -306,9 +304,6 @@ class ShowMoveNode(Node):
         special_points = {'db', 'eb', 'bb', 'cd', 'fd'}
 
         # Iterate through all points, choose color based on status:
-        # - For unload points, use GREEN directly.
-        # - For loading task points, if its order (starting from 1) in the sorted list is in finished_tasks, draw in grey; otherwise use SKY_BLUE.
-        # Iterate through all points, choose color based on status:
         for pt, label in points.items():
             pixel_pos = self.transform_coords(pt)
             side = self.world.cell_size // 2
@@ -316,9 +311,8 @@ class ShowMoveNode(Node):
             if pt in unloaded_points:
                 color = GREEN
             else:
-                # Calculate the order (starting from 1) of the current task point
-                rank = loaded_labels.index(label) + 1
-                if rank in self.finished_tasks:
+                # 直接用label判断是否完成
+                if label in self.finished_tasks:
                     color = self.finished_tasks_color
                     special_color = self.finished_tasks_color
                 else:
@@ -337,8 +331,7 @@ class ShowMoveNode(Node):
 
             # Draw red circle around failed loading tasks
             if pt not in unloaded_points:
-                rank = loaded_labels.index(label) + 1
-                if rank in self.failed_task_list:
+                if label in self.failed_task_list:
                     pygame.draw.circle(self.world.screen, RED, pixel_pos, side, 2)
 
             # Draw the label

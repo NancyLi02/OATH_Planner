@@ -2,4 +2,4 @@
 
 int32 robot_id
 
-int32 loaded_task
+string loaded_task

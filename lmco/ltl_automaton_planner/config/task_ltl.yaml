@@ -1,91 +1,95 @@
 tasks:
+  # task1:
+  #   hard_task: <>(bb) && [](bb -> X(loaded && ((!cb) && (!db) && (!eb) && (!fb) &&
+  #     (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!c) && (!d) && (!e) ) U (b && unloaded)))
+  #   soft_task: ''
   task1:
-    hard_task: <>(bb) && [](bb -> X(loaded && ((!cb) && (!db) && (!eb) && (!fb) &&
-      (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!c) && (!d) && (!e) ) U (b && unloaded)))
+    hard_task: <>(fd && loaded && (<>(bd && loaded && (<>(d && unloaded)))))
     soft_task: ''
+  # task2:
+  #   hard_task: <>(cb) && [](cb -> X(loaded && ((!bb) && (!db) && (!eb) && (!fb) &&
+  #     (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!c) && (!d) && (!e) ) U (b && unloaded)))
+  #   soft_task: ''
   task2:
-    hard_task: <>(cb) && [](cb -> X(loaded && ((!bb) && (!db) && (!eb) && (!fb) &&
-      (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!c) && (!d) && (!e) ) U (b && unloaded)))
+    hard_task: <>fd && [](fd -> X((loaded && (!bd)&&(!d)) U (cd && loaded))) && [](cd && loaded -> X(((!d)) U (bd && loaded))) && [](bd && loaded -> X((true) U (d && unloaded)))
+    # hard_task: <>(db) && [](db -> X(loaded && ((!bb) && (!cb) && (!eb) && (!fb) &&
+    #   (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
+    #   && (!be) && (!ce) && (!de) && (!ee) && (!c) && (!d) && (!e) ) U (b && unloaded)))
     soft_task: ''
-  task3:
-    hard_task: <>(db) && [](db -> X(loaded && ((!bb) && (!cb) && (!eb) && (!fb) &&
-      (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!c) && (!d) && (!e) ) U (b && unloaded)))
-    soft_task: ''
-  task4:
-    hard_task: <>(eb) && [](eb -> X(loaded && ((!bb) && (!cb) && (!db) && (!fb) &&
-      (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!c) && (!d) && (!e) ) U (b && unloaded)))
-    soft_task: ''
-  task5:
-    hard_task: <>(fb) && [](fb -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!c) && (!d) && (!e) ) U (b && unloaded)))
-    soft_task: ''
-  task6:
-    hard_task: <>(bc) && [](bc -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!d) && (!e) ) U (c && unloaded)))
-    soft_task: ''
-  task7:
-    hard_task: <>(cc) && [](cc -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!d) && (!e) ) U (c && unloaded)))
-    soft_task: ''
-  task8:
-    hard_task: <>(dc) && [](dc -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!d) && (!e) ) U (c && unloaded)))
-    soft_task: ''
-  task9:
-    hard_task: <>(ec) && [](ec -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!dc) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!d) && (!e) ) U (c && unloaded)))
-    soft_task: ''
-  task10:
-    hard_task: <>(bd) && [](bd -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!cd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!e) ) U (d && unloaded)))
-    soft_task: ''
-  task11:
-    hard_task: <>(cd) && [](cd -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!dd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!e) ) U (d && unloaded)))
-    soft_task: ''
-  task12:
-    hard_task: <>(dd) && [](dd -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!ed) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!e) ) U (d && unloaded)))
-    soft_task: ''
-  task13:
-    hard_task: <>(ed) && [](ed -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!fd)
-      && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!e) ) U (d && unloaded)))
-    soft_task: ''
-  task14:
-    hard_task: <>(fd) && [](fd -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed)
-      && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!e) ) U (d && unloaded)))
-    soft_task: ''
-  task15:
-    hard_task: <>(be) && [](be -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed)
-      && (!fd) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!d) ) U (e && unloaded)))
-    soft_task: ''
-  task16:
-    hard_task: <>(ce) && [](ce -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed)
-      && (!fd) && (!be) && (!de) && (!ee) && (!b) && (!c) && (!d) ) U (e && unloaded)))
-    soft_task: ''
-  task17:
-    hard_task: <>(de) && [](de -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed)
-      && (!fd) && (!be) && (!ce) && (!ee) && (!b) && (!c) && (!d) ) U (e && unloaded)))
-    soft_task: ''
-  task18:
-    hard_task: <>(ee) && [](ee -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
-      (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed)
-      && (!fd) && (!be) && (!ce) && (!de) && (!b) && (!c) && (!d) ) U (e && unloaded)))
-    soft_task: ''
+  # task4:
+  #   hard_task: <>(eb) && [](eb -> X(loaded && ((!bb) && (!cb) && (!db) && (!fb) &&
+  #     (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!c) && (!d) && (!e) ) U (b && unloaded)))
+  #   soft_task: ''
+  # task5:
+  #   hard_task: <>(fb) && [](fb -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!c) && (!d) && (!e) ) U (b && unloaded)))
+  #   soft_task: ''
+  # task6:
+  #   hard_task: <>(bc) && [](bc -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!d) && (!e) ) U (c && unloaded)))
+  #   soft_task: ''
+  # task7:
+  #   hard_task: <>(cc) && [](cc -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!d) && (!e) ) U (c && unloaded)))
+  #   soft_task: ''
+  # task8:
+  #   hard_task: <>(dc) && [](dc -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!d) && (!e) ) U (c && unloaded)))
+  #   soft_task: ''
+  # task9:
+  #   hard_task: <>(ec) && [](ec -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!dc) && (!bd) && (!cd) && (!dd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!d) && (!e) ) U (c && unloaded)))
+  #   soft_task: ''
+  # task10:
+  #   hard_task: <>(bd) && [](bd -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!cd) && (!dd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!e) ) U (d && unloaded)))
+  #   soft_task: ''
+  # task11:
+  #   hard_task: <>(cd) && [](cd -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!dd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!e) ) U (d && unloaded)))
+  #   soft_task: ''
+  # task12:
+  #   hard_task: <>(dd) && [](dd -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!ed) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!e) ) U (d && unloaded)))
+  #   soft_task: ''
+  # task13:
+  #   hard_task: <>(ed) && [](ed -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!fd)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!e) ) U (d && unloaded)))
+  #   soft_task: ''
+  # task14:
+  #   hard_task: <>(fd) && [](fd -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed)
+  #     && (!be) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!e) ) U (d && unloaded)))
+  #   soft_task: ''
+  # task15:
+  #   hard_task: <>(be) && [](be -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed)
+  #     && (!fd) && (!ce) && (!de) && (!ee) && (!b) && (!c) && (!d) ) U (e && unloaded)))
+  #   soft_task: ''
+  # task16:
+  #   hard_task: <>(ce) && [](ce -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed)
+  #     && (!fd) && (!be) && (!de) && (!ee) && (!b) && (!c) && (!d) ) U (e && unloaded)))
+  #   soft_task: ''
+  # task17:
+  #   hard_task: <>(de) && [](de -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed)
+  #     && (!fd) && (!be) && (!ce) && (!ee) && (!b) && (!c) && (!d) ) U (e && unloaded)))
+  #   soft_task: ''
+  # task18:
+  #   hard_task: <>(ee) && [](ee -> X(loaded && ((!bb) && (!cb) && (!db) && (!eb) &&
+  #     (!fb) && (!bc) && (!cc) && (!dc) && (!ec) && (!bd) && (!cd) && (!dd) && (!ed)
+  #     && (!fd) && (!be) && (!ce) && (!de) && (!b) && (!c) && (!d) ) U (e && unloaded)))
+  #   soft_task: ''

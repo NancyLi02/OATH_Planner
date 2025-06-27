@@ -214,19 +214,45 @@ class CostMapClusterer:
                     heapq.heappush(heap, (alt, v))
         return dist, prev
 
-    def cluster(self):
-        """Perform clustering on all task points"""
+    def cluster(self, task_points=None, task_coords=None):
+        """
+        Perform clustering on specified task points (default: all task points).
+        task_points: list of labels
+        task_coords: list of (x, y)
+        """
         if self.distance_matrix is None:
             self.compute_distance_matrix()
-        model = AgglomerativeClustering(n_clusters=self.num_clusters, metric='precomputed', linkage='average')
-        self.labels = model.fit_predict(self.distance_matrix)
+
+        if task_points is not None:
+            # 获取全局label顺序
+            all_labels = self.task_points
+            # 找到当前未分配点在全局label中的索引
+            indices = [all_labels.index(lbl) for lbl in task_points]
+            # 提取子矩阵
+            dist_matrix = self.distance_matrix[np.ix_(indices, indices)]
+            use_task_coords = task_coords
+            use_task_points = task_points
+        else:
+            dist_matrix = self.distance_matrix
+            use_task_coords = self.task_coords
+            use_task_points = self.task_points
+
+        n_points = len(use_task_points)
+        n_clusters = min(self.num_clusters, n_points)
+        if n_points == 0:
+            return [], []
+        if n_points == 1:
+            # 只剩一个任务点，直接返回该点为唯一的cluster
+            return [use_task_coords[0]], [[use_task_coords[0]]]
+        model = AgglomerativeClustering(n_clusters=n_clusters, metric='precomputed', linkage='average')
+        labels = model.fit_predict(dist_matrix)
         cluster_centers = []
         cluster_points = []
-        for cluster_label in range(self.num_clusters):
-            indices = np.where(self.labels == cluster_label)[0]
-            if len(indices) == 0:
+        for cluster_label in range(n_clusters):
+            idxs = np.where(labels == cluster_label)[0]
+            if len(idxs) == 0:
                 continue
-            cluster_coords = np.array([self.task_coords[idx] for idx in indices])
+            cluster_coords = np.array([use_task_coords[i] for i in idxs])
             center = cluster_coords.mean(axis=0)
             cluster_centers.append(tuple(center))
             cluster_points.append([tuple(map(float, p)) for p in cluster_coords])

@@ -25,14 +25,30 @@ state_models:
   Drone_state:
     initial: "unloaded"
     nodes:
-      loaded:
+      loaded1:
         attr:
-          labels: ['loaded']
+          labels: ['loaded1']
         connected_to:
           unloaded: unload
+          loaded1: load
+          loaded2: load
+      loaded2:
+        attr:
+          labels: ['loaded2']
+        connected_to:
+          unloaded: unload
+          loaded2: load
+          loaded3: load
+      loaded3:
+        attr:
+          labels: ['loaded3']
+        connected_to:
+          unloaded: unload
+          loaded3: load
       unloaded:
         attr:
           labels: ['unloaded']
         connected_to:
-          loaded: load
+          loaded1: load
+          unloaded: unload
     ts_type: Drone_state

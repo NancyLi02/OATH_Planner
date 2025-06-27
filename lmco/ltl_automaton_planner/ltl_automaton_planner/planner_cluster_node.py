@@ -29,6 +29,7 @@ import time
 import yaml
 from example_interfaces.srv import AddTwoInts
 import re
+from ltl_automaton_planner.Gen_LTL import generate_ltl_formula
 
 def show_automaton(automaton_graph):
     pos=nx.spring_layout(automaton_graph)
@@ -52,15 +53,15 @@ class MainPlanner(Node):
 
         self.nodes, self.actions = build_graph_halton(20, 20, 180)
 
-        start_time = time.time()
-        self.initialize_automaton()
-        end_time = time.time()
-        build_automaton_time = end_time - start_time
-        self.get_logger().info(f'Building Automaton for {self.agent_name} cost {build_automaton_time} seconds.')
+        # start_time = time.time()
+        # self.initialize_automaton()
+        # end_time = time.time()
+        # build_automaton_time = end_time - start_time
+        # self.get_logger().info(f'Building Automaton for {self.agent_name} cost {build_automaton_time} seconds.')
         
-        robotid_msg = RobotID()
-        robotid_msg.robot_id = self.agent_name
-        self.finish_build_auto_pub.publish(robotid_msg)
+        # robotid_msg = RobotID()
+        # robotid_msg.robot_id = self.agent_name
+        # self.finish_build_auto_pub.publish(robotid_msg)
         # time.sleep(1)
         # self.init_score_list()
         
@@ -101,6 +102,7 @@ class MainPlanner(Node):
         self.current_task_list = []
         self.pose_index = self.init_state
         self.position = []
+        self.current_ltl_formula = ''
 
 
     def load_tasks(self, yaml_file):
@@ -114,6 +116,42 @@ class MainPlanner(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to read or parse the YAML file: {e}")
             raise
+
+    def generate_ltl_formula(self, route_labels):
+        """
+        根据route_labels生成LTL公式
+        从route_labels中推断pickup和delivery标签，然后调用Gen_LTL.py中的函数
+        """
+        if not route_labels:
+            self.get_logger().warn("Empty route_labels received")
+            return ""
+        
+        # 从route_labels中推断pickup和delivery标签
+        # pickup标签通常是两个字母（如'bc', 'cc', 'dc', 'ec'）
+        # delivery标签通常是单个字母（如'b', 'c', 'd', 'e'）
+        pickup_labels = []
+        delivery_labels = []
+        
+        for label in route_labels:
+            if len(label) == 2:  # 两个字母的标签通常是pickup
+                pickup_labels.append(label)
+            elif len(label) == 1:  # 单个字母的标签通常是delivery
+                delivery_labels.append(label)
+        
+        # 去重
+        pickup_labels = list(set(pickup_labels))
+        delivery_labels = list(set(delivery_labels))
+        
+        self.get_logger().info(f"Inferred pickup labels: {pickup_labels}")
+        self.get_logger().info(f"Inferred delivery labels: {delivery_labels}")
+    
+        
+        # 调用Gen_LTL.py中的函数生成LTL公式
+        ltl_formula = generate_ltl_formula(route_labels, pickup_labels, delivery_labels)
+        
+        self.get_logger().info(f"Generated LTL formula: {ltl_formula}")
+        
+        return ltl_formula
 
     def initialize_automaton(self):
         # Import state models from TS
@@ -130,21 +168,27 @@ class MainPlanner(Node):
         for task_id in self.task_index:
             task_id = f'task{task_id}'
             hard_task = self.task_data[task_id]['hard_task']
-            soft_task = self.task_data[task_id]['soft_task']
+            soft_task = ''
 
             # Create Task Product Automaton
             self.get_logger().info(f"{self.agent_name} creating new Product Automaton for task {task_id}...")
             robot_model = TSModel(state_models)
             product_automaton = ProdAut(robot_model, mission_to_buchi(hard_task, soft_task), self.initial_beta)
+            # self.get_logger().info(f"Step 4: ProdAut 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
             product_automaton.graph['ts'].build_full()  # Fully initialize the automaton during construction
-
+            # self.get_logger().info(f"Step 5: build_full 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
             product_automaton.build_full_relaxed()
+            # self.get_logger().info(f"Step 6: build_full_relaxed 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
+
 
             # self.get_logger().info(f"Product Automaton Nodes before calling optimal: {product_automaton.graph['initial']}")
 
             # Initialize LTL Planner for each task
+            # self.get_logger().info(f"Step 7: LTLPlanner 初始化 开始")
             ltl_planner = LTLPlanner(robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
+            # self.get_logger().info(f"Step 8: LTLPlanner 初始化 完成")
             ltl_planner.optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
+            # self.get_logger().info(f"Step 9: LTLPlanner.optimal 完成")
 
             # Store the newly created product automaton and LTL planner
             self.product_automata[task_id] = product_automaton
@@ -191,52 +235,78 @@ class MainPlanner(Node):
         # Use the corresponding LTLPlanner instance for this task
         self.ltl_planners[task_id].optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
 
-    def update_score_automaton(self, task_id, new_initial_ts_state):
-        # Check if `ProdAut` for `task_id` exists
-        if task_id not in self.product_automata:
-            raise ValueError(f"Product Automaton for task {task_id} has not been initialized. Call initialize_automaton first.")
+    # def update_score_automaton(self, task_id, new_initial_ts_state):
+    #     # Check if `ProdAut` for `task_id` exists
+    #     if task_id not in self.product_automata:
+    #         raise ValueError(f"Product Automaton for task {task_id} has not been initialized. Call initialize_automaton first.")
         
-        if task_id not in self.score_planners:
-            raise ValueError(f"LTLPlanner for task {task_id} has not been initialized. Call initialize_automaton first.")
+    #     if task_id not in self.score_planners:
+    #         raise ValueError(f"LTLPlanner for task {task_id} has not been initialized. Call initialize_automaton first.")
 
-        product_automaton = self.product_automata[task_id]
+    #     product_automaton = self.product_automata[task_id]
 
-        # Ensure correct format if input is a dictionary
-        if isinstance(new_initial_ts_state, dict):
-            new_initial_ts_state = (new_initial_ts_state['2d_pose_region'], new_initial_ts_state['Drone_state'])
+    #     # Ensure correct format if input is a dictionary
+    #     if isinstance(new_initial_ts_state, dict):
+    #         new_initial_ts_state = (new_initial_ts_state['2d_pose_region'], new_initial_ts_state['Drone_state'])
 
-        # Update the initial state in the expected format
-        product_automaton.graph['ts'].graph['initial'] = {new_initial_ts_state}
-        product_automaton.build_initial()  # Only update the initial state
+    #     # Update the initial state in the expected format
+    #     product_automaton.graph['ts'].graph['initial'] = {new_initial_ts_state}
+    #     product_automaton.build_initial()  # Only update the initial state
 
-        # Update LTL Planner's current state and possible runs
-        self.score_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
-        self.score_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
+    #     # Update LTL Planner's current state and possible runs
+    #     self.score_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
+    #     self.score_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
 
-        # Use the corresponding LTLPlanner instance for this task
-        self.score_planners[task_id].optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
+    #     # Use the corresponding LTLPlanner instance for this task
+    #     self.score_planners[task_id].optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
 
     
-    # def build_automaton(self, task_id):
-    #     # Import state models from TS
-    #     state_models = state_models_from_ts(self.transition_system, self.initial_state_ts_dict)
+    def build_and_run_automaton(self, ltl_formula, initial_state_ts_dict):
+        self.get_logger().info(f"Building and running automaton for {self.agent_name}.")
 
-    #     # Get task ltl specification
-    #     hard_task = self.task_data[task_id]['hard_task']
-    #     soft_task = self.task_data[task_id]['soft_task']
+        state_models = state_models_from_ts(self.transition_system, initial_state_ts_dict)
 
-    #     # Build product automaton
-    #     self.robot_model = TSModel(state_models)
-    #     self.ltl_planner = LTLPlanner(self.robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
-    #     self.ltl_planner.optimal(algo=self.algo_type, N=self.grid_size)
 
-    #     # initialize storage of set of possible runs in product
-    #     self.ltl_planner.curr_ts_state = list(self.ltl_planner.product.graph['ts'].graph['initial'])[0]
-    #     self.ltl_planner.posb_runs = set([(n,) for n in self.ltl_planner.product.graph['initial']])
+        # Get task ltl specification
+        hard_task = ltl_formula
+        soft_task = ''
 
-        #show_automaton(self.robot_model)
-        #show_automaton(self.ltl_planner.product.graph['buchi'])
-        #show_automaton(self.ltl_planner.product)
+
+        buchi = mission_to_buchi(hard_task, soft_task)
+        # self.get_logger().info(f"Step 2: mission_to_buchi 完成，buchi states: {len(buchi.nodes())}, edges: {len(buchi.edges())}")
+
+
+        self.robot_model = TSModel(state_models)
+
+
+        # self.get_logger().info("Step 4: ProdAut 开始")
+        self.product_automaton = ProdAut(self.robot_model, buchi, self.initial_beta)
+        # self.get_logger().info(f"Step 4: ProdAut 完成，product nodes: {len(self.product_automaton.nodes)}, edges: {len(self.product_automaton.edges)}")
+
+        # self.get_logger().info("Step 5: build_full 开始")
+        self.product_automaton.graph['ts'].build_full()
+        # self.get_logger().info(f"Step 5: build_full 完成，product nodes: {len(self.product_automaton.nodes())}, edges: {len(self.product_automaton.edges())}")
+
+        # self.get_logger().info("Step 6: build_full_relaxed 开始")
+        self.product_automaton.build_full_relaxed()
+        # self.get_logger().info(f"Step 6: build_full_relaxed 完成，product nodes: {len(self.product_automaton.nodes)}, edges: {len(self.product_automaton.edges)}")
+
+        # self.get_logger().info("Step 7: LTLPlanner 初始化 开始")
+        self.ltl_planner = LTLPlanner(self.robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
+        # self.get_logger().info("Step 7: LTLPlanner 初始化 完成")
+
+        # self.get_logger().info("Step 8: LTLPlanner.optimal 开始")
+        self.ltl_planner.optimal(self.product_automaton, algo=self.algo_type, N=self.grid_size)
+        # self.get_logger().info("Step 8: LTLPlanner.optimal 完成")
+
+        # initialize storage of set of possible runs in product
+        self.ltl_planner.curr_ts_state = list(self.ltl_planner.product.graph['ts'].graph['initial'])[0]
+        self.ltl_planner.posb_runs = set([(n,) for n in self.ltl_planner.product.graph['initial']])
+        self.get_logger().info(f"LTL Planner for {self.agent_name} built and run.")
+
+        # show_automaton(self.robot_model)
+        # show_automaton(self.ltl_planner.product.graph['buchi'])
+        # show_automaton(self.ltl_planner.product)
 
 
     def setup_pub_sub(self):
@@ -319,41 +389,36 @@ class MainPlanner(Node):
         self.pose_index = msg.pose_index
         self.position = msg.position
 
-        # Remove the completed task from the list
-        if self.current_task_list:
-            completed_task = self.current_task_list.pop(0)
-            self.get_logger().info(f"Completed task {completed_task} removed from list.")
+        self.request_cluster_msg = ClusterRequest()
+        self.request_cluster_msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
+        self.request_cluster_msg.position = self.position
+        self.request_cluster_pub.publish(self.request_cluster_msg)
+        self.get_logger().info(f"No more tasks remaining for {self.agent_name}, requesting for new cluster.......................................")
 
-        # Check if there are more tasks to assign
-        if self.current_task_list:
-            self.task_number = self.current_task_list[0]
-            self.get_logger().info(f"Assigning new task {self.task_number} to {self.agent_name}.")
-            self.handle_task(self.task_number)
-        else:
-            self.request_cluster_msg = ClusterRequest()
-            self.request_cluster_msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
-            self.request_cluster_msg.position = self.position
-            self.request_cluster_pub.publish(self.request_cluster_msg)
-            self.get_logger().info(f"No more tasks remaining for {self.agent_name}, requesting for new cluster.......................................")
 
 
     def cluster_task_callback(self, msg):
-        self.get_logger().info(f"Received task list for {self.agent_name}: {msg.task_sequence}")
-        if not msg.task_sequence:
-            self.get_logger().warn("Received empty task sequence.")
-            # Create and publish a NoTask message if the task sequence is empty.
-            no_task_msg = NoTask()
-            no_task_msg.robot_id = self.agent_name  # Set the robot_id (assume self.robot_id is defined)
-            self.no_task_pub.publish(no_task_msg)
-            return
+        self.get_logger().info(f"Received task list for {self.agent_name}: {msg.route_labels}")
 
-        # Store the task list.
-        self.current_task_list = list(msg.task_sequence)
+        self.current_task_list = list(msg.route_labels)
+        # 只保留pickup的点（两个字母的label），并保持顺序
+        self.pickup_labels = [label for label in self.current_task_list if len(label) == 2]
+
+        self.current_ltl_formula = self.generate_ltl_formula(msg.route_labels)
+
+        new_initial_pose = self.pose_index
+        formatted_pose = f'{new_initial_pose}'
+
+        # Prepare initial state
+        self.initial_state_ts_dict = {
+            '2d_pose_region': formatted_pose,
+            'Drone_state': 'unloaded'
+        }
+
+        self.build_and_run_automaton(self.current_ltl_formula, self.initial_state_ts_dict)
         
-        # Take the first task and process it.
-        self.task_number = self.current_task_list[0]
-        self.handle_task(self.task_number)
-
+        # Publish the generated plan
+        self.publish_cluster_plan()
 
     def handle_task(self, task_index):
         # Get and format current pose
@@ -436,24 +501,71 @@ class MainPlanner(Node):
         return 0  # Return 0 if no score is calculated
         
     
+    def publish_cluster_plan(self):
+        """
+        发布从cluster_task_callback生成的计划
+        使用self.ltl_planner（单数形式）
+        """
+        self.get_logger().info(f"Publishing cluster plan for {self.agent_name}.")
+        if self.ltl_planner.run is not None:
+            # Prefix plan
+            #-------------
+            self.prefix_plan_msg = LTLPlan()
+            self.prefix_plan_msg.header.stamp = self.get_clock().now().to_msg()
+            self.prefix_plan_msg.action_sequence = self.ltl_planner.run.pre_plan
+            self.prefix_plan_msg.ts_state_sequence = []
+            # 只发布pickup_labels
+            self.prefix_plan_msg.route_labels = self.pickup_labels if hasattr(self, 'pickup_labels') else []
+            
+            # Go through all TS state in plan and add it as TransitionSystemState message
+            for ts_state in self.ltl_planner.run.line:
+                ts_state_msg = TransitionSystemState()
+                # If TS state is more than 1 dimension (is a tuple)
+                if type(ts_state) is tuple:
+                    ts_state_msg.states = list(ts_state)
+                # Else state is a single string
+                else:
+                    ts_state_msg.states = [ts_state]
+                # Add to plan TS state sequence
+                self.prefix_plan_msg.ts_state_sequence.append(ts_state_msg)
+
+            # Publish
+            self.get_logger().info("Publishing Prefix Plan")
+            self.prefix_plan_pub.publish(self.prefix_plan_msg)
+
+            # Suffix plan
+            #-------------
+            self.suffix_plan_msg = LTLPlan()
+            self.suffix_plan_msg.header.stamp = self.get_clock().now().to_msg()
+            self.suffix_plan_msg.action_sequence = self.ltl_planner.run.suf_plan
+            self.suffix_plan_msg.ts_state_sequence = []
+            # 只发布pickup_labels
+            self.suffix_plan_msg.route_labels = self.pickup_labels if hasattr(self, 'pickup_labels') else []
+            
+            # Go through all TS state in plan and add it as TransitionSystemState message
+            for ts_state in self.ltl_planner.run.loop:
+                ts_state_msg = TransitionSystemState()
+                # If TS state is more than 1 dimension (is a tuple)
+                if type(ts_state) is tuple:
+                    ts_state_msg.states = list(ts_state)
+                # Else state is a single string
+                else:
+                    ts_state_msg.states = [ts_state]
+
+                # Add to plan TS state sequence
+                self.suffix_plan_msg.ts_state_sequence.append(ts_state_msg)
+
+            # Publish
+            self.get_logger().info("Publishing Suffix Plan")
+            self.suffix_plan_pub.publish(self.suffix_plan_msg)
+        else:
+            self.get_logger().warn("No plan available to publish")
+
     #----------------------------------------------
     # Publish prefix and suffix plans from planner
     #----------------------------------------------
     def publish_plan(self, task_id):
         
-        if self.ltl_planners[task_id].run is not None:
-            # Prefix Score
-            cal_score_pre = LTLPlan()
-            cal_score_pre.action_sequence = self.ltl_planners[task_id].run.pre_plan
-            pre_score = len(cal_score_pre.action_sequence)  # Ensure correct length calculation
-            
-            # Suffix Score
-            cal_score_suf = LTLPlan()
-            cal_score_suf.action_sequence = self.ltl_planners[task_id].run.suf_plan
-            suf_score = len(cal_score_suf.action_sequence)  # Ensure correct length calculation
-            
-
-
         if self.ltl_planners[task_id].run is not None:
             # self.get_logger().info("in push plan...")
             # Prefix plan
@@ -515,28 +627,28 @@ class MainPlanner(Node):
             update_info["relabel"] = set()
             # TODO: check both from_pose and to_pose have only two elements
             # change position in tuple to ts node of the format ('c0_r5', 'unloaded')
-            for node in self.ltl_planners[self.cur_task].product.graph['ts'].nodes():
+            for node in self.ltl_planner.product.graph['ts'].nodes():
                 if tuple(task_replanning_req.from_pose) == self.nodes[node[0]]['attr']['pose']:
-                    for succ_node in self.ltl_planners[self.cur_task].product.graph['ts'].successors(node):
+                    for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.to_pose) == self.nodes[succ_node[0]]['attr']['pose']:
                             update_info["modified"].add((node, succ_node, task_replanning_req.cost))
                 if tuple(task_replanning_req.to_pose) == self.nodes[node[0]]['attr']['pose']:
-                    for succ_node in self.ltl_planners[self.cur_task].product.graph['ts'].successors(node):
+                    for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.from_pose) == self.nodes[succ_node[0]]['attr']['pose']:
                             update_info["modified"].add((node, succ_node, task_replanning_req.cost))
             # print(update_info["modified"])
-            modified_edges_dict = self.ltl_planners[self.cur_task].revise_product(update_info)
+            modified_edges_dict = self.ltl_planner.revise_product(update_info)
             # self.get_logger().info("Finished revise")
             
             success = False
             if self.algo_type == 'dstar' or self.algo_type =="dstar-relaxed":
-                if self.ltl_planners[self.cur_task].dstar_rewire(task_replanning_req.exec_index, modified_edges_dict, update_info):
+                if self.ltl_planner.dstar_rewire(task_replanning_req.exec_index, modified_edges_dict, update_info):
                     success = True
             elif self.algo_type == 'local':
-                if self.ltl_planners[self.cur_task].local_rewire(task_replanning_req.exec_index):
+                if self.ltl_planner.local_rewire(task_replanning_req.exec_index):
                     success = True
             elif self.algo_type == 'brute-force' or self.algo_type == "relaxed":
-                if self.ltl_planners[self.cur_task].dijkstra_rewire(task_replanning_req.exec_index):
+                if self.ltl_planner.dijkstra_rewire(task_replanning_req.exec_index):
                     success = True
             
             res = RelayResponse()
@@ -547,9 +659,9 @@ class MainPlanner(Node):
                 res.success = True
                 res.new_plan_prefix = LTLPlan()
                 res.new_plan_prefix.header.stamp = self.get_clock().now().to_msg()
-                res.new_plan_prefix.action_sequence = self.ltl_planners[self.cur_task].run.pre_plan
+                res.new_plan_prefix.action_sequence = self.ltl_planner.run.pre_plan
                 # # Go through all TS state in plan and add it as TransitionSystemState message
-                for ts_state in self.ltl_planners[self.cur_task].run.line:
+                for ts_state in self.ltl_planner.run.line:
                     ts_state_msg = TransitionSystemState()
                     # If TS state is more than 1 dimension (is a tuple)
                     if type(ts_state) is tuple:
@@ -562,9 +674,9 @@ class MainPlanner(Node):
                     
                 res.new_plan_suffix = LTLPlan()
                 res.new_plan_suffix.header.stamp = self.get_clock().now().to_msg()
-                res.new_plan_suffix.action_sequence = self.ltl_planners[self.cur_task].run.suf_plan
+                res.new_plan_suffix.action_sequence = self.ltl_planner.run.suf_plan
                 # # Go through all TS state in plan and add it as TransitionSystemState message
-                for ts_state in self.ltl_planners[self.cur_task].run.loop:
+                for ts_state in self.ltl_planner.run.loop:
                     ts_state_msg = TransitionSystemState()
                     # If TS state is more than 1 dimension (is a tuple)
                     if type(ts_state) is tuple:
@@ -592,28 +704,28 @@ class MainPlanner(Node):
             update_info["relabel"] = set()
             # TODO: check both from_pose and to_pose have only two elements
             # change position in tuple to ts node of the format ('c0_r5', 'unloaded')
-            for node in self.ltl_planners[self.cur_task].product.graph['ts'].nodes():
+            for node in self.ltl_planner.product.graph['ts'].nodes():
                 if tuple(task_replanning_req.from_pose) == self.nodes[node[0]]['attr']['pose']:
-                    for succ_node in self.ltl_planners[self.cur_task].product.graph['ts'].successors(node):
+                    for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.to_pose) == self.nodes[succ_node[0]]['attr']['pose'] :
                             update_info["deleted"].add((node, succ_node))
                 if tuple(task_replanning_req.to_pose) == self.nodes[node[0]]['attr']['pose']:
-                    for succ_node in self.ltl_planners[self.cur_task].product.graph['ts'].successors(node):
+                    for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.from_pose) == self.nodes[succ_node[0]]['attr']['pose']:
                             update_info["deleted"].add((node, succ_node))
             # print(update_info["deleted"])
-            modified_edges_dict = self.ltl_planners[self.cur_task].revise_product(update_info)
+            modified_edges_dict = self.ltl_planner.revise_product(update_info)
             # self.get_logger().info("finished revise")
             
             success = False
             if self.algo_type == 'dstar' or self.algo_type =="dstar-relaxed":
-                if self.ltl_planners[self.cur_task].dstar_rewire(task_replanning_req.exec_index, modified_edges_dict, update_info):
+                if self.ltl_planner.dstar_rewire(task_replanning_req.exec_index, modified_edges_dict, update_info):
                     success = True
             elif self.algo_type == 'local':
-                if self.ltl_planners[self.cur_task].local_rewire(task_replanning_req.exec_index):
+                if self.ltl_planner.local_rewire(task_replanning_req.exec_index):
                     success = True
             elif self.algo_type == 'brute-force' or self.algo_type == "relaxed":
-                if self.ltl_planners[self.cur_task].dijkstra_rewire(task_replanning_req.exec_index):
+                if self.ltl_planner.dijkstra_rewire(task_replanning_req.exec_index):
                     success = True
             # self.get_logger().info("finished revise successfully")
             
@@ -624,9 +736,9 @@ class MainPlanner(Node):
                 res.success = True
                 res.new_plan_prefix = LTLPlan()
                 res.new_plan_prefix.header.stamp = self.get_clock().now().to_msg()
-                res.new_plan_prefix.action_sequence = self.ltl_planners[self.cur_task].run.pre_plan
+                res.new_plan_prefix.action_sequence = self.ltl_planner.run.pre_plan
                 # # Go through all TS state in plan and add it as TransitionSystemState message
-                for ts_state in self.ltl_planners[self.cur_task].run.line:
+                for ts_state in self.ltl_planner.run.line:
                     ts_state_msg = TransitionSystemState()
                     # If TS state is more than 1 dimension (is a tuple)
                     if type(ts_state) is tuple:
@@ -639,9 +751,9 @@ class MainPlanner(Node):
                     
                 res.new_plan_suffix = LTLPlan()
                 res.new_plan_suffix.header.stamp = self.get_clock().now().to_msg()
-                res.new_plan_suffix.action_sequence = self.ltl_planners[self.cur_task].run.suf_plan
+                res.new_plan_suffix.action_sequence = self.ltl_planner.run.suf_plan
                 # # Go through all TS state in plan and add it as TransitionSystemState message
-                for ts_state in self.ltl_planners[self.cur_task].run.loop:
+                for ts_state in self.ltl_planner.run.loop:
                     ts_state_msg = TransitionSystemState()
                     # If TS state is more than 1 dimension (is a tuple)
                     if type(ts_state) is tuple:

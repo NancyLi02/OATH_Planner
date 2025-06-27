@@ -194,7 +194,7 @@ class LTLControllerDrone(Node):
         self.on_hold = False
         self.final_on_hold = False
         self.no_task = False
-        self.cur_task = 0
+        self.cur_task = ''
         
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
@@ -248,6 +248,16 @@ class LTLControllerDrone(Node):
         self.sim_arrived = False
         self.sim_received = False
         self.sim_start = False
+
+        # 从yaml文件加载任务点和pickup/delivery映射
+        def str_to_tuple(s):
+            nums = re.findall(r"[-+]?\d*\.?\d+", s)
+            return tuple(float(x) if '.' in x else int(x) for x in nums)
+        task_points_yaml = '/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/Task_Points.yaml'
+        with open(task_points_yaml, 'r') as f:
+            yaml_data = yaml.safe_load(f)
+        self.task_points = {str_to_tuple(k): v for k, v in yaml_data['task_points'].items()}
+        self.task_to_delivery = yaml_data['task_to_delivery']
 
         # self.simulate()
 
@@ -310,7 +320,9 @@ class LTLControllerDrone(Node):
 
     def prefix_plan_callback(self, msg):
         self.plan_index = 0
-        self.cur_task = msg.cur_task
+        self.cur_task_list = msg.route_labels
+        self.i = 0
+        self.cur_task = self.cur_task_list[self.i]
         self.world.block.clear()
         self.world.bump.clear()
         if self.final_on_hold == False:
@@ -386,6 +398,15 @@ class LTLControllerDrone(Node):
                             self.previous_pose_index = self.pose_index
                             self.pose_index = extract_numbers(str(act))[1]
                             self.pose = self.nodes[f'{self.pose_index}']['attr']['pose']
+                            for pt, label in self.task_points.items():
+                                if abs(self.pose[0] - pt[0]) < 1e-6 and abs(self.pose[1] - pt[1]) < 1e-6:
+                                    self.mode = EquipmentMode.LOADED
+                                    msg = UpdateValidTasks()
+                                    msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
+                                    msg.loaded_task = label
+                                    self.update_valid_tasks_pub.publish(msg)
+                                    # self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
+                                    break
                             # self.get_logger().info(f"previous pose: {self.previous_pose}")
                             # self.get_logger().info(f"pose: {self.pose}")
                             
@@ -438,13 +459,7 @@ class LTLControllerDrone(Node):
                             self.mode = EquipmentMode.UNLOADED
                         elif str(act) == "load":
                             self.mode = EquipmentMode.LOADED
-                            msg = UpdateValidTasks()
-                            msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
-                            msg.loaded_task = self.cur_task
-                            self.update_valid_tasks_pub.publish(msg)
-                            # self.get_logger().info(f'==================Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}==================')
-
-
+                            # 只有到达任务点时才发布UpdateValidTasks
                         elif str(act) == "goto_rescue":
                             self.mode = EquipmentMode.RESCUE
                         else: # including action "stay", nothing particular needs to be done
@@ -543,13 +558,18 @@ class LTLControllerDrone(Node):
                         elif str(act) == "unload" or str(act) == "release":
                             self.mode = EquipmentMode.UNLOADED
                         elif str(act) == "load":
-                            self.mode = EquipmentMode.LOADED
-                            msg = UpdateValidTasks()
-                            msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
-                            msg.loaded_task = self.cur_task
-                            self.update_valid_tasks_pub.publish(msg)
-                            self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
-
+                            # 只有到达任务点时才发布UpdateValidTasks
+                            for pt, label in self.task_points.items():
+                                if abs(self.pose[0] - pt[0]) < 1e-6 and abs(self.pose[1] - pt[1]) < 1e-6:
+                                    self.mode = EquipmentMode.LOADED
+                                    msg = UpdateValidTasks()
+                                    msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
+                                    msg.loaded_task = label
+                                    self.update_valid_tasks_pub.publish(msg)
+                                    self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
+                                    break
+                            self.previous_pose = self.pose
+                            self.previous_pose_index = self.pose_index
                         elif str(act) == "goto_rescue":
                             self.mode = EquipmentMode.RESCUE
                         else: # including action "stay", nothing particular needs to be done
