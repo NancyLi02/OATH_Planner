@@ -26,7 +26,7 @@ def generate_launch_description():
     )
     declare_task_count_cmd = DeclareLaunchArgument(
         'task_count',
-        default_value='18',
+        default_value='10',
         description='Number of tasks to launch'
     )
 

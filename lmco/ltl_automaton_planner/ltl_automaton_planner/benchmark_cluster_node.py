@@ -203,7 +203,7 @@ class LTLControllerDrone(Node):
         self.declare_parameter('init_state', 0)
         self.init_pose = self.get_parameter('init_state').value
 
-        self.nodes, self.actions = build_graph_halton(20, 20, 700)
+        self.nodes, self.actions = build_graph_halton(20, 20, 1000)
         self.transition_system ['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system ['actions'].update(self.actions)
 
@@ -219,7 +219,33 @@ class LTLControllerDrone(Node):
             self.pose = (9, 11)
         elif self.agent_name =='robot4':
             self.pose = (11, 9)
-        
+
+        # elif self.agent_name =='robot5':
+        #     self.pose = (1, 39)
+        # elif self.agent_name =='robot6':
+        #     self.pose = (11, 39)
+        # elif self.agent_name =='robot7':
+        #     self.pose = (9, 31)
+        # elif self.agent_name =='robot8':
+        #     self.pose = (11, 29)
+
+        # elif self.agent_name =='robot9':
+        #     self.pose = (21, 19)
+        # elif self.agent_name =='robot10':
+        #     self.pose = (31, 19)
+        # elif self.agent_name =='robot11':
+        #     self.pose = (29, 11)
+        # elif self.agent_name =='robot12':
+        #     self.pose = (31, 9)
+
+        # elif self.agent_name =='robot13':
+        #     self.pose = (21, 39)
+        # elif self.agent_name =='robot14':
+        #     self.pose = (31, 39)
+        # elif self.agent_name =='robot15':   
+        #     self.pose = (29, 31)
+        # elif self.agent_name =='robot16':
+        #     self.pose = (31, 29)
 
         self.pose_index = self.init_pose
 
@@ -688,7 +714,7 @@ class LTLControllerDrone(Node):
                 mode = 'loaded'
             elif self.mode == EquipmentMode.WAITTASK:
                 mode = 'Waiting'
-                # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
+                self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
             elif self.mode == EquipmentMode.NOTASK:
                 mode = 'NoTask'
                 # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")

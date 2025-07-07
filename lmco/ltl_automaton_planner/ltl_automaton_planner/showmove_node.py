@@ -77,7 +77,7 @@ class ShowMoveNode(Node):
         # Load transition system from configuration file (if exists)
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
-        self.nodes, self.actions = build_graph_halton(20, 20, 700)
+        self.nodes, self.actions = build_graph_halton(20, 20, 1000)
         self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system['actions'].update(self.actions)
         # The process to integrate self.nodes and self.actions into the transition system is omitted
@@ -90,8 +90,34 @@ class ShowMoveNode(Node):
             'robot3': {'loaded': (255, 0, 0),
                        'unloaded': (255, 92, 92)},
             'robot4': {'loaded': (0, 0, 255),      # Pink
-                       'unloaded': (83, 77, 255)}   # Light Pink
+                       'unloaded': (83, 77, 255)},   # Light Pink
+            # 'robot5': {'loaded': (0, 0, 255),
+            #            'unloaded': (83, 77, 255)},
+            # 'robot6': {'loaded': (255, 0, 0),
+            #            'unloaded': (255, 92, 92)},
+            # 'robot7': {'loaded': (255, 0, 0),
+            #            'unloaded': (255, 92, 92)},
+            # 'robot8': {'loaded': (0, 0, 255),
+            #            'unloaded': (83, 77, 255)},
+            # 'robot9': {'loaded': (0, 0, 255),     # Blue
+            #            'unloaded': (83, 77, 255)},
+            # 'robot10': {'loaded': (255, 0, 0),
+            #            'unloaded': (255, 92, 92)},
+            # 'robot11': {'loaded': (255, 0, 0),
+            #            'unloaded': (255, 92, 92)},
+            # 'robot12': {'loaded': (0, 0, 255),     # Blue
+            #            'unloaded': (83, 77, 255)},
+            # 'robot13': {'loaded': (0, 0, 255),     # Blue
+            #            'unloaded': (83, 77, 255)},
+            # 'robot14': {'loaded': (255, 0, 0),
+            #            'unloaded': (255, 92, 92)},
+            # 'robot15': {'loaded': (255, 0, 0),
+            #            'unloaded': (255, 92, 92)},
+            # 'robot16': {'loaded': (0, 0, 255),     # Blue
+            #            'unloaded': (83, 77, 255)}
         }
+
+
         self.waiting_color = (255, 165, 0)  # Orange
         self.notask_color = NOTASK_COLOR     # Grey color for finished tasks
         self.finished_tasks_color = FINISHED_TASK
@@ -112,8 +138,8 @@ class ShowMoveNode(Node):
         self.lock = threading.Lock()
 
         # List of robot IDs
-        self.robot_ids = ['robot1', 'robot2', 'robot3', 'robot4']
-        self.special_robot_ids = ['robot2', 'robot3']
+        self.robot_ids = ['robot1', 'robot2', 'robot3', 'robot4', 'robot5', 'robot6', 'robot7', 'robot8', 'robot9', 'robot10', 'robot11', 'robot12', 'robot13', 'robot14', 'robot15', 'robot16']
+        self.special_robot_ids = ['robot2', 'robot3', 'robot6', 'robot7', 'robot10', 'robot11', 'robot14', 'robot15']
 
         self.failed_task_list = []
 
@@ -426,7 +452,7 @@ def main(args=None):
     rclpy.init(args=args)
     # Create a node for obtaining parameters
     main_node = rclpy.create_node('showmove_node_main')
-    grid_size = main_node.declare_parameter('N', 8).get_parameter_value().integer_value
+    grid_size = main_node.declare_parameter('N', 20).get_parameter_value().integer_value
     main_node.get_logger().info(f"grid_size: {grid_size}")
     
     env = GridWorld(grid_size)

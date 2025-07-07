@@ -177,7 +177,7 @@ class TaskAssignNode(Node):
         self.clusterer = CostMapClusterer(
             points_with_label=self.points_with_label,
             wall_yaml_path=wall_path,
-            num_clusters=4,
+            num_clusters=20,
             halton_points_csv=halton_points_csv,
             wall_thick=0.1,
             precomputed_distances_csv=precomputed_distances_csv

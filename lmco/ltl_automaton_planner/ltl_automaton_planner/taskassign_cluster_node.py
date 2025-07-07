@@ -96,13 +96,25 @@ class TaskAssignNode(Node):
             (1, 19),   # robot1 (normal robot)
             (11, 19),  # robot2 (special robot)
             (9, 11),   # robot3 (special robot)
-            (11, 9)    # robot4 (normal robot)
+            (11, 9),   # robot4 (normal robot)
+            # (1, 39),   # robot5 (normal robot)
+            # (11, 39),  # robot6 (special robot)
+            # (9, 31),   # robot7 (special robot)
+            # (11, 29),  # robot8 (normal robot)
+            # (21, 19),  # robot9 (normal robot)
+            # (31, 19),  # robot10 (normal robot)
+            # (29, 11),  # robot11 (normal robot)
+            # (31, 9),   # robot12 (normal robot)
+            # (21, 39),  # robot13 (normal robot)
+            # (31, 39),  # robot14 (normal robot)
+            # (29, 31),  # robot15 (normal robot)
+            # (31, 29)   # robot16 (normal robot)
         ]
 
         # Define robot types: only robot2 and robot3 are 'special'; others are 'normal'
         self.robot_types = []
         for i in range(self.robot_count):
-            if i in [1, 2]:
+            if i in [2, 3]:
                 self.robot_types.append('special')
             else:
                 self.robot_types.append('normal')
@@ -423,7 +435,7 @@ class TaskAssignNode(Node):
         # self.finished_robots.add(msg.robot_id)
         # # When all robots have finished building, start task assignment.
         # if all(name in self.finished_robots for name in self.robot_names):
-        #     self.get_logger().info("All robots finished building, starting task assignment...")
+        self.get_logger().info("Starting task assignment...")
         self.init_cluster_assign()
         self.generate_task_sequences()
         self.publish_task_assignments()
@@ -464,9 +476,11 @@ class TaskAssignNode(Node):
                 robot_scores.append(score)
             scores.append(robot_scores)
 
+        self.get_logger().info(f"scores: {scores}")
+
         # Call the auction algorithm for initial cluster assignment.
         assigned, _ = self.cwa_algorithm.initial_cluster_assignment(scores, self.robot_types, self.cluster_types)
-
+        self.get_logger().info(f"assigned: {assigned}")
         # Map the auction results with the clustering data:
         self.robot_cluster_map = {name: [] for name in self.robot_names}
         self.robot_cluster_indices = {}  # 初始化robot_cluster_indices

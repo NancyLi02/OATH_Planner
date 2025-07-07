@@ -72,38 +72,7 @@ def rejection_sampling(n_samples, lines, area_size, d_min=0.3, d_opt=0.4, sigma=
 
 
 def build_graph_halton(x_length=20, y_length=20, n_points=700):
-    points_with_label = {
-                        (1, 19): 'a',
-                        (11, 19): '' ,
-                        (9, 11): '' ,
-                        (11, 9): '' ,
-                        (17, 14.5): '',
-                        (1, 4): 'bb', 
-                        (6, 6): 'cb',
-                        (1, 6.5): 'db', 
-                        (5.5, 9.5): 'eb',
-                        (9, 6.5): 'fb',
-                        (6, 3): 'b', # unload
-
-                        (1, 13.5): 'bc',
-                        (9, 16.5): 'cc',
-                        (1, 16): 'dc', 
-                        (6, 13): 'ec',
-                        (5, 16): 'c', # unload
-
-                        (11, 13.5): 'bd',
-                        (11, 16.5): 'cd',
-                        (19, 16.5): 'dd',
-                        (19, 19): 'ed', 
-                        (15, 19.5): 'fd',
-                        (16, 13): 'd', # unload
-
-                        (11, 4): 'be',
-                        (19, 6.5): 'ce',
-                        (16, 3): 'de', 
-                        (19, 1): 'ee',
-                        (16, 5.5): 'e' # unload
-                        }
+    points_with_label = load_points_with_label()
 
     x_length = 20
     n_points = 1000
@@ -231,7 +200,7 @@ def check_in_bump(action, nodes, agent_name):
 def state_models_from_ts(TS_dict, initial_states_dict=None):
     state_models = []
 
-    nodes, actions = build_graph_halton(20, 20, 200)
+    nodes, actions = build_graph_halton(40, 40, 200)
     TS_dict['state_models']['2d_pose_region']['nodes'] = nodes
     TS_dict['actions'].update(actions)
     
@@ -354,3 +323,29 @@ def delete_file(file_name):
         os.remove(file_path)
     except FileNotFoundError:
         pass
+
+def load_points_with_label():
+    yaml_path = '/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/Task_Points.yaml'
+    with open(yaml_path, 'r') as f:
+        data = yaml.safe_load(f)
+
+    points_with_label = {}
+
+    for robot, pos in data.get('robot_positions', {}).items():
+        point = tuple(float(x.strip()) for x in pos.split(','))
+        points_with_label[point] = ''  # 机器人初始点 label 为空
+
+    # 解析 task_points
+    for k, v in data.get('task_points', {}).items():
+        point = tuple(float(x.strip()) for x in k.split(','))
+        points_with_label[point] = v
+
+    # 解析 delivery_points
+    for k, v in data.get('delivery_points', {}).items():
+        point = tuple(float(x.strip()) for x in k.split(','))
+        points_with_label[point] = v
+
+    # 解析 robot_positions
+    
+
+    return points_with_label

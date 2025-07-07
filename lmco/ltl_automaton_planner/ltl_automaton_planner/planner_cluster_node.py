@@ -51,7 +51,7 @@ class MainPlanner(Node):
         self.task_data = self.load_tasks(self.ltl_formula_file)
         self.get_logger().info("MainPlanner node started")
 
-        self.nodes, self.actions = build_graph_halton(20, 20, 180)
+        self.nodes, self.actions = build_graph_halton(20, 20, 1000)
 
         # start_time = time.time()
         # self.initialize_automaton()
@@ -72,7 +72,7 @@ class MainPlanner(Node):
         self.declare_parameter('gamma', 10)
         self.declare_parameter('transition_system_textfile', "")  
         self.declare_parameter('algo_type', 'dstar')  
-        self.declare_parameter('N', 8)
+        self.declare_parameter('N', 40)
         self.declare_parameter('init_state', 0)
         self.declare_parameter('ltl_formula_file','')
 
@@ -96,7 +96,7 @@ class MainPlanner(Node):
         print("**** inital state dict:", self.initial_state_ts_dict)
         
         self.score_list = []
-        self.task_index = list(range(1, 19))  # [1, 2, ..., 18]
+        self.task_index = list(range(1, 21))  # [1, 2, ..., 18]
         self.cur_task = ''
         self.task_number = 0
         self.current_task_list = []
