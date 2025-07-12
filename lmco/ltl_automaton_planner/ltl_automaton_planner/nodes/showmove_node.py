@@ -14,6 +14,7 @@ import threading
 import yaml
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 import re
+from ament_index_python.packages import get_package_share_directory
 
 #=======================================================================
 #  Interfaces between ShowMoveNode and other nodes
@@ -43,10 +44,8 @@ FAIL = (0, 0, 0)
 
 # ---------- Walls ----------
 def load_lines_from_yaml():
-    parent_dir = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner')
-    )
-    file_path = os.path.join(parent_dir, 'config', 'wall.yaml')
+    package_share = get_package_share_directory('ltl_automaton_planner')
+    file_path = os.path.join(package_share, 'config', 'wall.yaml')
 
     with open(file_path, 'r') as file:
         yaml_data = yaml.safe_load(file)
@@ -144,10 +143,8 @@ class ShowMoveNode(Node):
         self.failed_task_list = []
 
         # === 从YAML读取任务点、delivery点 ===
-        parent_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner')
-        )
-        task_points_yaml = os.path.join(parent_dir, 'config', 'Task_Points.yaml')
+        package_share = get_package_share_directory('ltl_automaton_planner')
+        task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
         with open(task_points_yaml, 'r') as f:
             yaml_data = yaml.safe_load(f)
 

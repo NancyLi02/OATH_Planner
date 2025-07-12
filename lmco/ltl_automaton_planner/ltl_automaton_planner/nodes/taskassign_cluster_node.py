@@ -8,6 +8,7 @@ from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, A
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 import yaml
 import re
+from ament_index_python.packages import get_package_share_directory
 
 # -------------------- CWA Algorithm --------------------
 class CWA:
@@ -147,13 +148,13 @@ class TaskAssignNode(Node):
         self.broke_agents = []
 
         # ----- Load wall and task info -----
-        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner'))
-        wall_path = os.path.join(parent_dir, 'config', 'wall.yaml')
+        package_share = get_package_share_directory('ltl_automaton_planner')
+        wall_path = os.path.join(package_share, 'config', 'wall.yaml')
         halton_points_csv = "/home/nanli/ros2_ws/src/all_points_in_Halton.csv"
         precomputed_distances_csv = "/home/nanli/ros2_ws/src/multi_source_dijkstra_distances.csv"
 
         # === 从YAML读取任务点、映射和特殊标签 ===
-        task_points_yaml = os.path.join(parent_dir, 'config', 'Task_Points.yaml')
+        task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
         with open(task_points_yaml, 'r') as f:
             yaml_data = yaml.safe_load(f)
 

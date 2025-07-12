@@ -5,14 +5,12 @@ from launch_ros.actions import Node, PushRosNamespace
 import os
 import numpy as np
 import random
+from ament_index_python.packages import get_package_share_directory
 
 random.seed(42)
 np.random.seed(42)
 def generate_launch_description():
-    current_file_dir = os.path.dirname(os.path.realpath(__file__))
-    workspace_dir = os.path.join(current_file_dir.split('/install')[0], 'src/lmco')
-    package_src_dir = os.path.join(workspace_dir, 'ltl_automaton_planner')
-    config_dir = os.path.join(package_src_dir, 'config')
+    config_dir = os.path.join(get_package_share_directory('ltl_automaton_planner'), 'config')
     
     ltl_formula_file = os.path.join(config_dir, 'task_ltl.yaml')
     transition_system_file = os.path.join(config_dir, 'isaac_known.yaml')

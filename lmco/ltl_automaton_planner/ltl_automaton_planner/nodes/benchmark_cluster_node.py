@@ -26,6 +26,7 @@ from example_interfaces.srv import AddTwoInts
 import re
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 from interfaces_hmm_sim.msg import Status, ReplanStatus
+from ament_index_python.packages import get_package_share_directory
 
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
@@ -67,9 +68,9 @@ class GridWorld(object):
 
     
     def load_elements(self):
-        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner'))
+        package_share = get_package_share_directory('ltl_automaton_planner')
         # with open(parent_dir + '/config/benchmark_block_'+str(self.grid_size)+'.yaml', 'r') as file:
-        with open(parent_dir + '/config/isaac_block.yaml', 'r') as file:
+        with open(os.path.join(package_share, 'config', 'isaac_block.yaml'), 'r') as file:
             yaml_data = yaml.safe_load(file)
 
             if isinstance(yaml_data['blocks'], list):
@@ -83,7 +84,7 @@ class GridWorld(object):
         
         print(self.wall)
         # with open(parent_dir + '/config/benchmark_bump_'+str(self.grid_size)+'.yaml', 'r') as file:
-        with open(parent_dir + '/config/isaac_bump.yaml', 'r') as file:
+        with open(os.path.join(package_share, 'config', 'isaac_bump.yaml'), 'r') as file:
             yaml_data = yaml.safe_load(file)
 
             if isinstance(yaml_data['bumps']['points'], list):
@@ -279,7 +280,8 @@ class LTLControllerDrone(Node):
         def str_to_tuple(s):
             nums = re.findall(r"[-+]?\d*\.?\d+", s)
             return tuple(float(x) if '.' in x else int(x) for x in nums)
-        task_points_yaml = '/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/Task_Points.yaml'
+        package_share = get_package_share_directory('ltl_automaton_planner')
+        task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
         with open(task_points_yaml, 'r') as f:
             yaml_data = yaml.safe_load(f)
         self.task_points = {str_to_tuple(k): v for k, v in yaml_data['task_points'].items()}
