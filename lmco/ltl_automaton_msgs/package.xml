@@ -4,7 +4,7 @@
   <version>0.1.0</version>
   <description>The message definition package for ltl_automaton_core and other extended packages</description>
 
-  <maintainer email="jren313@gatech.edu">jimingren</maintainer>
+  <maintainer email="nan.li@gatech.edu">nanli</maintainer>
 
   <license>MIT</license>
 

@@ -17,9 +17,10 @@ def main():
     }
     
     # File paths
-    wall_yaml_path = "/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/wall.yaml"
-    halton_points_csv = "/home/nanli/ros2_ws/src/all_points_in_Halton.csv"
-    precomputed_distances_csv = "/home/nanli/ros2_ws/src/multi_source_dijkstra_distances.csv"
+    current_dir = os.path.dirname(__file__)
+    wall_yaml_path = os.path.join(current_dir, '..', 'config', 'wall.yaml')
+    halton_points_csv = os.path.join(current_dir, 'all_points_in_Halton.csv')
+    precomputed_distances_csv = os.path.join(current_dir, 'multi_source_dijkstra_distances.csv')
     
     print("=== Multi-Source Clustering Example ===")
     print("Number of task points:", len(points_with_label))

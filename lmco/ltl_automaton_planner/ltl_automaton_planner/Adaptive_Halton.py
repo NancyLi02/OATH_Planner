@@ -28,7 +28,11 @@ def halton_sequence(size, base=2):
 
 # === 从YAML读取机器人、pickup、delivery点 ===
 
-task_points_yaml = '/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/Task_Points.yaml'
+# task_points_yaml = '/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/Task_Points.yaml'
+current_dir = os.path.dirname(__file__)
+task_points_yaml = os.path.join(current_dir, '..', 'config', 'Task_Points.yaml')
+task_points_yaml = os.path.abspath(task_points_yaml)
+
 with open(task_points_yaml, 'r') as f:
     yaml_data = yaml.safe_load(f)
 
@@ -63,7 +67,12 @@ def load_lines_from_yaml(filepath):
     line_coords = data.get('lines', [])
     return [LineString(coords) for coords in line_coords]
 
-filepath = "lmco/ltl_automaton_planner/config/wall.yaml"
+# filepath = "lmco/ltl_automaton_planner/config/wall.yaml"
+# lines = load_lines_from_yaml(filepath)
+
+current_dir = os.path.dirname(__file__)
+filepath = os.path.join(current_dir, '..', 'config', 'wall.yaml')
+filepath = os.path.abspath(filepath)
 lines = load_lines_from_yaml(filepath)
 
 def point_to_lines_distance(point, lines):
@@ -140,7 +149,10 @@ plt.grid(True)
 plt.show()
 
 # ---------- Save all point coordinates to CSV ----------
-output_filename = 'all_points_in_Halton.csv'
+# output_filename = 'all_points_in_Halton.csv'
+current_dir = os.path.dirname(__file__)
+output_filename = os.path.join(current_dir, 'all_points_in_Halton.csv')
+
 with open(output_filename, 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['x', 'y', 'label'])

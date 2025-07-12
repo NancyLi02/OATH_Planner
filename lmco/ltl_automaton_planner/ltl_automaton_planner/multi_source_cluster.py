@@ -14,16 +14,17 @@ from matplotlib.patches import Rectangle
 import re
 
 # ----------------- Parameters -----------------
-input_csv = "/home/nanli/ros2_ws/src/multi_source_dijkstra_distances.csv"
-output_csv = "/home/nanli/ros2_ws/src/clustered_points.csv"
-wall_yaml = "/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/wall.yaml"
-output_figure = "/home/nanli/ros2_ws/src/dijkstra_clustering_plot.png"
-halton_points_csv = "/home/nanli/ros2_ws/src/all_points_in_Halton.csv"
+current_dir = os.path.dirname(__file__)
+input_csv = os.path.join(current_dir, 'multi_source_dijkstra_distances.csv')
+output_csv = os.path.join(current_dir, 'clustered_points.csv')
+wall_yaml = os.path.join(current_dir, '..', 'config', 'wall.yaml')
+output_figure = os.path.join(current_dir, 'dijkstra_clustering_plot.png')
+halton_points_csv = os.path.join(current_dir, 'all_points_in_Halton.csv')
 wall_thick = 0.1
 n_clusters = 4
 
 # === 从YAML读取机器人、pickup、delivery点 ===
-task_points_yaml = '/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/Task_Points.yaml'
+task_points_yaml = os.path.join(current_dir, '..', 'config', 'Task_Points.yaml')
 with open(task_points_yaml, 'r') as f:
     yaml_data = yaml.safe_load(f)
 

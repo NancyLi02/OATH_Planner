@@ -325,7 +325,10 @@ def delete_file(file_name):
         pass
 
 def load_points_with_label():
-    yaml_path = '/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/Task_Points.yaml'
+    parent_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner')
+    )
+    yaml_path = os.path.join(parent_dir, 'config', 'Task_Points.yaml')
     with open(yaml_path, 'r') as f:
         data = yaml.safe_load(f)
 

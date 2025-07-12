@@ -4,7 +4,7 @@
   <name>ltl_automaton_planner</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="jren313@gatech.edu">jren313</maintainer>
+  <maintainer email="nan.li@gatech.edu">nanli</maintainer>
   <license>MIT</license>
 
   <depend>rclpy</depend>

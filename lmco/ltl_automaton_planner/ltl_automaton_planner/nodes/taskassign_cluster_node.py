@@ -148,20 +148,20 @@ class TaskAssignNode(Node):
         self.broke_agents = []
 
         # ----- Load wall and task info -----
-        package_share = get_package_share_directory('ltl_automaton_planner')
-        wall_path = os.path.join(package_share, 'config', 'wall.yaml')
-        halton_points_csv = "/home/nanli/ros2_ws/src/all_points_in_Halton.csv"
-        precomputed_distances_csv = "/home/nanli/ros2_ws/src/multi_source_dijkstra_distances.csv"
 
-        # === 从YAML读取任务点、映射和特殊标签 ===
+
+        package_share = get_package_share_directory('ltl_automaton_planner')
+
+        wall_path = os.path.join(package_share, 'config', 'wall.yaml')
         task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
+        halton_points_csv = os.path.join(package_share, 'ltl_automaton_planner', 'all_points_in_Halton.csv')
+        precomputed_distances_csv = os.path.join(package_share, 'ltl_automaton_planner', 'multi_source_dijkstra_distances.csv')
+
         with open(task_points_yaml, 'r') as f:
             yaml_data = yaml.safe_load(f)
 
-        # 解析任务点
         points_with_label = {}
         for k, v in yaml_data['task_points'].items():
-            # k是"x,y"字符串，转为tuple(float, float)
             match = re.match(r"([\d\.]+),([\d\.]+)", k)
             if match:
                 x, y = float(match.group(1)), float(match.group(2))

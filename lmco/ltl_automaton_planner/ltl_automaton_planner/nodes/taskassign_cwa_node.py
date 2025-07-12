@@ -137,10 +137,10 @@ class TaskAssignNode(Node):
         self.broke_agents = []
 
         # ----- Load wall and task info -----
-        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner'))
+        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
         wall_path = os.path.join(parent_dir, 'config', 'wall.yaml')
-        halton_points_csv = "/home/nanli/ros2_ws/src/all_points_in_Halton.csv"
-        precomputed_distances_csv = "/home/nanli/ros2_ws/src/multi_source_dijkstra_distances.csv"
+        halton_points_csv = os.path.join(parent_dir, 'ltl_automaton_planner', 'all_points_in_Halton.csv')
+        precomputed_distances_csv = os.path.join(parent_dir, 'ltl_automaton_planner', 'multi_source_dijkstra_distances.csv')
 
         points_with_label = {
             (1, 4): 'bb', 

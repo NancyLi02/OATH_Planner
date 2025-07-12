@@ -18,7 +18,9 @@ wall_thick = 0.1
 x_length, y_length = 20, 20
 
 # ------------------------ Wall Loading ------------------------
-wall_path = '/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config/wall.yaml'
+current_dir = os.path.dirname(__file__)
+wall_path = os.path.join(current_dir, '..', 'config', 'wall.yaml')
+wall_path = os.path.abspath(wall_path)
 with open(wall_path, 'r') as f:
     wall_data = yaml.safe_load(f)
 lines = [LineString(coords) for coords in wall_data.get('lines', [])]
@@ -44,7 +46,8 @@ def load_halton_points_from_csv(csv_path):
     return points, points_with_label
 
 # Load points from the pre-generated CSV file
-csv_path = '/home/nanli/ros2_ws/src/all_points_in_Halton.csv'
+csv_path = os.path.join(current_dir, 'all_points_in_Halton.csv')
+csv_path = os.path.abspath(csv_path)
 valid_points, points_with_label = load_halton_points_from_csv(csv_path)
 
 print(f"Loaded {len(valid_points)} points from CSV")
@@ -138,8 +141,8 @@ plt.grid(True)
 plt.show()
 
 # -------- Save one-way pairwise distances to CSV --------
-output_csv = "multi_source_dijkstra_distances.csv"
-
+output_csv = os.path.join(current_dir, 'multi_source_dijkstra_distances.csv')
+output_csv = os.path.abspath(output_csv)
 with open(output_csv, 'w') as f:
     f.write("from,to,distance\n")
     for i in range(len(labels)):
