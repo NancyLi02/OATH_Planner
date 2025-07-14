@@ -1,14 +1,24 @@
 # LLM-OATH: Obstacle-Aware Multi-Agent Task Assignment and Planning
 
-## Abstract
+## Overview
 
-Multi-Agent Task Assignment and Planning (MATP) remains challenging in large-scale, obstacle-rich, and dynamic environments. As the number of robots and tasks increases, traditional methods often struggle with scalability, realistic spatial reasoning, and adaptability to failures. To address these issues, we propose **LLM-OATH**: a novel framework for LLM-guided Obstacle-Aware Task Assignment and Planning from Human Instruction, designed specifically for heterogeneous robot teams.
+This repository implements **LLM-OATH**, a framework for obstacle-aware multi-agent task assignment and planning in large, dynamic environments. LLM-OATH enables scalable and realistic task allocation for heterogeneous robot teams by:
 
-LLM-OATH combines two strategies to enable obstacle-aware task allocation. First, it constructs an adaptive Halton sequence map, which adjusts sample point density based on obstacle distribution. Second, it applies a multi-source Dijkstra algorithm on the adaptive map to compute task-to-task distance matrices that explicitly incorporate obstacle information, enabling more accurate task allocation. For task assignment, we introduce a cluster-auction-task selection architecture, which improves scalability while maintaining optimality in task allocation. For path planning, we integrate LTL-D* to support dynamic planning. Unlike prior work that applies large language models (LLMs) only during task interpretation before execution, LLM-OATH integrates the LLM throughout the entire MATP process. During execution, it continuously translates human commands into formal specifications and routes them to the appropriate modules, enabling real-time responsiveness to dynamic human intent.
+- Generating adaptive Halton maps that increase sampling density near obstacles.
+- Computing obstacle-aware task-to-task distances using a multi-source Dijkstra algorithm.
+- Assigning tasks via a cluster-auction architecture for improved scalability.
+- Integrating LTL-D* for dynamic, obstacle-aware path planning.
+- Leveraging large language models (LLMs) throughout the process to translate human instructions into formal specifications and adapt to changing intent in real time.
+
+All robot and task parameters—including robot count, initial positions, task points, and special robot designations—are managed in a single YAML file (`Task_Points.yaml`), making the system easy to configure and extend.
 
 ---
 
 ## Installation
+
+This project is based on **ROS2 Humble**. Please ensure you have installed ROS2 Humble before proceeding.
+
+- Official ROS2 workspace creation tutorial: [Creating a ROS2 Workspace (Humble)](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html)
 
 ### 1. Clone the Repository
 
@@ -34,7 +44,7 @@ You can install the Python dependencies with:
 pip install numpy pandas matplotlib shapely scikit-learn scipy pyyaml
 ```
 
-For ROS2 dependencies, please refer to the [LTL-D* Planner](https://github.com/JimingLi/LTL-Dstar) installation guide.
+For ROS2 dependencies, please refer to the [LTL-D* Planner](https://github.gatech.edu/jren313/lmco/tree/ros2) installation guide.
 
 ---
 
@@ -87,4 +97,4 @@ ros2 launch ltl_automaton_planner ltl_planner_isaac_launch.py
 - `multi_source_cluster.py` is provided for visual verification of clustering results.
 - The system is designed for scalability and easy adaptation to different robot team sizes and task sets.
 
-For questions or issues, please open an issue or contact the maintainer.
+For questions or issues, please open an issue or contact the maintainer (nan.li@gatech.edu).
