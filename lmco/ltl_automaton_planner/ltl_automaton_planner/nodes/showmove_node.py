@@ -81,42 +81,6 @@ class ShowMoveNode(Node):
         self.transition_system['actions'].update(self.actions)
         # The process to integrate self.nodes and self.actions into the transition system is omitted
 
-        self.color_mapping = {
-            'robot1': {'loaded': (0, 0, 255),     # Blue
-                       'unloaded': (83, 77, 255)},  # Light Blue
-            'robot2': {'loaded': (255, 0, 0),
-                       'unloaded': (255, 92, 92)},
-            'robot3': {'loaded': (255, 0, 0),
-                       'unloaded': (255, 92, 92)},
-            'robot4': {'loaded': (0, 0, 255),      # Pink
-                       'unloaded': (83, 77, 255)},   # Light Pink
-            # 'robot5': {'loaded': (0, 0, 255),
-            #            'unloaded': (83, 77, 255)},
-            # 'robot6': {'loaded': (255, 0, 0),
-            #            'unloaded': (255, 92, 92)},
-            # 'robot7': {'loaded': (255, 0, 0),
-            #            'unloaded': (255, 92, 92)},
-            # 'robot8': {'loaded': (0, 0, 255),
-            #            'unloaded': (83, 77, 255)},
-            # 'robot9': {'loaded': (0, 0, 255),     # Blue
-            #            'unloaded': (83, 77, 255)},
-            # 'robot10': {'loaded': (255, 0, 0),
-            #            'unloaded': (255, 92, 92)},
-            # 'robot11': {'loaded': (255, 0, 0),
-            #            'unloaded': (255, 92, 92)},
-            # 'robot12': {'loaded': (0, 0, 255),     # Blue
-            #            'unloaded': (83, 77, 255)},
-            # 'robot13': {'loaded': (0, 0, 255),     # Blue
-            #            'unloaded': (83, 77, 255)},
-            # 'robot14': {'loaded': (255, 0, 0),
-            #            'unloaded': (255, 92, 92)},
-            # 'robot15': {'loaded': (255, 0, 0),
-            #            'unloaded': (255, 92, 92)},
-            # 'robot16': {'loaded': (0, 0, 255),     # Blue
-            #            'unloaded': (83, 77, 255)}
-        }
-
-
         self.waiting_color = (255, 165, 0)  # Orange
         self.notask_color = NOTASK_COLOR     # Grey color for finished tasks
         self.finished_tasks_color = FINISHED_TASK
@@ -136,13 +100,7 @@ class ShowMoveNode(Node):
         # Create a lock for thread-safe access to shared resources
         self.lock = threading.Lock()
 
-        # List of robot IDs
-        self.robot_ids = ['robot1', 'robot2', 'robot3', 'robot4', 'robot5', 'robot6', 'robot7', 'robot8', 'robot9', 'robot10', 'robot11', 'robot12', 'robot13', 'robot14', 'robot15', 'robot16']
-        self.special_robot_ids = ['robot2', 'robot3', 'robot6', 'robot7', 'robot10', 'robot11', 'robot14', 'robot15']
-
-        self.failed_task_list = []
-
-        # === 从YAML读取任务点、delivery点 ===
+        # === 从YAML读取任务点、delivery点、special robot ===
         package_share = get_package_share_directory('ltl_automaton_planner')
         task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
         with open(task_points_yaml, 'r') as f:
@@ -172,7 +130,32 @@ class ShowMoveNode(Node):
             label for pt, label in self.points.items()
             if pt not in self.unloaded_points
         ]
+        # 读取 special robot
+        self.special_robot_ids = yaml_data.get('special_robot', [])
+
+        # List of robot IDs 从yaml读取
+        self.robot_ids = list(yaml_data.get('robot_positions', {}).keys())
+
+        # 动态生成颜色映射
+        PINK_LOADED = (255, 105, 180)      # 粉色 loaded
+        PINK_UNLOADED = (255, 182, 193)    # 粉色 unloaded
+        BLUE_LOADED = (0, 0, 255)          # 蓝色 loaded
+        BLUE_UNLOADED = (135, 206, 250)    # 浅蓝 unloaded
+        self.color_mapping = {}
+        for robot_id in self.robot_ids:
+            if robot_id in self.special_robot_ids:
+                self.color_mapping[robot_id] = {
+                    'loaded': PINK_LOADED,
+                    'unloaded': PINK_UNLOADED
+                }
+            else:
+                self.color_mapping[robot_id] = {
+                    'loaded': BLUE_LOADED,
+                    'unloaded': BLUE_UNLOADED
+                }
         
+        self.failed_task_list = []
+
         # Initialize subscriptions lists
         self.position_subscriptions = []
         self.update_valid_tasks_subs = []

@@ -36,12 +36,14 @@ if 'robot_positions' in yaml_data:
         if match:
             x, y = float(match.group(1)), float(match.group(2))
             points_with_label[(x, y)] = robot
-# pickup点
+# pickup点（只对这些点聚类）
+task_points_label_to_coord = {}
 for k, v in yaml_data['task_points'].items():
     match = re.match(r"([\d\.]+),([\d\.]+)", k)
     if match:
         x, y = float(match.group(1)), float(match.group(2))
         points_with_label[(x, y)] = v
+        task_points_label_to_coord[v] = (x, y)
 # delivery点
 if 'delivery_points' in yaml_data:
     for k, v in yaml_data['delivery_points'].items():
@@ -50,7 +52,8 @@ if 'delivery_points' in yaml_data:
             x, y = float(match.group(1)), float(match.group(2))
             points_with_label[(x, y)] = v
 
-label_to_coord = {label: coord for coord, label in points_with_label.items()}
+# 只对task points聚类
+label_to_coord = task_points_label_to_coord
 
 df = pd.read_csv(input_csv)
 labels = [label for label in pd.unique(df[['from', 'to']].values.ravel('K')) if label in label_to_coord]

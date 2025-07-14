@@ -90,35 +90,22 @@ class TaskAssignNode(Node):
         super().__init__('taskassign_node')
 
         # ----- Static robot poses and names -----
-        self.robot_count = 4
-        # Unified robot names: "robot1", "robot2", etc.
-        self.robot_names = [f'robot{i}' for i in range(1, self.robot_count + 1)]
-        self.robot_poses = [
-            (1, 19),   # robot1 (normal robot)
-            (11, 19),  # robot2 (special robot)
-            (9, 11),   # robot3 (special robot)
-            (11, 9),   # robot4 (normal robot)
-            # (1, 39),   # robot5 (normal robot)
-            # (11, 39),  # robot6 (special robot)
-            # (9, 31),   # robot7 (special robot)
-            # (11, 29),  # robot8 (normal robot)
-            # (21, 19),  # robot9 (normal robot)
-            # (31, 19),  # robot10 (normal robot)
-            # (29, 11),  # robot11 (normal robot)
-            # (31, 9),   # robot12 (normal robot)
-            # (21, 39),  # robot13 (normal robot)
-            # (31, 39),  # robot14 (normal robot)
-            # (29, 31),  # robot15 (normal robot)
-            # (31, 29)   # robot16 (normal robot)
-        ]
-
-        # Define robot types: only robot2 and robot3 are 'special'; others are 'normal'
-        self.robot_types = []
-        for i in range(self.robot_count):
-            if i in [2, 3]:
-                self.robot_types.append('special')
-            else:
-                self.robot_types.append('normal')
+        package_share = get_package_share_directory('ltl_automaton_planner')
+        task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
+        with open(task_points_yaml, 'r') as f:
+            yaml_data = yaml.safe_load(f)
+        robot_positions_dict = yaml_data.get('robot_positions', {})
+        self.robot_names = list(robot_positions_dict.keys())
+        self.robot_poses = []
+        for coord_str in robot_positions_dict.values():
+            match = re.match(r"([\d\.]+),([\d\.]+)", coord_str)
+            if match:
+                x, y = float(match.group(1)), float(match.group(2))
+                self.robot_poses.append((x, y))
+        self.robot_count = len(self.robot_names)
+        # Define robot types: special/normal from yaml
+        special_robot_list = yaml_data.get('special_robot', [])
+        self.robot_types = ['special' if name in special_robot_list else 'normal' for name in self.robot_names]
 
         # Publishers for each robot namespace
         self.task_pubs = {}
@@ -148,17 +135,9 @@ class TaskAssignNode(Node):
         self.broke_agents = []
 
         # ----- Load wall and task info -----
-
-
-        package_share = get_package_share_directory('ltl_automaton_planner')
-
         wall_path = os.path.join(package_share, 'config', 'wall.yaml')
-        task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
         halton_points_csv = os.path.join(package_share, 'ltl_automaton_planner', 'all_points_in_Halton.csv')
         precomputed_distances_csv = os.path.join(package_share, 'ltl_automaton_planner', 'multi_source_dijkstra_distances.csv')
-
-        with open(task_points_yaml, 'r') as f:
-            yaml_data = yaml.safe_load(f)
 
         points_with_label = {}
         for k, v in yaml_data['task_points'].items():
