@@ -4,11 +4,12 @@ import rclpy
 from rclpy.node import Node
 from ltl_automaton_planner.CostMapClusterer import CostMapClusterer
 from ltl_automaton_planner.MILP import ClusterTaskPlanner
-from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, AgentFailTask, TaskFail
+from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, AgentFailTask, TaskFail, AddTask
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 import yaml
 import re
 from ament_index_python.packages import get_package_share_directory
+import array
 
 # -------------------- CWA Algorithm --------------------
 class CWA:
@@ -132,12 +133,23 @@ class TaskAssignNode(Node):
             sub = self.create_subscription(TaskFail, topic, self.task_fail_callback, 10)
             self.task_fail_subs.append(sub)
 
+        self.llm_command_parser_subs = self.create_subscription(
+            AddTask,
+            '/add_task',
+            self.add_task_callback,
+            10
+        )
+
         self.broke_agents = []
 
         # ----- Load wall and task info -----
-        wall_path = os.path.join(package_share, 'config', 'wall.yaml')
-        halton_points_csv = os.path.join(package_share, 'ltl_automaton_planner', 'all_points_in_Halton.csv')
-        precomputed_distances_csv = os.path.join(package_share, 'ltl_automaton_planner', 'multi_source_dijkstra_distances.csv')
+        package_share = get_package_share_directory('ltl_automaton_planner')
+        self.wall_path = os.path.join(package_share, 'config', 'wall.yaml')
+        self.halton_points_csv = os.path.join(package_share, 'ltl_automaton_planner', 'all_points_in_Halton.csv')
+        self.precomputed_distances_csv = os.path.join(package_share, 'ltl_automaton_planner', 'multi_source_dijkstra_distances.csv')
+        task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
+        with open(task_points_yaml, 'r') as f:
+            yaml_data = yaml.safe_load(f)
 
         points_with_label = {}
         for k, v in yaml_data['task_points'].items():
@@ -162,11 +174,11 @@ class TaskAssignNode(Node):
         # Load wall data from YAML file and perform task clustering using new CostMapClusterer interface
         self.clusterer = CostMapClusterer(
             points_with_label=self.points_with_label,
-            wall_yaml_path=wall_path,
+            wall_yaml_path=self.wall_path,
             num_clusters=4,
-            halton_points_csv=halton_points_csv,
+            halton_points_csv=self.halton_points_csv,
             wall_thick=0.1,
-            precomputed_distances_csv=precomputed_distances_csv
+            precomputed_distances_csv=self.precomputed_distances_csv
         )
         
         # Get clustering results - now returns (centers, points) instead of separate normal/special
@@ -210,12 +222,73 @@ class TaskAssignNode(Node):
         
         # MILP cluster task planner
         self.cluster_planner = ClusterTaskPlanner(
-            dijkstra_distances_csv_path=precomputed_distances_csv
+            dijkstra_distances_csv_path=self.precomputed_distances_csv
         )
 
         self.assigned_points_global = set()
 
         self.finish_callback()
+
+    def add_task_callback(self, msg):
+        self.get_logger().info(f"Received add task command from LLM, new {msg.task_type} task appears at {msg.location}, assignning new task......")
+        self.add_task(msg.location, msg.task_type, msg.task_label, msg.delivery_point)
+
+    def add_task(self, location, task_type, task_label, delivery_point):
+        self.get_logger().info(f"Adding task {task_label} at {location} with delivery point {delivery_point}.")
+
+        # 1. Check location format，兼容array.array
+        if isinstance(location, array.array):
+            location = list(location)
+        if not (isinstance(location, (list, tuple)) and len(location) == 2):
+            self.get_logger().error(f"Invalid location format: {location}")
+            return
+
+        # 2. Check task_label, delivery_point, and task_type format
+        if not isinstance(task_label, str) or not task_label:
+            self.get_logger().error(f"Invalid task_label: {task_label}")
+            return
+        if not isinstance(delivery_point, str) or not delivery_point:
+            self.get_logger().error(f"Invalid delivery_point: {delivery_point}")
+            return
+        if not isinstance(task_type, str) or not task_type:
+            self.get_logger().error(f"Invalid task_type: {task_type}")
+            return
+
+        # 3. Add the new task point to points_with_label
+        location_tuple = (float(location[0]), float(location[1]))
+        if location_tuple in self.points_with_label:
+            self.get_logger().warn(f"Task at {location_tuple} already exists, overwriting label to {task_label}")
+        self.points_with_label[location_tuple] = task_label
+
+        # 4. Update special_labels
+        if task_type == "special":
+            self.special_labels.add(task_label)
+        else:
+            self.special_labels.discard(task_label)  # Ensure normal tasks are not in special_labels
+
+        # 5. Update task_to_delivery
+        self.task_to_delivery[task_label] = delivery_point
+
+        # 6. Update label_to_index
+        # Regenerate label_to_index to ensure unique and increasing indices
+        self.label_to_index = {label: idx + 1 for idx, label in enumerate(self.points_with_label.values())}
+
+        # 7. Re-initialize the clusterer with the updated task list before reclustering
+        self.clusterer = CostMapClusterer(
+            points_with_label=self.points_with_label,
+            wall_yaml_path=self.wall_path,
+            num_clusters=4,
+            halton_points_csv=self.halton_points_csv,
+            wall_thick=0.1,
+            precomputed_distances_csv=self.precomputed_distances_csv
+        )
+
+        # 8. Immediately run update_clusters_after_assignment
+        self.update_clusters_after_assignment()
+
+        self.get_logger().info(f"Task {task_label} added successfully. Current points_with_label: {self.points_with_label}")
+        self.get_logger().info(f"Current special_labels: {self.special_labels}")
+        self.get_logger().info(f"Current task_to_delivery: {self.task_to_delivery}")
 
     def task_fail_callback(self, msg):  # Called when a task failure is reported
         self.solo_failure_task = msg.task_label
@@ -403,7 +476,7 @@ class TaskAssignNode(Node):
             self.assigned_points_global.add(tuple(pt))
         # Record this robot as the one that was just re-assigned.
         self.last_assigned_robot = robot_name
-        self.get_logger().info(f"robot_cluster_map: {self.robot_cluster_map}")
+        # self.get_logger().info(f"robot_cluster_map: {self.robot_cluster_map}")
         self.generate_task_sequences(robot_names=[robot_name])
         self.publish_task_reassignments()
         self.update_clusters_after_assignment()
@@ -456,11 +529,11 @@ class TaskAssignNode(Node):
                 robot_scores.append(score)
             scores.append(robot_scores)
 
-        self.get_logger().info(f"scores: {scores}")
+        # self.get_logger().info(f"scores: {scores}")
 
         # Call the auction algorithm for initial cluster assignment.
         assigned, _ = self.cwa_algorithm.initial_cluster_assignment(scores, self.robot_types, self.cluster_types)
-        self.get_logger().info(f"assigned: {assigned}")
+        # self.get_logger().info(f"assigned: {assigned}")
         # Map the auction results with the clustering data:
         self.robot_cluster_map = {name: [] for name in self.robot_names}
         self.robot_cluster_indices = {}  # 初始化robot_cluster_indices
@@ -499,15 +572,15 @@ class TaskAssignNode(Node):
             self.cluster_task_labels[cluster_index] = task_labels
             self.cluster_delivery_labels[cluster_index] = delivery_labels
 
-        self.get_logger().info("\n=== Final Cluster Assignment ===")
-        for robot, clusters in self.robot_cluster_map.items():
-            self.get_logger().info(f"{robot}: {clusters}")
+        # self.get_logger().info("\n=== Final Cluster Assignment ===")
+        # for robot, clusters in self.robot_cluster_map.items():
+        #     self.get_logger().info(f"{robot}: {clusters}")
         
-        self.get_logger().info("\n=== Cluster Task and Delivery Information ===")
-        for cluster_index in range(len(self.cluster_points)):
-            self.get_logger().info(f"Cluster {cluster_index}:")
-            self.get_logger().info(f"  Task labels: {self.cluster_task_labels.get(cluster_index, [])}")
-            self.get_logger().info(f"  Delivery labels: {self.cluster_delivery_labels.get(cluster_index, [])}")
+        # self.get_logger().info("\n=== Cluster Task and Delivery Information ===")
+        # for cluster_index in range(len(self.cluster_points)):
+        #     self.get_logger().info(f"Cluster {cluster_index}:")
+        #     self.get_logger().info(f"  Task labels: {self.cluster_task_labels.get(cluster_index, [])}")
+        #     self.get_logger().info(f"  Delivery labels: {self.cluster_delivery_labels.get(cluster_index, [])}")
 
 
     def generate_task_sequences(self, robot_names=None):
@@ -596,13 +669,13 @@ class TaskAssignNode(Node):
                 if pickup_label in self.task_to_delivery:
                     pickup_to_delivery[pickup_label] = self.task_to_delivery[pickup_label]
             
-            self.get_logger().info(f"\n=== MILP Planning for {robot_name} ===")
-            self.get_logger().info(f"Robot start: {robot_start}")
-            self.get_logger().info(f"Pickup points: {pickup_points}")
-            self.get_logger().info(f"Pickup labels: {pickup_labels}")
-            self.get_logger().info(f"Delivery points: {delivery_points}")
-            self.get_logger().info(f"Delivery labels: {delivery_labels_unique}")
-            self.get_logger().info(f"Pickup to delivery mapping: {pickup_to_delivery}")
+            # self.get_logger().info(f"\n=== MILP Planning for {robot_name} ===")
+            # self.get_logger().info(f"Robot start: {robot_start}")
+            # self.get_logger().info(f"Pickup points: {pickup_points}")
+            # self.get_logger().info(f"Pickup labels: {pickup_labels}")
+            # self.get_logger().info(f"Delivery points: {delivery_points}")
+            # self.get_logger().info(f"Delivery labels: {delivery_labels_unique}")
+            # self.get_logger().info(f"Pickup to delivery mapping: {pickup_to_delivery}")
             
             # Use MILP to plan optimal task sequence within cluster
             try:
@@ -632,14 +705,14 @@ class TaskAssignNode(Node):
                     self.robot_task_sequence[robot_name] = task_indices
                     self.robot_route_labels[robot_name] = route_labels
                     
-                    self.get_logger().info(f"Chosen pickups: {chosen_pickups}")
-                    self.get_logger().info(f"Chosen deliveries: {chosen_deliveries}")
-                    self.get_logger().info(f"Optimal route: {route_labels}")
-                    self.get_logger().info(f"Task indices: {task_indices}")
-                    self.get_logger().info(f"Total cost: {total_cost:.3f}")
+                    # self.get_logger().info(f"Chosen pickups: {chosen_pickups}")
+                    # self.get_logger().info(f"Chosen deliveries: {chosen_deliveries}")
+                    # self.get_logger().info(f"Optimal route: {route_labels}")
+                    # self.get_logger().info(f"Task indices: {task_indices}")
+                    # self.get_logger().info(f"Total cost: {total_cost:.3f}")
                 
             except Exception as e:
-                self.get_logger().error(f"Error in MILP planning for {robot_name}: {e}")
+                # self.get_logger().error(f"Error in MILP planning for {robot_name}: {e}")
                 # Fallback to nearest neighbor
                 self.robot_task_sequence[robot_name], self.robot_route_labels[robot_name] = self._nearest_neighbor_fallback(
                     robot_start, task_points, task_labels
@@ -657,7 +730,7 @@ class TaskAssignNode(Node):
                         self.assigned_points_global.add(pt)
                         break
 
-        self.get_logger().info(f"assigned_points_global: {self.assigned_points_global}")
+        # self.get_logger().info(f"assigned_points_global: {self.assigned_points_global}")
 
     def _get_delivery_point(self, delivery_label):
         """Get delivery point coordinates for a given delivery label"""
@@ -684,14 +757,25 @@ class TaskAssignNode(Node):
             current_pos = task_points[nearest_idx]
             remaining.remove(nearest_idx)
 
-        # 2. 先所有pickup，再所有delivery
+        # 2. 先所有pickup，再所有delivery（去重）
         pickup_labels_ordered = [task_labels[idx] for idx in pickup_sequence]
-        delivery_labels_ordered = [self.task_to_delivery[label] for label in pickup_labels_ordered if label in self.task_to_delivery]
+        
+        # 收集所有对应的delivery标签并去重
+        delivery_labels_set = set()
+        for label in pickup_labels_ordered:
+            if label in self.task_to_delivery:
+                delivery_labels_set.add(self.task_to_delivery[label])
+        
+        # 转换为有序列表
+        delivery_labels_ordered = list(delivery_labels_set)
         full_labels = pickup_labels_ordered + delivery_labels_ordered
 
         # 3. 转为task indices
         task_indices = [self.label_to_index[label] for label in full_labels if label in self.label_to_index]
-        self.get_logger().info(f"task_indices: {task_indices}")
+        # self.get_logger().info(f"pickup_labels_ordered: {pickup_labels_ordered}")
+        # self.get_logger().info(f"delivery_labels_ordered (deduplicated): {delivery_labels_ordered}")
+        # self.get_logger().info(f"full_labels: {full_labels}")
+        # self.get_logger().info(f"task_indices: {task_indices}")
         return task_indices, full_labels
 
     def publish_task_assignments(self):
@@ -729,7 +813,7 @@ class TaskAssignNode(Node):
         # 未分配的点
         unassigned_points = [pt for pt in all_points if pt not in self.assigned_points_global]
         unassigned_labels = [self.points_with_label[pt] for pt in unassigned_points]
-        self.get_logger().info(f"unassigned_points: {unassigned_points}")
+        # self.get_logger().info(f"unassigned_points: {unassigned_points}")
         # 重新聚类
         if unassigned_points:
             # 只聚类未分配的点，传入label和坐标

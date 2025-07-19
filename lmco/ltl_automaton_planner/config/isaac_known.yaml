@@ -1,6 +1,6 @@
 actions:
   load:
-    guard: 'bb || bc || bd || be || bh || bi || bj || bk || bl || bm || bn || bo || bp || bq || br || cb || cc || cd || ce || cf || ch || ci || cj || ck || cl || cm || cn || co || cp || cq || cr || db || dc || dd || de || df || dh || di || dj || dk || dl || dm || dn || do || dp || dq || dr || eb || ec || ed || ee || ef || eh || ei || ej || ek || el || em || en || eo || ep || eq || er || fb || fc || fd || fe || ff || fh || fi || fj || fk || fl || fm || fn || fo || fp || fq || fr || gb || gc || gd || ge || gf || gh || gi || gj || gk || gl || gm || gn || go || gp || gq || gr || he || hj || hn || hr'
+    guard: '(unloaded) && (bb || bc || bd || be || bh || bi || bj || bk || bl || bm || bn || bo || bp || bq || br || cb || cc || cd || ce || cf || ch || ci || cj || ck || cl || cm || cn || co || cp || cq || cr || db || dc || dd || de || df || dh || di || dj || dk || dl || dm || dn || do || dp || dq || dr || eb || ec || ed || ee || ef || eh || ei || ej || ek || el || em || en || eo || ep || eq || er || fb || fc || fd || fe || ff || fh || fi || fj || fk || fl || fm || fn || fo || fp || fq || fr || gb || gc || gd || ge || gf || gh || gi || gj || gk || gl || gm || gn || go || gp || gq || gr || he || hj || hn || hr)'
     type: load
     weight: 0
   stay:
@@ -12,7 +12,7 @@ actions:
     type: stay
     weight: 0
   unload:
-    guard: 'b || c || d || e || f || h || i || j || k || l || m || n || o || p || q || r'
+    guard: '(loaded1 || loaded2 || loaded3) && (b || c || d || e) '
     type: unload
     weight: 0
 state_dim:

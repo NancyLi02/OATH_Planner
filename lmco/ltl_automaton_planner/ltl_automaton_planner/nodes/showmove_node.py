@@ -8,7 +8,7 @@ from shapely.geometry import LineString, Polygon
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
 import sys
 import cv2
-from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks, TaskFail
+from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks, TaskFail, AddTask
 from enum import Enum
 import threading
 import yaml
@@ -37,6 +37,7 @@ BLUE   = (0, 0, 128)
 # Additional colors for tasks (loaded/unloaded)
 GREEN    = (107, 142, 35)      # For unload task points
 SKY_BLUE = (135, 206, 235)     # For unfinished load task points
+CYAN = (0, 255, 255)
 # notask_color already defined as grey, used to indicate finished (or no task) task points
 NOTASK_COLOR = (0, 255, 0)
 FINISHED_TASK = (190, 190, 190)
@@ -132,6 +133,8 @@ class ShowMoveNode(Node):
         ]
         # 读取 special robot
         self.special_robot_ids = yaml_data.get('special_robot', [])
+        # 读取 special labels
+        self.special_labels = set(yaml_data.get('special_labels', []))
 
         # List of robot IDs 从yaml读取
         self.robot_ids = list(yaml_data.get('robot_positions', {}).keys())
@@ -155,6 +158,9 @@ class ShowMoveNode(Node):
                 }
         
         self.failed_task_list = []
+
+        # 新增：初始化用于新任务的变量，防止未定义报错
+        self.new_task_points = []
 
         # Initialize subscriptions lists
         self.position_subscriptions = []
@@ -205,8 +211,33 @@ class ShowMoveNode(Node):
             # self.get_logger().info(f"Subscribed to topic: {topic}")
             self.task_failure_subs.append(task_fail_sub)
 
+        self.add_task_sub = self.create_subscription(
+            AddTask,
+            "/add_task",
+            self.add_task_callback,
+            10
+        )
+
         # Create a timer for periodic simulation updates (e.g., every 0.1 seconds)
         self.timer = self.create_timer(0.1, self.simulate)
+
+    def add_task_callback(self, msg):
+        self.get_logger().info(f"Received add task command from LLM, new {msg.task_type} task appears at {msg.location}, updating map......")
+        point = tuple(msg.location)
+        label = msg.task_label
+        
+        # 检查是否已经存在相同的点坐标
+        if point in self.points:
+            self.get_logger().info(f"Task point already exists at {point}, skipping...")
+            return
+            
+        # 直接更新self.points
+        self.points[point] = label
+    
+        if msg.task_type == "special":
+            self.special_labels.add(label)
+        
+
     
     def task_fail_callback(self, msg):
         # 直接用label字符串
@@ -307,7 +338,7 @@ class ShowMoveNode(Node):
         points = self.points
         unloaded_points = self.unloaded_points
         loaded_labels = self.loaded_labels
-        special_points = {'db', 'eb', 'bb', 'cd', 'fd'}
+        special_points = self.special_labels
 
         # Iterate through all points, choose color based on status:
         for pt, label in points.items():
@@ -322,7 +353,7 @@ class ShowMoveNode(Node):
                     color = self.finished_tasks_color
                     special_color = self.finished_tasks_color
                 else:
-                    color = SKY_BLUE
+                    color = CYAN
                     special_color = RED
 
             # Draw the task point (special tasks as triangles, others as rectangles)

@@ -71,8 +71,8 @@ def rejection_sampling(n_samples, lines, area_size, d_min=0.3, d_opt=0.4, sigma=
     return samples[:n_samples]
 
 
-def build_graph_halton(x_length=20, y_length=20, n_points=700):
-    points_with_label = load_points_with_label()
+def build_graph_halton(x_length=20, y_length=20, n_points=700, new_task_points=None):
+    points_with_label = load_points_with_label(new_task_points)
 
     x_length = 20
     n_points = 1000
@@ -197,10 +197,10 @@ def check_in_bump(action, nodes, agent_name):
     return False
 
 
-def state_models_from_ts(TS_dict, initial_states_dict=None):
+def state_models_from_ts(TS_dict, initial_states_dict=None, new_task_points=None):
     state_models = []
 
-    nodes, actions = build_graph_halton(40, 40, 200)
+    nodes, actions = build_graph_halton(40, 40, 200, new_task_points)
     TS_dict['state_models']['2d_pose_region']['nodes'] = nodes
     TS_dict['actions'].update(actions)
     
@@ -324,7 +324,7 @@ def delete_file(file_name):
     except FileNotFoundError:
         pass
 
-def load_points_with_label():
+def load_points_with_label(new_task_points=None):
     parent_dir = os.path.abspath(
         os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner')
     )
@@ -336,19 +336,22 @@ def load_points_with_label():
 
     for robot, pos in data.get('robot_positions', {}).items():
         point = tuple(float(x.strip()) for x in pos.split(','))
-        points_with_label[point] = ''  # 机器人初始点 label 为空
+        points_with_label[point] = ''
 
-    # 解析 task_points
+
     for k, v in data.get('task_points', {}).items():
         point = tuple(float(x.strip()) for x in k.split(','))
         points_with_label[point] = v
 
-    # 解析 delivery_points
+
     for k, v in data.get('delivery_points', {}).items():
         point = tuple(float(x.strip()) for x in k.split(','))
         points_with_label[point] = v
 
-    # 解析 robot_positions
-    
+
+    if new_task_points:
+        for point, label in new_task_points:
+            points_with_label[point] = label
+            print(f"New task point: {point}, label: {label}")
 
     return points_with_label

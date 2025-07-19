@@ -5,6 +5,8 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from ltl_automaton_msgs.msg import AddTask, ObstacleUpdate
 from openai import OpenAI
+import yaml
+from ament_index_python.packages import get_package_share_directory
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -19,7 +21,19 @@ class LLMCommandParserNode(Node):
             10
         )
 
+        # === 新增：为每个robot创建带namespace的add_task publisher ===
+        package_share = get_package_share_directory('ltl_automaton_planner')
+        task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
+        with open(task_points_yaml, 'r') as f:
+            yaml_data = yaml.safe_load(f)
+        robot_names = list(yaml_data.get('robot_positions', {}).keys())
+        self.task_pubs = {}
+        for robot in robot_names:
+            topic = f'/{robot}/add_task'
+            self.task_pubs[robot] = self.create_publisher(AddTask, topic, 10)
+        # 还保留一个不带namespace的
         self.task_pub = self.create_publisher(AddTask, '/add_task', 10)
+
         self.obstacle_pub = self.create_publisher(ObstacleUpdate, '/obstacle_update', 10)
 
         self.get_logger().info('LLM Command Parser Node initialized.')
@@ -41,8 +55,10 @@ class LLMCommandParserNode(Node):
                 if intent == "add_task":
                     msg_out = AddTask()
                     msg_out.location = parameters.get("location", [0.0, 0.0])
+                    msg_out.task_label = parameters.get("task_label", "")
+                    msg_out.delivery_point = parameters.get("delivery_point", "")
                     msg_out.task_type = parameters.get("task_type", "normal")
-                    self.task_pub.publish(msg_out)
+                    self.publish_add_task(msg_out)
                     self.get_logger().info(f'Published AddTask: {msg_out}')
 
                 elif intent == "obstacle_update":
@@ -70,6 +86,8 @@ For "add_task":
   "intent": "add_task",
   "parameters": {{
     "location": [1.0, 2.0],
+    "delivery_point": "b",
+    "task_label": "fb",
     "task_type": "special"
   }}
 }}
@@ -88,7 +106,7 @@ Instruction: {instruction_text}
 Return ONLY the JSON array. Do NOT add any explanation.
 """
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a command parser that outputs structured JSON."},
                 {"role": "user", "content": prompt}
@@ -97,6 +115,11 @@ Return ONLY the JSON array. Do NOT add any explanation.
         )
 
         return json.loads(response.choices[0].message.content)
+
+    def publish_add_task(self, msg):
+        for pub in self.task_pubs.values():
+            pub.publish(msg)
+        self.task_pub.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)

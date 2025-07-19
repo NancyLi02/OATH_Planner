@@ -105,18 +105,53 @@ class CostMapClusterer:
         self.distance_matrix = self._reorder_distance_matrix(dist_matrix, label_to_index)
 
     def _reorder_distance_matrix(self, dist_matrix, label_to_index):
-        """Reorder distance matrix to match task point order"""
+        """
+        Reorder distance matrix to match task point order.
+        For new points not in the precomputed matrix, compute their distances.
+        """
         n = len(self.task_points)
         reordered_matrix = np.full((n, n), np.inf)
         np.fill_diagonal(reordered_matrix, 0.0)
-        
-        for i, label1 in enumerate(self.task_points):
-            for j, label2 in enumerate(self.task_points):
+
+        # Cache for Dijkstra results to avoid re-computation
+        dijkstra_cache = {}
+
+        for i in range(n):
+            for j in range(i + 1, n):
+                label1 = self.task_points[i]
+                label2 = self.task_points[j]
+                
+                dist = np.inf
+
+                # Strategy 1: Use precomputed distance if available
                 if label1 in label_to_index and label2 in label_to_index:
                     idx1 = label_to_index[label1]
                     idx2 = label_to_index[label2]
-                    reordered_matrix[i, j] = dist_matrix[idx1, idx2]
-        
+                    dist = dist_matrix[idx1, idx2]
+                
+                # Strategy 2: If not precomputed, compute using Dijkstra on the graph
+                # This handles cases where one or both points are new.
+                if dist == np.inf and label1 in self.label_to_idx and label2 in self.label_to_idx:
+                    start_node_idx = self.label_to_idx[label1]
+                    goal_node_idx = self.label_to_idx[label2]
+
+                    if start_node_idx not in dijkstra_cache:
+                        # Compute Dijkstra for start_node_idx and cache it
+                        dists_from_start, _ = self._dijkstra_sparse_with_prev(self.graph, start_node_idx)
+                        dijkstra_cache[start_node_idx] = dists_from_start
+                    
+                    if goal_node_idx in dijkstra_cache[start_node_idx]:
+                        dist = dijkstra_cache[start_node_idx][goal_node_idx]
+
+                # Strategy 3: Fallback to Manhattan distance if points are disconnected or not on Halton grid
+                if dist == np.inf:
+                    coord1 = self.task_coords[i]
+                    coord2 = self.task_coords[j]
+                    dist = abs(coord1[0] - coord2[0]) + abs(coord1[1] - coord2[1])
+
+                reordered_matrix[i, j] = dist
+                reordered_matrix[j, i] = dist
+            
         return reordered_matrix
 
     def _setup_multi_source_clustering(self):

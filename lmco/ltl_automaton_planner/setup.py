@@ -32,7 +32,8 @@ setup(
             'showmove_node = ltl_automaton_planner.nodes.showmove_node:main',
             'planner_cluster_node = ltl_automaton_planner.nodes.planner_cluster_node:main',
             'benchmark_cluster_node = ltl_automaton_planner.nodes.benchmark_cluster_node:main',
-            'taskassign_cluster_node = ltl_automaton_planner.nodes.taskassign_cluster_node:main'
+            'taskassign_cluster_node = ltl_automaton_planner.nodes.taskassign_cluster_node:main',
+            'llm_command_parser_node = ltl_automaton_planner.nodes.llm_command_parser_node:main'
         ],
     },
 )

@@ -17,7 +17,7 @@ import networkx as nx
 from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers, build_graph_halton
 
 # Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import AgentFail, ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID
+from ltl_automaton_msgs.msg import AddTask, AgentFail, ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID
 from ltl_automaton_msgs.srv import * #TaskPlanning, TaskPlanningResponse, TaskReplanningAdd, TaskReplanningDelete, TaskReplanningRelabel, TaskReplanningAddResponse, TaskReplanningDeleteResponse
 
 # Import dynamic reconfigure components for dynamic parameters (see dynamic_reconfigure and dynamic_params package)
@@ -103,6 +103,8 @@ class MainPlanner(Node):
         self.pose_index = self.init_state
         self.position = []
         self.current_ltl_formula = ''
+        self.add_point_to_map = False
+        self.new_task_points = []
 
 
     def load_tasks(self, yaml_file):
@@ -153,94 +155,69 @@ class MainPlanner(Node):
         
         return ltl_formula
 
-    def initialize_automaton(self):
-        # Import state models from TS
-        state_models = state_models_from_ts(self.transition_system, self.initial_state_ts_dict)
+    # def initialize_automaton(self):
+    #     # Import state models from TS
+    #     state_models = state_models_from_ts(self.transition_system, self.initial_state_ts_dict)
 
-        # Maintain multiple `Product Automaton` and `LTLPlanner` instances, each corresponding to a predefined task
-        if not hasattr(self, 'product_automata'):
-            self.product_automata = {}  # Initialize dictionary to store `ProdAut`
-        if not hasattr(self, 'ltl_planners'):
-            self.ltl_planners = {}  # Store LTLPlanner instances per task
-            self.score_planners = {}
+    #     # Maintain multiple `Product Automaton` and `LTLPlanner` instances, each corresponding to a predefined task
+    #     if not hasattr(self, 'product_automata'):
+    #         self.product_automata = {}  # Initialize dictionary to store `ProdAut`
+    #     if not hasattr(self, 'ltl_planners'):
+    #         self.ltl_planners = {}  # Store LTLPlanner instances per task
+    #         self.score_planners = {}
 
-        # Define four tasks, each with its own LTL specification
-        for task_id in self.task_index:
-            task_id = f'task{task_id}'
-            hard_task = self.task_data[task_id]['hard_task']
-            soft_task = ''
+    #     # Define four tasks, each with its own LTL specification
+    #     for task_id in self.task_index:
+    #         task_id = f'task{task_id}'
+    #         hard_task = self.task_data[task_id]['hard_task']
+    #         soft_task = ''
 
-            # Create Task Product Automaton
-            self.get_logger().info(f"{self.agent_name} creating new Product Automaton for task {task_id}...")
-            robot_model = TSModel(state_models)
-            product_automaton = ProdAut(robot_model, mission_to_buchi(hard_task, soft_task), self.initial_beta)
-            # self.get_logger().info(f"Step 4: ProdAut 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
-            product_automaton.graph['ts'].build_full()  # Fully initialize the automaton during construction
-            # self.get_logger().info(f"Step 5: build_full 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
-            product_automaton.build_full_relaxed()
-            # self.get_logger().info(f"Step 6: build_full_relaxed 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
+    #         # Create Task Product Automaton
+    #         self.get_logger().info(f"{self.agent_name} creating new Product Automaton for task {task_id}...")
+    #         robot_model = TSModel(state_models)
+    #         product_automaton = ProdAut(robot_model, mission_to_buchi(hard_task, soft_task), self.initial_beta)
+    #         # self.get_logger().info(f"Step 4: ProdAut 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
+    #         product_automaton.graph['ts'].build_full()  # Fully initialize the automaton during construction
+    #         # self.get_logger().info(f"Step 5: build_full 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
+    #         product_automaton.build_full_relaxed()
+    #         # self.get_logger().info(f"Step 6: build_full_relaxed 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
 
 
-            # self.get_logger().info(f"Product Automaton Nodes before calling optimal: {product_automaton.graph['initial']}")
+    #         # self.get_logger().info(f"Product Automaton Nodes before calling optimal: {product_automaton.graph['initial']}")
 
-            # Initialize LTL Planner for each task
-            # self.get_logger().info(f"Step 7: LTLPlanner 初始化 开始")
-            ltl_planner = LTLPlanner(robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
-            # self.get_logger().info(f"Step 8: LTLPlanner 初始化 完成")
-            ltl_planner.optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
-            # self.get_logger().info(f"Step 9: LTLPlanner.optimal 完成")
+    #         # Initialize LTL Planner for each task
+    #         # self.get_logger().info(f"Step 7: LTLPlanner 初始化 开始")
+    #         ltl_planner = LTLPlanner(robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
+    #         # self.get_logger().info(f"Step 8: LTLPlanner 初始化 完成")
+    #         ltl_planner.optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
+    #         # self.get_logger().info(f"Step 9: LTLPlanner.optimal 完成")
 
-            # Store the newly created product automaton and LTL planner
-            self.product_automata[task_id] = product_automaton
-            self.ltl_planners[task_id] = ltl_planner  # Store LTLPlanner for later use
+    #         # Store the newly created product automaton and LTL planner
+    #         self.product_automata[task_id] = product_automaton
+    #         self.ltl_planners[task_id] = ltl_planner  # Store LTLPlanner for later use
             
-            # Initialize storage for the set of possible runs in the product
-            self.ltl_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
-            self.ltl_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
+    #         # Initialize storage for the set of possible runs in the product
+    #         self.ltl_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
+    #         self.ltl_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
 
-            # Seperate planner for score calculating
-            score_planner = LTLPlanner(robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
-            score_planner.optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
+    #         # Seperate planner for score calculating
+    #         score_planner = LTLPlanner(robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
+    #         score_planner.optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
 
-            # Store the newly created product automaton and LTL planner
-            self.score_planners[task_id] = score_planner  # Store LTLPlanner for later use
+    #         # Store the newly created product automaton and LTL planner
+    #         self.score_planners[task_id] = score_planner  # Store LTLPlanner for later use
             
-            # Initialize storage for the set of possible runs in the product
-            self.score_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
-            self.score_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
+    #         # Initialize storage for the set of possible runs in the product
+    #         self.score_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
+    #         self.score_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
 
 
-    def update_and_run_automaton(self, task_id, new_initial_ts_state):
-        # Check if `ProdAut` for `task_id` exists
-        if task_id not in self.product_automata:
-            raise ValueError(f"Product Automaton for task {task_id} has not been initialized. Call initialize_automaton first.")
-        
-        if task_id not in self.ltl_planners:
-            raise ValueError(f"LTLPlanner for task {task_id} has not been initialized. Call initialize_automaton first.")
-
-        product_automaton = self.product_automata[task_id]
-
-        # Ensure correct format if input is a dictionary
-        if isinstance(new_initial_ts_state, dict):
-            new_initial_ts_state = (new_initial_ts_state['2d_pose_region'], new_initial_ts_state['Drone_state'])
-
-        # Update the initial state in the expected format
-        product_automaton.graph['ts'].graph['initial'] = {new_initial_ts_state}
-        product_automaton.build_initial()  # Only update the initial state
-
-        # Update LTL Planner's current state and possible runs
-        self.ltl_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
-        self.ltl_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
-
-        # Use the corresponding LTLPlanner instance for this task
-        self.ltl_planners[task_id].optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
-
-    # def update_score_automaton(self, task_id, new_initial_ts_state):
+    # def update_and_run_automaton(self, task_id, new_initial_ts_state):
     #     # Check if `ProdAut` for `task_id` exists
     #     if task_id not in self.product_automata:
     #         raise ValueError(f"Product Automaton for task {task_id} has not been initialized. Call initialize_automaton first.")
         
-    #     if task_id not in self.score_planners:
+    #     if task_id not in self.ltl_planners:
     #         raise ValueError(f"LTLPlanner for task {task_id} has not been initialized. Call initialize_automaton first.")
 
     #     product_automaton = self.product_automata[task_id]
@@ -254,18 +231,27 @@ class MainPlanner(Node):
     #     product_automaton.build_initial()  # Only update the initial state
 
     #     # Update LTL Planner's current state and possible runs
-    #     self.score_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
-    #     self.score_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
+    #     self.ltl_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
+    #     self.ltl_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
 
     #     # Use the corresponding LTLPlanner instance for this task
-    #     self.score_planners[task_id].optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
+    #     self.ltl_planners[task_id].optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
 
     
     def build_and_run_automaton(self, ltl_formula, initial_state_ts_dict):
         self.get_logger().info(f"Building and running automaton for {self.agent_name}.")
 
-        state_models = state_models_from_ts(self.transition_system, initial_state_ts_dict)
+        if self.add_point_to_map:
+            self.add_point_to_map = False
+            self.get_logger().info(f"New task points: {self.new_task_points} appear, start updating map......")
+            state_models = state_models_from_ts(self.transition_system, initial_state_ts_dict, self.new_task_points)
+            self.get_logger().info(f"Finish updating map, building new automaton......")
+        else:
+            state_models = state_models_from_ts(self.transition_system, initial_state_ts_dict, self.new_task_points)
 
+        # Update self.nodes and self.actions to be consistent with the newly built graph
+        self.nodes = self.transition_system['state_models']['2d_pose_region']['nodes']
+        self.actions = self.transition_system['actions']
 
         # Get task ltl specification
         hard_task = ltl_formula
@@ -273,40 +259,21 @@ class MainPlanner(Node):
 
 
         buchi = mission_to_buchi(hard_task, soft_task)
-        # self.get_logger().info(f"Step 2: mission_to_buchi 完成，buchi states: {len(buchi.nodes())}, edges: {len(buchi.edges())}")
-
-
         self.robot_model = TSModel(state_models)
 
-
-        # self.get_logger().info("Step 4: ProdAut 开始")
         self.product_automaton = ProdAut(self.robot_model, buchi, self.initial_beta)
-        # self.get_logger().info(f"Step 4: ProdAut 完成，product nodes: {len(self.product_automaton.nodes)}, edges: {len(self.product_automaton.edges)}")
 
-        # self.get_logger().info("Step 5: build_full 开始")
         self.product_automaton.graph['ts'].build_full()
-        # self.get_logger().info(f"Step 5: build_full 完成，product nodes: {len(self.product_automaton.nodes())}, edges: {len(self.product_automaton.edges())}")
-
-        # self.get_logger().info("Step 6: build_full_relaxed 开始")
         self.product_automaton.build_full_relaxed()
-        # self.get_logger().info(f"Step 6: build_full_relaxed 完成，product nodes: {len(self.product_automaton.nodes)}, edges: {len(self.product_automaton.edges)}")
 
-        # self.get_logger().info("Step 7: LTLPlanner 初始化 开始")
         self.ltl_planner = LTLPlanner(self.robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
-        # self.get_logger().info("Step 7: LTLPlanner 初始化 完成")
 
-        # self.get_logger().info("Step 8: LTLPlanner.optimal 开始")
         self.ltl_planner.optimal(self.product_automaton, algo=self.algo_type, N=self.grid_size)
-        # self.get_logger().info("Step 8: LTLPlanner.optimal 完成")
 
         # initialize storage of set of possible runs in product
         self.ltl_planner.curr_ts_state = list(self.ltl_planner.product.graph['ts'].graph['initial'])[0]
         self.ltl_planner.posb_runs = set([(n,) for n in self.ltl_planner.product.graph['initial']])
         self.get_logger().info(f"LTL Planner for {self.agent_name} built and run.")
-
-        # show_automaton(self.robot_model)
-        # show_automaton(self.ltl_planner.product.graph['buchi'])
-        # show_automaton(self.ltl_planner.product)
 
 
     def setup_pub_sub(self):
@@ -369,6 +336,13 @@ class MainPlanner(Node):
             10
         )
 
+        self.add_task_sub = self.create_subscription(
+            AddTask,
+            'add_task',
+            self.add_task_callback,
+            10
+        )
+
         # self.agent_fail_sub = self.create_subscription(
         #     AgentFail,
         #     'agent_failure',
@@ -376,12 +350,22 @@ class MainPlanner(Node):
         #     10
         # )
     
-    # def agent_fail_callback(self, msg):
-    #     self.get_logger().info(f'{self.agent_name} is fail, calling for new plann......')
-    #     self.current_task_list
-    #     # self.current_task_list = list(msg.task_sequence)
-    #     self.cur_task # int32
-    #     # 请帮我完成这个函数把这个current_task_list从self.cur_task（包括这个cur_task后面的所有task列为未完成task，然后用）
+
+    def add_task_callback(self, msg):
+        self.get_logger().info(f"Received add task command from LLM, new {msg.task_type} task appears at {msg.location}, updating map......")
+        self.add_point_to_map = True
+        # 传递(label, 坐标)
+        point = tuple(msg.location)  # 转成tuple更保险
+        label = msg.task_label
+        
+        # 检查是否已经存在相同的point和label组合
+        new_task = (point, label)
+        if new_task not in self.new_task_points:
+            self.new_task_points.append(new_task)
+            self.get_logger().info(f"Added new task point: {new_task}")
+        else:
+            self.get_logger().info(f"Task point already exists, skipping: {new_task}")
+
 
 
     def assign_new_task(self, msg):
@@ -393,7 +377,7 @@ class MainPlanner(Node):
         self.request_cluster_msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
         self.request_cluster_msg.position = self.position
         self.request_cluster_pub.publish(self.request_cluster_msg)
-        self.get_logger().info(f"No more tasks remaining for {self.agent_name}, requesting for new cluster.......................................")
+        # self.get_logger().info(f"No more tasks remaining for {self.agent_name}, requesting for new cluster.......................................")
 
 
 
@@ -420,30 +404,30 @@ class MainPlanner(Node):
         # Publish the generated plan
         self.publish_cluster_plan()
 
-    def handle_task(self, task_index):
-        # Get and format current pose
-        new_initial_pose = self.pose_index
-        formatted_pose = f'{new_initial_pose}'
+    # def handle_task(self, task_index):
+    #     # Get and format current pose
+    #     new_initial_pose = self.pose_index
+    #     formatted_pose = f'{new_initial_pose}'
 
-        # Prepare initial state
-        self.initial_state_ts_dict = {
-            '2d_pose_region': formatted_pose,
-            'Drone_state': 'unloaded'
-        }
+    #     # Prepare initial state
+    #     self.initial_state_ts_dict = {
+    #         '2d_pose_region': formatted_pose,
+    #         'Drone_state': 'unloaded'
+    #     }
 
-        # Verify task existence
-        task_id = f'task{int(task_index)}'
-        self.cur_task = task_id
-        if task_id not in self.task_data:
-            self.get_logger().error(f"Invalid task index received: {task_index}")
-            return
+    #     # Verify task existence
+    #     task_id = f'task{int(task_index)}'
+    #     self.cur_task = task_id
+    #     if task_id not in self.task_data:
+    #         self.get_logger().error(f"Invalid task index received: {task_index}")
+    #         return
 
-        # Run automaton and plan
-        # self.get_logger().info(f"Calculating plan for {task_id} assigned to {self.agent_name}")
-        self.update_and_run_automaton(task_id, self.initial_state_ts_dict)
+    #     # Run automaton and plan
+    #     # self.get_logger().info(f"Calculating plan for {task_id} assigned to {self.agent_name}")
+    #     self.update_and_run_automaton(task_id, self.initial_state_ts_dict)
 
-        # Publish result
-        self.publish_plan(task_id)
+    #     # Publish result
+    #     self.publish_plan(task_id)
 
     def get_score_list(self, msg):
         formatted_pose = f'{msg.pose_index}'
@@ -531,6 +515,7 @@ class MainPlanner(Node):
 
             # Publish
             self.get_logger().info("Publishing Prefix Plan")
+            self.get_logger().info(f"Prefix Plan: {self.prefix_plan_msg.action_sequence}")
             self.prefix_plan_pub.publish(self.prefix_plan_msg)
 
             # Suffix plan
@@ -557,6 +542,7 @@ class MainPlanner(Node):
 
             # Publish
             self.get_logger().info("Publishing Suffix Plan")
+            self.get_logger().info(f"Suffix Plan: {self.suffix_plan_msg.action_sequence}")
             self.suffix_plan_pub.publish(self.suffix_plan_msg)
         else:
             self.get_logger().warn("No plan available to publish")

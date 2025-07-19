@@ -7,7 +7,7 @@ import yaml
 import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TaskFail, AgentFail, AgentFailTask, NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition
+from ltl_automaton_msgs.msg import TaskFail, AgentFail, AgentFailTask, NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition, AddTask
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
@@ -182,6 +182,13 @@ class LTLControllerDrone(Node):
             self.task_failed_callback,
             qos
         )
+
+        self.add_task_sub = self.create_subscription(
+            AddTask,
+            "/add_task",
+            self.add_task_callback,
+            10
+        )
         
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
@@ -276,6 +283,8 @@ class LTLControllerDrone(Node):
         self.sim_received = False
         self.sim_start = False
 
+        self.new_task_points = []
+
         # 从yaml文件加载任务点和pickup/delivery映射
         def str_to_tuple(s):
             nums = re.findall(r"[-+]?\d*\.?\d+", s)
@@ -288,6 +297,18 @@ class LTLControllerDrone(Node):
         self.task_to_delivery = yaml_data['task_to_delivery']
 
         # self.simulate()
+
+    def add_task_callback(self, msg):
+        self.get_logger().info(f"Received add task command, new {msg.task_type} task appears at {msg.location}, updating map for benchmark......")
+        point = tuple(msg.location)
+        label = msg.task_label
+        # Add a check for duplicates
+        new_task = (point, label)
+        if new_task not in self.new_task_points:
+            self.new_task_points.append(new_task)
+            self.get_logger().info(f"New task point {point} with label {label} will be added to the map on next plan.")
+        else:
+            self.get_logger().info(f"Task point {point} with label {label} already scheduled for addition.")
 
     def agent_fail_callback(self, msg):
         self.get_logger().info(f'{self.agent_name} is fail, need find new agent compeleting remaining tasks....')
@@ -347,6 +368,19 @@ class LTLControllerDrone(Node):
         self.get_logger().info(f"Publishing update current pose index for {self.agent_name}: {self.pose_index}, with state {current_pos_msg.current_state}.")
 
     def prefix_plan_callback(self, msg):
+        if self.new_task_points:
+            self.get_logger().info("New task points detected. Rebuilding transition system and updating task points...")
+            # Update the task_points dictionary
+            for point, label in self.new_task_points:
+                self.task_points[point] = label
+            # Rebuild the transition system with the new points
+            self.nodes, self.actions = build_graph_halton(20, 20, 1000, self.new_task_points)
+            self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
+            self.transition_system['actions'].update(self.actions)
+            self.get_logger().info("Transition system and task points updated.")
+            # Clear the list after updating
+            self.new_task_points.clear()
+
         self.plan_index = 0
         self.cur_task_list = msg.route_labels
         self.i = 0
@@ -716,7 +750,7 @@ class LTLControllerDrone(Node):
                 mode = 'loaded'
             elif self.mode == EquipmentMode.WAITTASK:
                 mode = 'Waiting'
-                self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
+                # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
             elif self.mode == EquipmentMode.NOTASK:
                 mode = 'NoTask'
                 # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
