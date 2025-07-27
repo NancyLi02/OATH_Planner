@@ -7,10 +7,10 @@ import yaml
 import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TaskFail, AgentFail, AgentFailTask, NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition, AddTask
+from ltl_automaton_msgs.msg import TaskFail, AgentFail, AgentFailTask, NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition, AddTask, ObstacleUpdate
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
-from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
+from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump, add_block_polygon, add_bump_polygon, update_graph_with_obstacle
 # Import modules for commanding the a1
 
 from geometry_msgs.msg import PoseStamped
@@ -190,6 +190,13 @@ class LTLControllerDrone(Node):
             10
         )
         
+        self.obstacle_update_sub = self.create_subscription(
+            ObstacleUpdate,
+            'obstacle_update',
+            self.obstacle_update_callback,
+            10
+        )
+        
         self.relay_pub = self.create_publisher(RelayRequest, 'replanning_request', 10)
         self.current_position_pub = self.create_publisher(CurrentPosition,'current_position', 10)
         self.update_pose_pub = self.create_publisher(CurrentPosition,'update_current_pose', 10)
@@ -212,6 +219,7 @@ class LTLControllerDrone(Node):
         self.init_pose = self.get_parameter('init_state').value
 
         self.nodes, self.actions = build_graph_halton(20, 20, 1000)
+        
         self.transition_system ['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system ['actions'].update(self.actions)
 
@@ -219,41 +227,24 @@ class LTLControllerDrone(Node):
         self.total_cost = 0
         self.if_obs = False
 
-        if self.agent_name == 'robot1':
-            self.pose = (1, 19)
-        elif self.agent_name =='robot2':
-            self.pose = (11, 19)
-        elif self.agent_name =='robot3':
-            self.pose = (9, 11)
-        elif self.agent_name =='robot4':
-            self.pose = (11, 9)
 
-        # elif self.agent_name =='robot5':
-        #     self.pose = (1, 39)
-        # elif self.agent_name =='robot6':
-        #     self.pose = (11, 39)
-        # elif self.agent_name =='robot7':
-        #     self.pose = (9, 31)
-        # elif self.agent_name =='robot8':
-        #     self.pose = (11, 29)
-
-        # elif self.agent_name =='robot9':
-        #     self.pose = (21, 19)
-        # elif self.agent_name =='robot10':
-        #     self.pose = (31, 19)
-        # elif self.agent_name =='robot11':
-        #     self.pose = (29, 11)
-        # elif self.agent_name =='robot12':
-        #     self.pose = (31, 9)
-
-        # elif self.agent_name =='robot13':
-        #     self.pose = (21, 39)
-        # elif self.agent_name =='robot14':
-        #     self.pose = (31, 39)
-        # elif self.agent_name =='robot15':   
-        #     self.pose = (29, 31)
-        # elif self.agent_name =='robot16':
-        #     self.pose = (31, 29)
+        package_share = get_package_share_directory('ltl_automaton_planner')
+        task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
+        with open(task_points_yaml, 'r') as f:
+            yaml_data = yaml.safe_load(f)
+            
+        robot_positions = yaml_data.get('robot_positions', {})
+        if self.agent_name in robot_positions:
+            robot_pos_str = robot_positions[self.agent_name]
+            coords = robot_pos_str.split(',')
+            if len(coords) == 2:
+                self.pose = (float(coords[0]), float(coords[1]))
+            else:
+                self.get_logger().warn(f'Invalid robot position format for {self.agent_name}: {robot_pos_str}')
+                self.pose = (0, 0)
+        else:
+            self.get_logger().warn(f'Robot {self.agent_name} not found in Task_Points.yaml')
+            self.pose = (0, 0)
 
         self.pose_index = self.init_pose
 
@@ -284,6 +275,7 @@ class LTLControllerDrone(Node):
         self.sim_start = False
 
         self.new_task_points = []
+        self.processed_obstacles = set()
 
         # 从yaml文件加载任务点和pickup/delivery映射
         def str_to_tuple(s):
@@ -297,6 +289,74 @@ class LTLControllerDrone(Node):
         self.task_to_delivery = yaml_data['task_to_delivery']
 
         # self.simulate()
+
+    def obstacle_update_callback(self, msg):
+        obstacle_key = tuple(msg.obstacle_location)
+        if obstacle_key in self.processed_obstacles:
+            self.get_logger().info(f"Ignoring duplicate obstacle update for location: {msg.obstacle_location}")
+            return
+            
+        self.get_logger().info(f"Received obstacle update: {msg.obstacle_type} at {msg.obstacle_location}")
+        self.processed_obstacles.add(obstacle_key)
+
+        # Convert flattened coordinates back to list of tuples
+        coords_flat = msg.obstacle_location
+        if len(coords_flat) % 2 != 0:
+            self.get_logger().error("Received obstacle with an odd number of coordinates.")
+            return
+        
+        vertices = []
+        for i in range(0, len(coords_flat), 2):
+            vertices.append((coords_flat[i], coords_flat[i+1]))
+
+        if msg.obstacle_type == 'wall' or msg.obstacle_type == 'block':
+            new_obstacle = Polygon(vertices)
+            # add_block_polygon(vertices) # For visualization consistency
+            update_graph_with_obstacle(self.nodes, self.actions, new_obstacle)
+            self.get_logger().info("Graph updated locally. Checking current path for collision.")
+            self.check_path_for_new_obstacle()
+        elif msg.obstacle_type == 'bush' or msg.obstacle_type == 'bump':
+            add_bump_polygon(vertices)
+            self.get_logger().info("New bump obstacle added.")
+            # Bumps add cost, but don't block, so we might not need to replan immediately unless the path becomes too costly
+            # Or we can just let the existing bump logic handle it on the next move.
+        
+    def check_path_for_new_obstacle(self):
+        # We need to check if the current or upcoming path segment is now blocked.
+        # This checks the entire remaining prefix plan.
+        if (len(self.prefix_action_list) == 0):
+            return
+
+        plan_is_valid = True
+        for i in range(self.plan_index, len(self.prefix_action_list)):
+            action_to_check = self.prefix_action_list[i]
+
+            if not str(action_to_check).startswith("from_"):
+                continue
+
+            # Check if the action itself has been removed from the graph
+            if action_to_check not in self.actions:
+                self.get_logger().warn(f"Path invalidated: Action '{action_to_check}' no longer exists in the graph.")
+                plan_is_valid = False
+                break
+            
+            # Legacy check for nodes (belt-and-suspenders)
+            from_idx, to_idx = extract_numbers(str(action_to_check))
+            if str(from_idx) not in self.nodes or str(to_idx) not in self.nodes:
+                self.get_logger().warn(f"Path invalidated: Node for action '{action_to_check}' was removed.")
+                plan_is_valid = False
+                break
+        
+        if not plan_is_valid:
+            self.get_logger().info("Current plan is no longer valid due to new obstacle. Requesting new task assignment.")
+            # Stop current movement and request a new plan/task from the central planner
+            self.on_hold = True
+            # Clearing the plan will prevent further movement and the logic will naturally
+            # lead to a new task request after the current (now empty) plan is "finished".
+            self.prefix_action_list = []
+            self.suffix_action_list = []
+            self.publish_task_request()
+
 
     def add_task_callback(self, msg):
         self.get_logger().info(f"Received add task command, new {msg.task_type} task appears at {msg.location}, updating map for benchmark......")
@@ -385,8 +445,8 @@ class LTLControllerDrone(Node):
         self.cur_task_list = msg.route_labels
         self.i = 0
         self.cur_task = self.cur_task_list[self.i]
-        self.world.block.clear()
-        self.world.bump.clear()
+        # self.world.block.clear()
+        # self.world.bump.clear()
         if self.final_on_hold == False:
             self.mode = EquipmentMode.UNLOADED
             self.on_hold = False
@@ -584,7 +644,7 @@ class LTLControllerDrone(Node):
                                     publish_msg = RelayRequest()
                                     # self.get_logger().info("checkpoint2")
                                     publish_msg.type = "delete"
-                                    publish_msg.current_state = self.prefix_state_sequence[self.plan_index]
+                                    publish_msg.current_state = self.suffix_state_sequence[suffix_index]
                                     publish_msg.from_pose.extend(list(self.previous_pose))
                                     publish_msg.to_pose.extend(list(self.pose))
                                     publish_msg.exec_index = self.plan_index
@@ -605,7 +665,7 @@ class LTLControllerDrone(Node):
                                 try: 
                                     publish_msg = RelayRequest()
                                     publish_msg.type = "modify"
-                                    publish_msg.current_state = self.prefix_state_sequence[self.plan_index]
+                                    publish_msg.current_state = self.suffix_state_sequence[suffix_index]
                                     publish_msg.from_pose.extend(list(self.previous_pose))
                                     publish_msg.to_pose.extend(list(self.pose))
                                     publish_msg.exec_index = self.plan_index

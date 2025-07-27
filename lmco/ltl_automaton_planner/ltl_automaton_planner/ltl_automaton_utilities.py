@@ -7,6 +7,30 @@ from shapely.geometry import Point, LineString, Polygon
 import math
 import numpy as np
 
+# Global lists for dynamic obstacles
+BLOCK_POLYGONS = [
+    Polygon([(5, 3.9), (6, 3.9), (6, 4.1), (5, 4.1)]),  
+    Polygon([(4, 14.9), (5, 14.9), (5, 15.1), (4, 15.1)])  
+]
+
+BUMP_POLYGONS = [
+    Polygon([(4.1, 1.1), (4.1, 2.0), (2.5, 2.0), (2.5, 1.1)]),
+    Polygon([(17.5, 15), (20, 15), (20, 13), (17.5, 13)]),
+    Polygon([(17.5, 5), (20, 5), (20, 3), (17.5, 3)])
+]
+
+def add_block_polygon(coords):
+    """Adds a new block polygon from a list of vertex coordinates."""
+    if len(coords) >= 3:
+        BLOCK_POLYGONS.append(Polygon(coords))
+        print(f"Added new block: {coords}")
+
+def add_bump_polygon(coords):
+    """Adds a new bump polygon from a list of vertex coordinates."""
+    if len(coords) >= 3:
+        BUMP_POLYGONS.append(Polygon(coords))
+        print(f"Added new bump: {coords}")
+
 def load_lines_from_yaml():
     parent_dir = os.path.abspath(
         os.path.join(os.path.dirname(__file__), '../../../../../../src/lmco/ltl_automaton_planner')
@@ -18,6 +42,77 @@ def load_lines_from_yaml():
 
     line_coords = yaml_data.get('lines', [])
     return [LineString(coords) for coords in line_coords]
+
+def update_graph_with_obstacle(nodes, actions, new_obstacle_polygon):
+    """
+    Locally updates the graph by removing nodes and actions that fall within a new obstacle,
+    and removing edges that intersect with the new obstacle.
+    """
+    nodes_to_remove = set()
+    actions_to_remove = set()
+
+    # Step 1: Identify nodes inside the new obstacle
+    for node_id, node_data in nodes.items():
+        pose = node_data['attr']['pose']
+        if new_obstacle_polygon.contains(Point(pose)):
+            nodes_to_remove.add(node_id)
+    
+    # Step 2: Identify edges that intersect the new obstacle
+    for action_name in list(actions.keys()):
+        if not action_name.startswith("from_"):
+            continue
+        
+        try:
+            from_idx, to_idx = (str(n) for n in extract_numbers(action_name))
+        except (TypeError, ValueError):
+            continue
+
+        if from_idx not in nodes_to_remove and to_idx not in nodes_to_remove:
+            if from_idx in nodes and to_idx in nodes:
+                from_pose = nodes[from_idx]['attr']['pose']
+                to_pose = nodes[to_idx]['attr']['pose']
+                
+                connection = LineString([from_pose, to_pose])
+                
+                if connection.intersects(new_obstacle_polygon):
+                    actions_to_remove.add(action_name)
+                    reverse_action_name = f"from_{to_idx}_to_{from_idx}"
+                    actions_to_remove.add(reverse_action_name)
+
+    if not nodes_to_remove and not actions_to_remove:
+        print("New obstacle does not conflict with any existing nodes or edges.")
+        return
+
+    # Step 3: Consolidate all actions connected to nodes that are being removed
+    for node_id in nodes_to_remove:
+        if node_id in nodes:
+            for action in nodes[node_id]['connected_to'].values():
+                actions_to_remove.add(action)
+
+    # Step 4: Execute removals
+    if nodes_to_remove:
+        print(f"Removing {len(nodes_to_remove)} nodes inside the new obstacle.")
+        for node_id in nodes_to_remove:
+            if node_id in nodes:
+                del nodes[node_id]
+
+    if actions_to_remove:
+        print(f"Removing {len(actions_to_remove)} actions due to conflicts.")
+        for action_name in actions_to_remove:
+            if action_name in actions:
+                del actions[action_name]
+        
+        for node_id in list(nodes.keys()): # Iterate over a copy of the keys
+            if node_id not in nodes: # Check if node still exists
+                continue
+            connections_to_pop = []
+            for connected_node_id, action_name in nodes[node_id]['connected_to'].items():
+                if action_name in actions_to_remove or connected_node_id in nodes_to_remove:
+                    connections_to_pop.append(connected_node_id)
+            
+            for conn_id in connections_to_pop:
+                if conn_id in nodes[node_id]['connected_to']:
+                    del nodes[node_id]['connected_to'][conn_id]
 
 # Import TS and action attributes from file
 def import_ts_from_file(transition_system_textfile):
@@ -156,10 +251,7 @@ def check_in_block(action, nodes):
     to_pose = nodes[f'{to_pose_index}']['attr']['pose']
     
     # blocks = []  # List of Shapely polygons
-    blocks = [
-        Polygon([(5, 3.9), (6, 3.9), (6, 4.1), (5, 4.1)]),  
-        Polygon([(4, 14.9), (5, 14.9), (5, 15.1), (4, 15.1)])  
-    ]
+    blocks = BLOCK_POLYGONS
         
     A = Point(from_pose)
     B = Point(to_pose)
@@ -180,17 +272,8 @@ def check_in_bump(action, nodes, agent_name):
     to_pose = nodes[f'{to_pose_index}']['attr']['pose']
 
     # Define bump polygon coordinates
-    coords = [
-        [(4.1, 1.1), (4.1, 2.0), (2.5, 2.0), (2.5, 1.1)],
-        [(17.5, 15), (20, 15), (20, 13), (17.5, 13)],
-        [(17.5, 5), (20, 5), (20, 3), (17.5, 3)]
-    ]
+    bumps = BUMP_POLYGONS
     
-    bumps = []
-    for coord in coords:
-        polygon = Polygon(coord)
-        bumps.append(polygon)
-
     # Return True if the to_pose is contained within any of the bump polygons, otherwise return False.
     if any(poly.contains(Point(to_pose)) for poly in bumps):
         return True
@@ -200,9 +283,14 @@ def check_in_bump(action, nodes, agent_name):
 def state_models_from_ts(TS_dict, initial_states_dict=None, new_task_points=None):
     state_models = []
 
-    nodes, actions = build_graph_halton(40, 40, 200, new_task_points)
-    TS_dict['state_models']['2d_pose_region']['nodes'] = nodes
-    TS_dict['actions'].update(actions)
+    # Only rebuild the graph from scratch if new task points are being added.
+    # Otherwise, use the graph that has been updated in-place in the calling node.
+    if new_task_points:
+        # Note: The parameters for build_graph_halton might need to be configurable
+        # if they differ from the initial setup. For now, they are hardcoded.
+        nodes, actions = build_graph_halton(20, 20, 1000, new_task_points)
+        TS_dict['state_models']['2d_pose_region']['nodes'] = nodes
+        TS_dict['actions'].update(actions)
     
     # If initial states are given as argument
     if initial_states_dict:

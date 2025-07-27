@@ -31,7 +31,12 @@ class LLMCommandParserNode(Node):
         for robot in robot_names:
             topic = f'/{robot}/add_task'
             self.task_pubs[robot] = self.create_publisher(AddTask, topic, 10)
-        # 还保留一个不带namespace的
+        
+        self.obstacle_pubs = {}
+        for robot in robot_names:
+            topic = f'/{robot}/obstacle_update'
+            self.obstacle_pubs[robot] = self.create_publisher(ObstacleUpdate, topic, 10)
+
         self.task_pub = self.create_publisher(AddTask, '/add_task', 10)
 
         self.obstacle_pub = self.create_publisher(ObstacleUpdate, '/obstacle_update', 10)
@@ -63,9 +68,17 @@ class LLMCommandParserNode(Node):
 
                 elif intent == "obstacle_update":
                     msg_out = ObstacleUpdate()
-                    msg_out.obstacle_location = parameters.get("obstacle_location", [0.0, 0.0])
+                    # 处理多边形顶点坐标，将 [(x1,y1), (x2,y2), ...] 格式转换为 [x1, y1, x2, y2, ...] 格式
+                    obstacle_vertices = parameters.get("obstacle_location", [(0.0, 0.0)])
+                    flattened_coords = []
+                    for vertex in obstacle_vertices:
+                        if isinstance(vertex, (list, tuple)) and len(vertex) >= 2:
+                            flattened_coords.extend([float(vertex[0]), float(vertex[1])])
+                        else:
+                            self.get_logger().warn(f'Invalid vertex format: {vertex}')
+                    msg_out.obstacle_location = flattened_coords
                     msg_out.obstacle_type = parameters.get("obstacle_type", "unknown")
-                    self.obstacle_pub.publish(msg_out)
+                    self.publish_obstacle_update(msg_out)
                     self.get_logger().info(f'Published ObstacleUpdate: {msg_out}')
 
                 else:
@@ -96,7 +109,7 @@ For "obstacle_update":
 {{
   "intent": "obstacle_update",
   "parameters": {{
-    "obstacle_location": [3.5, 4.2],
+    "obstacle_location": [[4.1, 1.1], [4.1, 2.0], [2.5, 2.0], [2.5, 1.1]],
     "obstacle_type": "wall"
   }}
 }}
@@ -120,6 +133,12 @@ Return ONLY the JSON array. Do NOT add any explanation.
         for pub in self.task_pubs.values():
             pub.publish(msg)
         self.task_pub.publish(msg)
+
+    def publish_obstacle_update(self, msg):
+        for pub in self.obstacle_pubs.values():
+            pub.publish(msg)
+        self.obstacle_pub.publish(msg)
+
 
 def main(args=None):
     rclpy.init(args=args)

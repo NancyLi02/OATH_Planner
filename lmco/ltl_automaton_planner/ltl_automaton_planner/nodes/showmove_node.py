@@ -5,10 +5,20 @@ from rclpy.node import Node
 import pygame
 import numpy as np
 from shapely.geometry import LineString, Polygon
-from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump
+from ltl_automaton_planner.ltl_automaton_utilities import (
+    import_ts_from_file, 
+    extract_numbers, 
+    build_graph_halton, 
+    load_lines_from_yaml,
+    update_graph_with_obstacle,
+    add_bump_polygon,
+    add_block_polygon,
+    BUMP_POLYGONS,
+    BLOCK_POLYGONS
+)
 import sys
 import cv2
-from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks, TaskFail, AddTask
+from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks, TaskFail, AddTask, ObstacleUpdate
 from enum import Enum
 import threading
 import yaml
@@ -38,21 +48,15 @@ BLUE   = (0, 0, 128)
 GREEN    = (107, 142, 35)      # For unload task points
 SKY_BLUE = (135, 206, 235)     # For unfinished load task points
 CYAN = (0, 255, 255)
+MAGENTA = (255, 0, 255)         # For newly added walls
 # notask_color already defined as grey, used to indicate finished (or no task) task points
 NOTASK_COLOR = (0, 255, 0)
 FINISHED_TASK = (190, 190, 190)
 FAIL = (0, 0, 0)
 
 # ---------- Walls ----------
-def load_lines_from_yaml():
-    package_share = get_package_share_directory('ltl_automaton_planner')
-    file_path = os.path.join(package_share, 'config', 'wall.yaml')
-
-    with open(file_path, 'r') as file:
-        yaml_data = yaml.safe_load(file)
-
-    line_coords = yaml_data.get('lines', [])
-    return [LineString(coords) for coords in line_coords]
+# The local load_lines_from_yaml function is removed.
+# We will use the one from ltl_automaton_utilities.
 
 class GridWorld(object):
     def __init__(self, grid_size):
@@ -87,13 +91,23 @@ class ShowMoveNode(Node):
         self.finished_tasks_color = FINISHED_TASK
         self.fail_color = FAIL
 
-        self.lines = load_lines_from_yaml()        
+        # --- Separate Obstacle Lists for Drawing ---
+        # 1. Obstacles from wall.yaml (Known) - To be drawn in BLACK
+        self.initial_wall_polygons = [line.buffer(distance=0.1, cap_style=3) for line in load_lines_from_yaml()]
 
-        self.obstacles = [line.buffer(distance=0.1, cap_style=3) for line in self.lines]
+        # 2. Obstacles from utility file (Unknown) - To be drawn in RED
+        self.unknown_block_polygons = BLOCK_POLYGONS.copy() # Copy initial state
 
-        self.check_in_blocks = [LineString([(5, 4), (6, 4)]),
-                                LineString([(4, 15), (5, 15)])]
-        self.blocks = [block.buffer(distance=0.1, cap_style=3) for block in self.check_in_blocks]
+        # 3. Obstacles added at runtime (New) - To be drawn in MAGENTA
+        self.new_wall_polygons = []
+
+        # --- Unify All Obstacles for Logic Nodes (like benchmark_node) ---
+        # Clear the global list and repopulate it to ensure a single source of truth for collision checking
+        BLOCK_POLYGONS.clear()
+        for poly in self.initial_wall_polygons:
+            BLOCK_POLYGONS.append(poly)
+        for poly in self.unknown_block_polygons:
+            BLOCK_POLYGONS.append(poly)
 
         # Dictionary to store all robot states in the format:
         # {'robot_id': {'pose': (x, y), 'mode': (R, G, B)}}
@@ -161,6 +175,8 @@ class ShowMoveNode(Node):
 
         # 新增：初始化用于新任务的变量，防止未定义报错
         self.new_task_points = []
+        self.map_needs_update = False
+        self.processed_obstacles = set()
 
         # Initialize subscriptions lists
         self.position_subscriptions = []
@@ -218,8 +234,52 @@ class ShowMoveNode(Node):
             10
         )
 
+        self.obstacle_update_sub = self.create_subscription(
+            ObstacleUpdate,
+            '/obstacle_update',
+            self.obstacle_update_callback,
+            10
+        )
+
         # Create a timer for periodic simulation updates (e.g., every 0.1 seconds)
         self.timer = self.create_timer(0.1, self.simulate)
+
+    def obstacle_update_callback(self, msg):
+        obstacle_key = tuple(msg.obstacle_location)
+        if obstacle_key in self.processed_obstacles:
+            self.get_logger().info(f"Ignoring duplicate obstacle update for location: {msg.obstacle_location}")
+            return
+
+        self.get_logger().info(f"Received obstacle update: {msg.obstacle_type} at {msg.obstacle_location}")
+        self.processed_obstacles.add(obstacle_key)
+
+        # Convert flattened coordinates back to list of tuples
+        coords_flat = msg.obstacle_location
+        if len(coords_flat) % 2 != 0:
+            self.get_logger().error("Received obstacle with an odd number of coordinates.")
+            return
+        
+        vertices = []
+        for i in range(0, len(coords_flat), 2):
+            vertices.append((coords_flat[i], coords_flat[i+1]))
+
+        if msg.obstacle_type == 'wall' or msg.obstacle_type == 'block':
+            new_polygon = Polygon(vertices)
+            # 1. Add to global list for other nodes' collision checking
+            add_block_polygon(vertices)
+
+            # 2. Add to local list for magenta drawing
+            self.new_wall_polygons.append(new_polygon)
+            
+            # 3. Set flag to locally update the navigation graph
+            self.map_needs_update = True
+            # Store the new obstacle to be processed in the main loop
+            self.last_added_obstacle = new_polygon 
+            self.get_logger().info("New permanent obstacle received. It will be drawn in magenta. Map will be updated locally.")
+        elif msg.obstacle_type == 'bush' or msg.obstacle_type == 'bump':
+            # Add to the global BUMP_POLYGONS list for dynamic visualization
+            add_bump_polygon(vertices)
+            self.get_logger().info("New bump received for visualization.")
 
     def add_task_callback(self, msg):
         self.get_logger().info(f"Received add task command from LLM, new {msg.task_type} task appears at {msg.location}, updating map......")
@@ -308,31 +368,37 @@ class ShowMoveNode(Node):
                 rclpy.shutdown()
                 pygame.quit()
                 sys.exit()
+        
+        # Check if map needs update due to a new wall
+        if self.map_needs_update and hasattr(self, 'last_added_obstacle'):
+            self.get_logger().info("Locally updating map visualization due to new wall...")
+            # Perform a local update instead of a full rebuild
+            update_graph_with_obstacle(self.nodes, self.actions, self.last_added_obstacle)
+            self.map_needs_update = False
+            del self.last_added_obstacle # Clear after processing
+            self.get_logger().info("Map visualization updated locally.")
+
         # Clear the screen
         self.world.screen.fill(WHITE)
         
-        # Draw obstacles (buffered polygons)
-        for obstacle in self.obstacles:
+        # --- Draw Obstacles with Different Colors ---
+        # 1. Draw initial, known walls in BLACK
+        for obstacle in self.initial_wall_polygons:
             if obstacle.geom_type == "Polygon":
                 polygon_coords = [self.transform_coords(coord) for coord in obstacle.exterior.coords]
-                pygame.draw.polygon(self.world.screen, BLACK, polygon_coords, 0)  # Filled polygon
-        
-        # Draw blocks for check-in areas
-        for block in self.blocks:
-            if block.geom_type == "Polygon":
-                polygon_coords = [self.transform_coords(coord) for coord in block.exterior.coords]
-                pygame.draw.polygon(self.world.screen, RED, polygon_coords, 0)  # Filled polygon
+                pygame.draw.polygon(self.world.screen, BLACK, polygon_coords, 0)
 
-        # If there are bump coordinates, you can construct bump polygons here (currently, coords is empty)
-        bumps = []
-        coords = [
-            [(4.1, 1.1), (4.1, 2.0), (2.5, 2.0), (2.5, 1.1)],
-            [(17.5, 15), (20, 15), (20, 13), (17.5, 13)],
-            [(17.5, 5), (20, 5), (20, 3), (17.5, 3)]
-        ]
-        for coord in coords:
-            polygon = Polygon(coord)
-            bumps.append(polygon)
+        # 2. Draw unknown, pre-defined blocks in RED
+        for obstacle in self.unknown_block_polygons:
+            if obstacle.geom_type == "Polygon":
+                polygon_coords = [self.transform_coords(coord) for coord in obstacle.exterior.coords]
+                pygame.draw.polygon(self.world.screen, RED, polygon_coords, 0)
+
+        # 3. Draw newly added walls in MAGENTA
+        for obstacle in self.new_wall_polygons:
+            if obstacle.geom_type == "Polygon":
+                polygon_coords = [self.transform_coords(coord) for coord in obstacle.exterior.coords]
+                pygame.draw.polygon(self.world.screen, MAGENTA, polygon_coords, 0)
 
         # Define all task points and their labels, where some points are marked as unload points
         points = self.points
@@ -376,6 +442,8 @@ class ShowMoveNode(Node):
             text_surface = font.render(label, True, BLACK)
             self.world.screen.blit(text_surface, (pixel_pos[0] + 5, pixel_pos[1] + 5))
 
+        # Draw bumps (e.g., bushes) in YELLOW
+        bumps = BUMP_POLYGONS
         for bump in bumps:
             if bump.geom_type == "Polygon":
                 bump_coords = [self.transform_coords(pt) for pt in bump.exterior.coords]
@@ -397,6 +465,8 @@ class ShowMoveNode(Node):
 
             pygame.draw.line(self.world.screen, GREY, start_pos, end_pos, 1)
         
+        # The drawing loops for self.world.block and self.world.bump seem to draw detected edges, not polygons.
+        # This is different from the obstacle drawing above. This logic can remain.
         # Draw blocked lines
         for action in self.world.block:
             pose_ab = extract_numbers(action)

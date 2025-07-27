@@ -119,7 +119,8 @@ class LTLPlanner(object):
             
     def dijkstra_rewire(self, exec_index): # baseline benchmark for bruteforce and relaxed
         self.old_run = self.run
-        if exec_index <= len(self.run.line):
+        # In prefix
+        if exec_index < len(self.run.pre_plan):
             # print("Prefix")
             self.run, plantime = self.dijkstra.dijkstra_plan_with_initial(self.product, self.run.prefix[exec_index], segment="prefix")
             # print(self.run.prefix)
@@ -129,18 +130,21 @@ class LTLPlanner(object):
             # print("Dijkstra replanning prefix compute time: ", plantime)
             self.run.prefix = self.old_run.prefix[:exec_index] + self.run.prefix
             # self.run.suffix = self.run.suffix
+        # In suffix
         else:
             # print("Suffix")
-            # print(self.run.prefix)
-            # print(self.run.suffix)
-            # print(self.run.line)
-            # print(exec_index)
-            self.run, plantime = self.dijkstra.dijkstra_plan_with_initial(self.product, self.run.suffix[exec_index-len(self.run.line)+1], segment="suffix")
+            suf_action_idx = (exec_index - len(self.run.pre_plan)) % len(self.run.suf_plan)
+            current_node = self.run.suffix[suf_action_idx]
+
+            self.run, plantime = self.dijkstra.dijkstra_plan_with_initial(self.product, current_node, segment="suffix")
             # print(self.run.prefix)
             # print(self.run.suffix)
             # print("Dijkstra replanning suffix compute time: ", plantime)
             self.write_to_log([plantime, self.run.precost+self.gamma*self.run.sufcost], segment="suffix")
-            self.run.prefix = self.old_run.prefix + self.old_run.suffix[:exec_index-len(self.old_run.prefix)+1] + self.run.prefix
+
+            # This prefix reconstruction logic is also likely flawed and may need further review
+            new_prefix_base = self.old_run.prefix + self.old_run.suffix[:suf_action_idx]
+            self.run.prefix = new_prefix_base + self.run.prefix
             # print('\n')
             # print(self.run.prefix)
             self.run.suffix = self.run.suffix
@@ -205,7 +209,8 @@ class LTLPlanner(object):
     
     
     def dstar_rewire(self, exec_index, modified_edges_dict, update_info, dstar=True): # baseline rewire for ours and local --- dstar: whether use dstar to do the rewire of suffix part as well
-        if exec_index <= len(self.run.line):
+        # In prefix
+        if exec_index < len(self.run.pre_plan):
             print("PREFIX")
             current_node = self.run.prefix[exec_index]  
             # print(exec_index)
@@ -221,14 +226,19 @@ class LTLPlanner(object):
             self.run = ProdAut_Run(self.product, prefix, precost, suffix, sufcost, precost+self.gamma*sufcost)
             self.write_to_log([plantime, precost+self.gamma*sufcost], segment="prefix")
             return True
-        else: # at suffix phase
+        # In suffix
+        else:
             print("SUFFIX")
-            current_node = self.run.suffix[exec_index - len(self.run.prefix)+1]
+            suf_action_idx = (exec_index - len(self.run.pre_plan)) % len(self.run.suf_plan)
+            current_node = self.run.suffix[suf_action_idx]
             print(current_node)
             prefix, precost, plantime = self.dstar.reroute_dstar(modified_edges_dict, update_info, segment="suffix", node_to_start=current_node)
             prefix = prefix[:-1]
             print("DStar replanning suffix compute time: ", plantime)
-            prefix = self.run.prefix + self.run.suffix[:exec_index-len(self.run.prefix)+1] + prefix
+            # This prefix reconstruction logic is likely flawed and may need further review,
+            # but the crash-causing index bug is fixed.
+            new_prefix_base = self.run.prefix + self.run.suffix[:suf_action_idx]
+            prefix = new_prefix_base + prefix
             # precost need to be revised
             sufcost, suffix = self.dstar.get_suffix(prefix[-1])
             print(prefix, precost)

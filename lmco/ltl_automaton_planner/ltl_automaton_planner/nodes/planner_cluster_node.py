@@ -14,10 +14,10 @@ import std_msgs
 
 #import matplotlib.pyplot as plt
 import networkx as nx
-from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers, build_graph_halton
+from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers, build_graph_halton, update_graph_with_obstacle, add_block_polygon, load_lines_from_yaml, BLOCK_POLYGONS
 
 # Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import AddTask, AgentFail, ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID
+from ltl_automaton_msgs.msg import AddTask, AgentFail, ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID, ObstacleUpdate
 from ltl_automaton_msgs.srv import * #TaskPlanning, TaskPlanningResponse, TaskReplanningAdd, TaskReplanningDelete, TaskReplanningRelabel, TaskReplanningAddResponse, TaskReplanningDeleteResponse
 
 # Import dynamic reconfigure components for dynamic parameters (see dynamic_reconfigure and dynamic_params package)
@@ -30,6 +30,7 @@ import yaml
 from example_interfaces.srv import AddTwoInts
 import re
 from ltl_automaton_planner.Gen_LTL import generate_ltl_formula
+from shapely.geometry import Polygon, LineString
 
 def show_automaton(automaton_graph):
     pos=nx.spring_layout(automaton_graph)
@@ -51,7 +52,7 @@ class MainPlanner(Node):
         self.task_data = self.load_tasks(self.ltl_formula_file)
         self.get_logger().info("MainPlanner node started")
 
-        self.nodes, self.actions = build_graph_halton(20, 20, 1000)
+        # self.nodes, self.actions = build_graph_halton(20, 20, 1000)
 
         # start_time = time.time()
         # self.initialize_automaton()
@@ -89,7 +90,13 @@ class MainPlanner(Node):
         # print("param_list", param_list)
 
         transition_system_textfile = self.get_parameter('transition_system_textfile').get_parameter_value().string_value
+        # Load the base transition system structure, but the nodes and actions will be populated by build_graph_halton
         self.transition_system = import_ts_from_file(transition_system_textfile)
+        # We now generate the graph once at initialization
+        self.nodes, self.actions = build_graph_halton(20, 20, 1000)
+        self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
+        self.transition_system['actions'].update(self.actions)
+
         self.init_state = self.get_parameter('init_state').value
         self.initial_state_ts_dict = {'2d_pose_region': f'{self.init_state}',
                                       'Drone_state': 'unloaded'}
@@ -105,6 +112,15 @@ class MainPlanner(Node):
         self.current_ltl_formula = ''
         self.add_point_to_map = False
         self.new_task_points = []
+        self.persistent_deleted_edges = set()
+        self.persistent_modified_edges = set()
+        self.processed_obstacles = set()
+        self.obstacle_update_sub = self.create_subscription(
+            ObstacleUpdate,
+            'obstacle_update',
+            self.obstacle_update_callback,
+            10
+        )
 
 
     def load_tasks(self, yaml_file):
@@ -252,6 +268,8 @@ class MainPlanner(Node):
         # Update self.nodes and self.actions to be consistent with the newly built graph
         self.nodes = self.transition_system['state_models']['2d_pose_region']['nodes']
         self.actions = self.transition_system['actions']
+        # Important: Clear the new_task_points list after the map has been rebuilt with them.
+        self.new_task_points.clear()
 
         # Get task ltl specification
         hard_task = ltl_formula
@@ -260,20 +278,22 @@ class MainPlanner(Node):
 
         buchi = mission_to_buchi(hard_task, soft_task)
         self.robot_model = TSModel(state_models)
+        self.get_logger().info(f"Step 1: finish building robot model and buchi automaton.")
 
         self.product_automaton = ProdAut(self.robot_model, buchi, self.initial_beta)
-
+        self.get_logger().info(f"Step 2: finish building product automaton.")
         self.product_automaton.graph['ts'].build_full()
+        self.get_logger().info(f"Step 3: finish building product automaton.")
         self.product_automaton.build_full_relaxed()
-
+        self.get_logger().info(f"Step 4: finish building product automaton.")
         self.ltl_planner = LTLPlanner(self.robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
-
+        self.get_logger().info(f"Step 5: finish building ltl planner.")
         self.ltl_planner.optimal(self.product_automaton, algo=self.algo_type, N=self.grid_size)
-
+        self.get_logger().info(f"Step 6: finish running ltl planner.")
         # initialize storage of set of possible runs in product
         self.ltl_planner.curr_ts_state = list(self.ltl_planner.product.graph['ts'].graph['initial'])[0]
         self.ltl_planner.posb_runs = set([(n,) for n in self.ltl_planner.product.graph['initial']])
-        self.get_logger().info(f"LTL Planner for {self.agent_name} built and run.")
+        self.get_logger().info(f"Step 7: finish initializing ltl planner.")
 
 
     def setup_pub_sub(self):
@@ -367,6 +387,40 @@ class MainPlanner(Node):
             self.get_logger().info(f"Task point already exists, skipping: {new_task}")
 
 
+
+    def obstacle_update_callback(self, msg):
+        obstacle_key = tuple(msg.obstacle_location)
+        if obstacle_key in self.processed_obstacles:
+            self.get_logger().info(f"Ignoring duplicate obstacle update for location: {msg.obstacle_location}")
+            return
+
+        self.get_logger().info(f"Received obstacle update: {msg.obstacle_type} at {msg.obstacle_location}")
+        self.processed_obstacles.add(obstacle_key)
+        
+        # Convert flattened coordinates back to list of tuples
+        coords_flat = msg.obstacle_location
+        if len(coords_flat) % 2 != 0:
+            self.get_logger().error("Received obstacle with an odd number of coordinates.")
+            return
+        
+        vertices = []
+        for i in range(0, len(coords_flat), 2):
+            vertices.append((coords_flat[i], coords_flat[i+1]))
+
+        if msg.obstacle_type == 'wall' or msg.obstacle_type == 'block':
+            new_obstacle = Polygon(vertices)
+            add_block_polygon(vertices) # For visualization consistency
+            
+            # Update the main transition system in memory
+            update_graph_with_obstacle(self.nodes, self.actions, new_obstacle)
+            self.get_logger().info("Planner's main graph (nodes and actions) updated locally.")
+
+            # Silently rebuild the current automaton in the background if a task is active
+            # This readies the planner for a replan request without sending a new plan preemptively.
+            if hasattr(self, 'ltl_planner') and self.current_ltl_formula:
+                self.get_logger().info("Silently rebuilding planner automaton with updated map...")
+                self.build_and_run_automaton(self.current_ltl_formula, self.initial_state_ts_dict)
+                self.get_logger().info("Planner ready for potential replan requests on updated map.")
 
     def assign_new_task(self, msg):
         # Update current robot pose
@@ -504,6 +558,7 @@ class MainPlanner(Node):
             # Go through all TS state in plan and add it as TransitionSystemState message
             for ts_state in self.ltl_planner.run.line:
                 ts_state_msg = TransitionSystemState()
+                ts_state_msg.state_dimension_names = self.transition_system['state_dim']
                 # If TS state is more than 1 dimension (is a tuple)
                 if type(ts_state) is tuple:
                     ts_state_msg.states = list(ts_state)
@@ -530,6 +585,7 @@ class MainPlanner(Node):
             # Go through all TS state in plan and add it as TransitionSystemState message
             for ts_state in self.ltl_planner.run.loop:
                 ts_state_msg = TransitionSystemState()
+                ts_state_msg.state_dimension_names = self.transition_system['state_dim']
                 # If TS state is more than 1 dimension (is a tuple)
                 if type(ts_state) is tuple:
                     ts_state_msg.states = list(ts_state)
@@ -546,6 +602,45 @@ class MainPlanner(Node):
             self.suffix_plan_pub.publish(self.suffix_plan_msg)
         else:
             self.get_logger().warn("No plan available to publish")
+
+    def _publish_replan_response(self, ltl_run, success=True):
+        res = RelayResponse()
+        if success and ltl_run is not None:
+            res.success = True
+            # Prefix
+            res.new_plan_prefix = LTLPlan()
+            res.new_plan_prefix.header.stamp = self.get_clock().now().to_msg()
+            res.new_plan_prefix.action_sequence = ltl_run.pre_plan
+            res.new_plan_prefix.ts_state_sequence = []
+            for ts_state in ltl_run.line:
+                ts_state_msg = TransitionSystemState()
+                ts_state_msg.state_dimension_names = self.transition_system['state_dim']
+                if type(ts_state) is tuple:
+                    ts_state_msg.states = list(ts_state)
+                else:
+                    ts_state_msg.states = [ts_state]
+                res.new_plan_prefix.ts_state_sequence.append(ts_state_msg)
+            # Suffix
+            res.new_plan_suffix = LTLPlan()
+            res.new_plan_suffix.header.stamp = self.get_clock().now().to_msg()
+            res.new_plan_suffix.action_sequence = ltl_run.suf_plan
+            res.new_plan_suffix.ts_state_sequence = []
+            for ts_state in ltl_run.loop:
+                ts_state_msg = TransitionSystemState()
+                ts_state_msg.state_dimension_names = self.transition_system['state_dim']
+                if type(ts_state) is tuple:
+                    ts_state_msg.states = list(ts_state)
+                else:
+                    ts_state_msg.states = [ts_state]
+                res.new_plan_suffix.ts_state_sequence.append(ts_state_msg)
+        else:
+            res.success = False
+            if not success:
+                self.get_logger().error("Replanning failed during rewire.")
+            elif ltl_run is None:
+                self.get_logger().error("Replanning resulted in a null plan.")
+        
+        self.publisher_.publish(res)
 
     #----------------------------------------------
     # Publish prefix and suffix plans from planner
@@ -564,6 +659,7 @@ class MainPlanner(Node):
             # # Go through all TS state in plan and add it as TransitionSystemState message
             for ts_state in self.ltl_planners[task_id].run.line:
                 ts_state_msg = TransitionSystemState()
+                ts_state_msg.state_dimension_names = self.transition_system['state_dim']
                 # ts_state_msg.state_dimension_names = self.ltl_planner.product.graph['ts'].graph['ts_state_format']
                 # If TS state is more than 1 dimension (is a tuple)
                 if type(ts_state) is tuple:
@@ -588,6 +684,7 @@ class MainPlanner(Node):
             # # Go through all TS state in plan and add it as TransitionSystemState message
             for ts_state in self.ltl_planners[task_id].run.loop:
                 ts_state_msg = TransitionSystemState()
+                ts_state_msg.state_dimension_names = self.transition_system['state_dim']
                 # ts_state_msg.state_dimension_names = self.ltl_planner.product.graph['ts'].graph['ts_state_format']
                 # If TS state is more than 1 dimension (is a tuple)
                 if type(ts_state) is tuple:
@@ -618,10 +715,12 @@ class MainPlanner(Node):
                     for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.to_pose) == self.nodes[succ_node[0]]['attr']['pose']:
                             update_info["modified"].add((node, succ_node, task_replanning_req.cost))
+                            self.persistent_modified_edges.add((node, succ_node, task_replanning_req.cost))
                 if tuple(task_replanning_req.to_pose) == self.nodes[node[0]]['attr']['pose']:
                     for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.from_pose) == self.nodes[succ_node[0]]['attr']['pose']:
                             update_info["modified"].add((node, succ_node, task_replanning_req.cost))
+                            self.persistent_modified_edges.add((node, succ_node, task_replanning_req.cost))
             # print(update_info["modified"])
             modified_edges_dict = self.ltl_planner.revise_product(update_info)
             # self.get_logger().info("Finished revise")
@@ -637,48 +736,11 @@ class MainPlanner(Node):
                 if self.ltl_planner.dijkstra_rewire(task_replanning_req.exec_index):
                     success = True
             
-            res = RelayResponse()
-            if success:
-                # print("new_prefix", self.ltl_planner.prefix)
-                # print("new_suffix", self.ltl_planner.suffix)
-                # res = TaskReplanningModifyResponse()
-                res.success = True
-                res.new_plan_prefix = LTLPlan()
-                res.new_plan_prefix.header.stamp = self.get_clock().now().to_msg()
-                res.new_plan_prefix.action_sequence = self.ltl_planner.run.pre_plan
-                # # Go through all TS state in plan and add it as TransitionSystemState message
-                for ts_state in self.ltl_planner.run.line:
-                    ts_state_msg = TransitionSystemState()
-                    # If TS state is more than 1 dimension (is a tuple)
-                    if type(ts_state) is tuple:
-                        ts_state_msg.states = list(ts_state)
-                    # Else state is a single string
-                    else:
-                        ts_state_msg.states = [ts_state]
-                    # Add to plan TS state sequence
-                    res.new_plan_prefix.ts_state_sequence.append(ts_state_msg)
-                    
-                res.new_plan_suffix = LTLPlan()
-                res.new_plan_suffix.header.stamp = self.get_clock().now().to_msg()
-                res.new_plan_suffix.action_sequence = self.ltl_planner.run.suf_plan
-                # # Go through all TS state in plan and add it as TransitionSystemState message
-                for ts_state in self.ltl_planner.run.loop:
-                    ts_state_msg = TransitionSystemState()
-                    # If TS state is more than 1 dimension (is a tuple)
-                    if type(ts_state) is tuple:
-                        ts_state_msg.states = list(ts_state)
-                    # Else state is a single string
-                    else:
-                        ts_state_msg.states = [ts_state]
-                    # Add to plan TS state sequence
-                    res.new_plan_suffix.ts_state_sequence.append(ts_state_msg)
-                # self.get_logger().info("service has been transmitted")
-                self.publisher_.publish(res)
-                return
+            self._publish_replan_response(self.ltl_planner.run)
+            return
             
         self.get_logger().error("Error in replanning modify callback")
-        res.success = False
-        self.publisher_.publish(res)
+        self._publish_replan_response(None, success=False)
         return 
         
     def replanning_delete_callback(self, task_replanning_req):
@@ -695,10 +757,12 @@ class MainPlanner(Node):
                     for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.to_pose) == self.nodes[succ_node[0]]['attr']['pose'] :
                             update_info["deleted"].add((node, succ_node))
+                            self.persistent_deleted_edges.add((node, succ_node))
                 if tuple(task_replanning_req.to_pose) == self.nodes[node[0]]['attr']['pose']:
                     for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.from_pose) == self.nodes[succ_node[0]]['attr']['pose']:
                             update_info["deleted"].add((node, succ_node))
+                            self.persistent_deleted_edges.add((node, succ_node))
             # print(update_info["deleted"])
             modified_edges_dict = self.ltl_planner.revise_product(update_info)
             # self.get_logger().info("finished revise")
@@ -715,47 +779,11 @@ class MainPlanner(Node):
                     success = True
             # self.get_logger().info("finished revise successfully")
             
-            res = RelayResponse()
-            if success:
-                # self.get_logger().info("start preparing for the ")
-                # print("new_prefix", self.ltl_planner.prefix)
-                res.success = True
-                res.new_plan_prefix = LTLPlan()
-                res.new_plan_prefix.header.stamp = self.get_clock().now().to_msg()
-                res.new_plan_prefix.action_sequence = self.ltl_planner.run.pre_plan
-                # # Go through all TS state in plan and add it as TransitionSystemState message
-                for ts_state in self.ltl_planner.run.line:
-                    ts_state_msg = TransitionSystemState()
-                    # If TS state is more than 1 dimension (is a tuple)
-                    if type(ts_state) is tuple:
-                        ts_state_msg.states = list(ts_state)
-                    # Else state is a single string
-                    else:
-                        ts_state_msg.states = [ts_state]
-                    # Add to plan TS state sequence
-                    res.new_plan_prefix.ts_state_sequence.append(ts_state_msg)
-                    
-                res.new_plan_suffix = LTLPlan()
-                res.new_plan_suffix.header.stamp = self.get_clock().now().to_msg()
-                res.new_plan_suffix.action_sequence = self.ltl_planner.run.suf_plan
-                # # Go through all TS state in plan and add it as TransitionSystemState message
-                for ts_state in self.ltl_planner.run.loop:
-                    ts_state_msg = TransitionSystemState()
-                    # If TS state is more than 1 dimension (is a tuple)
-                    if type(ts_state) is tuple:
-                        ts_state_msg.states = list(ts_state)
-                    # Else state is a single string
-                    else:
-                        ts_state_msg.states = [ts_state]
-                    # Add to plan TS state sequence
-                    res.new_plan_suffix.ts_state_sequence.append(ts_state_msg)
-                self.publisher_.publish(res)
-                # self.get_logger().info("service has been transmitted ")
-                return
+            self._publish_replan_response(self.ltl_planner.run)
+            return
             
-        self.get_logger().error("Error in replanning modify callback")
-        res.success = False
-        self.publisher_.publish(res)
+        self.get_logger().error("Error in replanning delete callback")
+        self._publish_replan_response(None, success=False)
         return
 
     
