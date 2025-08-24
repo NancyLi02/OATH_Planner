@@ -17,7 +17,7 @@ import networkx as nx
 from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers, build_graph_halton, update_graph_with_obstacle, add_block_polygon, load_lines_from_yaml, BLOCK_POLYGONS
 
 # Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import AddTask, AgentFail, ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID, ObstacleUpdate
+from ltl_automaton_msgs.msg import AddTask, AgentFail, ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID, ObstacleUpdate, NoTask
 from ltl_automaton_msgs.srv import * #TaskPlanning, TaskPlanningResponse, TaskReplanningAdd, TaskReplanningDelete, TaskReplanningRelabel, TaskReplanningAddResponse, TaskReplanningDeleteResponse
 
 # Import dynamic reconfigure components for dynamic parameters (see dynamic_reconfigure and dynamic_params package)
@@ -115,6 +115,7 @@ class MainPlanner(Node):
         self.persistent_deleted_edges = set()
         self.persistent_modified_edges = set()
         self.processed_obstacles = set()
+        self.no_more_tasks = False  # Flag to track if no more tasks are available
         self.obstacle_update_sub = self.create_subscription(
             ObstacleUpdate,
             'obstacle_update',
@@ -314,6 +315,14 @@ class MainPlanner(Node):
         self.request_cluster_pub = self.create_publisher(ClusterRequest, 'cluster_request', 10)   
         self.no_task_pub = self.create_publisher(NoTask, 'no_task', 10)
         
+        # Subscribe to NoTask messages
+        self.no_task_sub = self.create_subscription(
+            NoTask,
+            'no_task',
+            self.no_task_callback,
+            10
+        )
+        
         # Initialize services 
         self.subscriber_ = self.create_subscription(
             RelayRequest,
@@ -362,6 +371,13 @@ class MainPlanner(Node):
             self.add_task_callback,
             10
         )
+    
+    def no_task_callback(self, msg):
+        """Handle NoTask message from task assignment node"""
+        self.get_logger().info(f"Received NoTask message: {msg.robot_id}")
+        if msg.robot_id == self.agent_name:
+            self.no_more_tasks = True
+            self.get_logger().info(f"No more tasks available for {self.agent_name}, stopping task requests.")
 
         # self.agent_fail_sub = self.create_subscription(
         #     AgentFail,
@@ -426,6 +442,11 @@ class MainPlanner(Node):
         # Update current robot pose
         self.pose_index = msg.pose_index
         self.position = msg.position
+
+        # Check if no more tasks are available
+        if self.no_more_tasks:
+            self.get_logger().info(f"No more tasks available for {self.agent_name}, not sending cluster request.")
+            return
 
         self.request_cluster_msg = ClusterRequest()
         self.request_cluster_msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])

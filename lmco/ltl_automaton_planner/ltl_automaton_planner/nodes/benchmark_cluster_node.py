@@ -813,7 +813,7 @@ class LTLControllerDrone(Node):
                 # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
             elif self.mode == EquipmentMode.NOTASK:
                 mode = 'NoTask'
-                # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
+                self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
             elif self.mode == EquipmentMode.FAIL:
                 mode = 'Fail'
 

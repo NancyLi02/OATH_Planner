@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 from ltl_automaton_planner.CostMapClusterer import CostMapClusterer
 from ltl_automaton_planner.MILP import ClusterTaskPlanner
-from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, AgentFailTask, TaskFail, AddTask
+from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, AgentFailTask, TaskFail, AddTask, NoTask
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 import yaml
 import re
@@ -110,9 +110,13 @@ class TaskAssignNode(Node):
 
         # Publishers for each robot namespace
         self.task_pubs = {}
+        self.no_task_pubs = {}
         for idx, robot in enumerate(self.robot_names):
             topic = f"/{robot}/ClusterTaskassign"
             self.task_pubs[robot] = self.create_publisher(ClusterTaskassign, topic, 10)
+            # NoTask publisher with namespace
+            no_task_topic = f"/{robot}/no_task"
+            self.no_task_pubs[robot] = self.create_publisher(NoTask, no_task_topic, 10)
 
         # Subscribers for new cluster request topics
         self.new_cluster_request_subs = []
@@ -378,7 +382,16 @@ class TaskAssignNode(Node):
         all_points = list(self.points_with_label.keys())
         unassigned_points = [pt for pt in all_points if pt not in self.assigned_points_global]
         if not unassigned_points:
-            self.get_logger().info("No unassigned tasks left, skipping assignment.")
+            self.get_logger().info("No unassigned tasks left, publishing NoTask message.")
+            # 发布NoTask消息给请求的机器人
+            robot_id = msg.robot_id  # robot_id is an integer (1,2,3,4)
+            robot_index = robot_id - 1
+            robot_name = self.robot_names[robot_index]
+            
+            no_task_msg = NoTask()
+            no_task_msg.robot_id = robot_name
+            self.no_task_pubs[robot_name].publish(no_task_msg)
+            self.get_logger().info(f"Published NoTask message to {robot_name}")
             return
         robot_id = msg.robot_id  # robot_id is an integer (1,2,3,4)
         robot_index = robot_id - 1

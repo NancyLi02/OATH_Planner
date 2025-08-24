@@ -8,11 +8,11 @@ import os
 import re
 
 # Global parameter definitions
-d_min = 0.3       # Minimum allowed distance to avoid points being too close to obstacles
-d_opt = 0.4       # Optimal distance (highest sampling probability)
+d_min = 0.4       # Minimum allowed distance to avoid points being too close to obstacles
+d_opt = 0.8       # Optimal distance (highest sampling probability)
 sigma = 0.5       # Controls the width of the probability distribution
 floor_prob = 0.2  # Minimum sampling probability in open areas
-wall_thick = 0.1  # Thickness of the walls
+wall_thick = 0.2  # Thickness of the walls
 
 # Halton sequence generation function
 def halton_sequence(size, base=2):
@@ -58,7 +58,7 @@ if 'delivery_points' in yaml_data:
             x, y = float(match.group(1)), float(match.group(2))
             points_with_label[(x, y)] = v
 
-x_length, y_length = 20, 20
+x_length, y_length = 40, 40
 
 # ---------- Walls ----------
 def load_lines_from_yaml(filepath):
@@ -110,7 +110,7 @@ def rejection_sampling(n_samples, lines, area_size, d_min, d_opt, sigma, floor):
     return samples[:n_samples]
 
 # Generate valid sampling points
-valid_points = rejection_sampling(1000, lines, x_length, d_min, d_opt, sigma, floor_prob)
+valid_points = rejection_sampling(1500, lines, x_length, d_min, d_opt, sigma, floor_prob)
 
 # Add labeled points to the valid points
 for key in points_with_label.keys():
@@ -145,7 +145,7 @@ ax.set_xlim(0, x_length)
 ax.set_ylim(0, y_length)
 ax.set_aspect('equal')
 # plt.title('Adaptive Halton Sequence Map')
-plt.grid(True)
+plt.grid(False)  # 移除网格线
 plt.show()
 
 # ---------- Save all point coordinates to CSV ----------
