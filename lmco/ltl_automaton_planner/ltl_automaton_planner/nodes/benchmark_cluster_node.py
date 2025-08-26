@@ -25,7 +25,7 @@ from shapely.geometry import Point, LineString, Polygon
 from example_interfaces.srv import AddTwoInts
 import re
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
-from interfaces_hmm_sim.msg import Status, ReplanStatus
+from interfaces_hmm_sim.msg import Status, ReplanStatus, AgentGoTo
 from ament_index_python.packages import get_package_share_directory
 
 #=================================================================
@@ -37,7 +37,7 @@ from ament_index_python.packages import get_package_share_directory
 # action attributes defined in the TS config file
 #=================================================================
 
-USE_ISAAC = False
+USE_ISAAC = True
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -205,11 +205,15 @@ class LTLControllerDrone(Node):
         self.update_valid_tasks_pub = self.create_publisher(UpdateValidTasks, 'update_valid_tasks', 10)
         self.agent_failed_task_pub = self.create_publisher(AgentFailTask, 'agent_fail_task', 10)
         self.task_failed_task_new_cluster_pub = self.create_publisher(TaskFail, 'task_failure_cluster', 10)
+
+        self.next_issac_step_pub = self.create_publisher(AgentGoTo, '/agent_next', 10)
+
         self.pub_assign = True
         self.on_hold = False
         self.final_on_hold = False
         self.no_task = False
         self.cur_task = ''
+        self.act = ''
         
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
@@ -270,9 +274,9 @@ class LTLControllerDrone(Node):
             10
         )
 
-        self.sim_arrived = False
-        self.sim_received = False
-        self.sim_start = False
+        self.sim_arrived = True
+        self.sim_received = True
+        self.sim_start = True
 
         self.new_task_points = []
         self.processed_obstacles = set()
@@ -520,6 +524,7 @@ class LTLControllerDrone(Node):
                             self.previous_pose_index = self.pose_index
                             self.pose_index = extract_numbers(str(act))[1]
                             self.pose = self.nodes[f'{self.pose_index}']['attr']['pose']
+                            self.act = 'g'
                             for pt, label in self.task_points.items():
                                 if abs(self.pose[0] - pt[0]) < 1e-6 and abs(self.pose[1] - pt[1]) < 1e-6:
                                     self.mode = EquipmentMode.LOADED
@@ -527,6 +532,7 @@ class LTLControllerDrone(Node):
                                     msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
                                     msg.loaded_task = label
                                     self.update_valid_tasks_pub.publish(msg)
+                                    self.act = 'l'
                                     # self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
                                     break
                             # self.get_logger().info(f"previous pose: {self.previous_pose}")
@@ -579,8 +585,10 @@ class LTLControllerDrone(Node):
                             # self.pose = (int(str(act).split('c')[1]), int(str(act).split('r')[1]))
                         elif str(act) == "unload" or str(act) == "release":
                             self.mode = EquipmentMode.UNLOADED
+                            self.act = 'u'
                         elif str(act) == "load":
                             self.mode = EquipmentMode.LOADED
+                            self.act = 'l'
                             # 只有到达任务点时才发布UpdateValidTasks
                         elif str(act) == "goto_rescue":
                             self.mode = EquipmentMode.RESCUE
@@ -635,6 +643,7 @@ class LTLControllerDrone(Node):
                             self.previous_pose_index = self.pose_index
                             self.pose_index = extract_numbers(str(act))[1]
                             self.pose = self.nodes[f'{self.pose_index}']['attr']['pose']
+                            self.act = 'g'
                             if check_in_block(act, self.nodes) and str(act) not in self.world.block:
                                 # self.get_logger().info("--------Block detected---------")
                                 self.world.block[str(act)] = 1
@@ -679,6 +688,7 @@ class LTLControllerDrone(Node):
                                     exit(1)
                         elif str(act) == "unload" or str(act) == "release":
                             self.mode = EquipmentMode.UNLOADED
+                            self.act = 'u'
                         elif str(act) == "load":
                             # 只有到达任务点时才发布UpdateValidTasks
                             for pt, label in self.task_points.items():
@@ -689,6 +699,7 @@ class LTLControllerDrone(Node):
                                     msg.loaded_task = label
                                     self.update_valid_tasks_pub.publish(msg)
                                     self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
+                                    self.act = 'l'
                                     break
                             self.previous_pose = self.pose
                             self.previous_pose_index = self.pose_index
@@ -741,6 +752,7 @@ class LTLControllerDrone(Node):
                     self.publish_task_request()
                     self.pub_assign = False
                     self.mode = EquipmentMode.WAITTASK
+                    self.act = 's'
 
 
     def publish_task_request(self):
@@ -822,6 +834,12 @@ class LTLControllerDrone(Node):
             msg.pose = [float(x) for x in self.pose]  # Convert tuple (1, 19) to list [1, 19] to match int32[] type
             msg.mode = mode
             self.position_pub.publish(msg)
+
+            msg = AgentGoTo()
+            msg.agent_id = self.agent_name
+            msg.next_step = [float(x) for x in self.pose]
+            msg.next_flag = self.act
+            self.next_issac_step_pub.publish(msg)
 
 
             # pygame_surface = pygame.display.get_surface()
