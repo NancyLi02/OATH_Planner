@@ -37,7 +37,7 @@ from ament_index_python.packages import get_package_share_directory
 # action attributes defined in the TS config file
 #=================================================================
 
-USE_ISAAC = True
+USE_ISAAC = False
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -206,7 +206,7 @@ class LTLControllerDrone(Node):
         self.agent_failed_task_pub = self.create_publisher(AgentFailTask, 'agent_fail_task', 10)
         self.task_failed_task_new_cluster_pub = self.create_publisher(TaskFail, 'task_failure_cluster', 10)
 
-        self.next_issac_step_pub = self.create_publisher(AgentGoTo, '/agent_next', 10)
+        self.next_issac_step_pub = self.create_publisher(AgentGoTo, 'agent_next', 10)
 
         self.pub_assign = True
         self.on_hold = False
@@ -787,6 +787,12 @@ class LTLControllerDrone(Node):
                             self.sim_arrived = False
                             self.sim_received = False
                             self.sim_start = False
+                            msg = AgentGoTo()
+                            msg.agent_id = int(self.agent_name.replace("robot", ""))
+                            msg.next_step = [float(x) for x in self.pose]
+                            msg.next_flag = self.act
+                            self.next_issac_step_pub.publish(msg)
+                            self.get_logger().info(f'Next step published to Issac Sim...')
                     else:           
                         self.next_move()
                 else:
@@ -835,11 +841,6 @@ class LTLControllerDrone(Node):
             msg.mode = mode
             self.position_pub.publish(msg)
 
-            msg = AgentGoTo()
-            msg.agent_id = self.agent_name
-            msg.next_step = [float(x) for x in self.pose]
-            msg.next_flag = self.act
-            self.next_issac_step_pub.publish(msg)
 
 
             # pygame_surface = pygame.display.get_surface()

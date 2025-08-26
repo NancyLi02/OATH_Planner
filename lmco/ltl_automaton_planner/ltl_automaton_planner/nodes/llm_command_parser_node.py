@@ -21,7 +21,6 @@ class LLMCommandParserNode(Node):
             10
         )
 
-        # === 新增：为每个robot创建带namespace的add_task publisher ===
         package_share = get_package_share_directory('ltl_automaton_planner')
         task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
         with open(task_points_yaml, 'r') as f:
