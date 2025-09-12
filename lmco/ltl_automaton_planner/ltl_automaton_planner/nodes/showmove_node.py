@@ -271,10 +271,10 @@ class ShowMoveNode(Node):
                 total_time = self.end_time - self.start_time
                 self.get_logger().info("="*60)
                 self.get_logger().info("🎉 All robots have finished tasks!")
-                self.get_logger().info(f"📊 Time:")
+                self.get_logger().info(f"📊 Planner Running Time:")
                 self.get_logger().info(f"   Starting Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.start_time))}")
                 self.get_logger().info(f"   Ending Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.end_time))}")
-                self.get_logger().info(f"   Total Time: {total_time:.2f} 秒")
+                self.get_logger().info(f"   Total Time: {total_time:.2f} seconds")
                 self.get_logger().info(f"   Robot number: {len(self.robot_ids)}")
                 self.get_logger().info("="*60)
                 return True
