@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 from ltl_automaton_planner.CostMapClusterer import CostMapClusterer
 from ltl_automaton_planner.MILP import ClusterTaskPlanner
-from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, AgentFailTask, TaskFail, AddTask, NoTask
+from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, AgentFailTask, TaskFail, AddTask, NoTask, ChangeTaskPriority
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 import yaml
 import re
@@ -143,8 +143,25 @@ class TaskAssignNode(Node):
             self.add_task_callback,
             10
         )
+        self.get_logger().info("Successfully created subscription to /add_task topic")
+
+        self.change_task_priority_subs = []
+        for robot in self.robot_names:
+            topic = f"/{robot}/change_task_priority"
+            sub = self.create_subscription(ChangeTaskPriority, topic, self.change_task_priority_callback, 10)
+            self.change_task_priority_subs.append(sub)
+        
+        self.global_change_task_priority_sub = self.create_subscription(
+            ChangeTaskPriority,
+            '/change_task_priority',
+            self.change_task_priority_callback,
+            10
+        )
+        self.get_logger().info("Successfully created subscriptions to change_task_priority topics")
 
         self.broke_agents = []
+        
+        self.task_priorities = {}  # task_label -> 'high'/'low'/'normal'
 
         # ----- Load wall and task info -----
         package_share = get_package_share_directory('ltl_automaton_planner')
@@ -164,11 +181,8 @@ class TaskAssignNode(Node):
         self.points_with_label = points_with_label
         self.label_to_index = {label: idx + 1 for idx, label in enumerate(self.points_with_label.values())}
 
-        # 解析special_labels
         self.special_labels = set(yaml_data.get('special_labels', []))
 
-        # 解析task_to_delivery
-        # 先反向映射：label->group
         task_to_delivery = {}
         for group, label_list in yaml_data['task_to_delivery'].items():
             for label in label_list:
@@ -188,7 +202,6 @@ class TaskAssignNode(Node):
         # Get clustering results - now returns (centers, points) instead of separate normal/special
         self.cluster_centers, self.cluster_points = self.clusterer.cluster()
         
-        # 统一顺序，直接生成gamma和类型
         self.cluster_gamma = []  # Store γ values for each cluster
         self.cluster_types = []  # Store type: 'normal', 'special', or 'hybrid' for each cluster
         for i, (center, points) in enumerate(zip(self.cluster_centers, self.cluster_points)):
@@ -215,8 +228,7 @@ class TaskAssignNode(Node):
             
             self.cluster_types.append(cluster_type)
 
-        
-        # 有效性标记
+    
         self.valid_cluster = [1] * len(self.cluster_centers)
         self.robot_cluster_indices = {}
         self.failed_task_owners = {}
@@ -231,23 +243,23 @@ class TaskAssignNode(Node):
 
         self.assigned_points_global = set()
 
+        self.get_logger().info("TaskAssignNode initialization completed successfully")
         self.finish_callback()
 
     def add_task_callback(self, msg):
+        self.get_logger().info("=== ADD_TASK_CALLBACK TRIGGERED ===")
         self.get_logger().info(f"Received add task command from LLM, new {msg.task_type} task appears at {msg.location}, assignning new task......")
         self.add_task(msg.location, msg.task_type, msg.task_label, msg.delivery_point)
 
     def add_task(self, location, task_type, task_label, delivery_point):
         self.get_logger().info(f"Adding task {task_label} at {location} with delivery point {delivery_point}.")
 
-        # 1. Check location format，兼容array.array
         if isinstance(location, array.array):
             location = list(location)
         if not (isinstance(location, (list, tuple)) and len(location) == 2):
             self.get_logger().error(f"Invalid location format: {location}")
             return
 
-        # 2. Check task_label, delivery_point, and task_type format
         if not isinstance(task_label, str) or not task_label:
             self.get_logger().error(f"Invalid task_label: {task_label}")
             return
@@ -258,7 +270,6 @@ class TaskAssignNode(Node):
             self.get_logger().error(f"Invalid task_type: {task_type}")
             return
 
-        # 3. Add the new task point to points_with_label
         location_tuple = (float(location[0]), float(location[1]))
         if location_tuple in self.points_with_label:
             self.get_logger().warn(f"Task at {location_tuple} already exists, overwriting label to {task_label}")
@@ -293,6 +304,219 @@ class TaskAssignNode(Node):
         self.get_logger().info(f"Task {task_label} added successfully. Current points_with_label: {self.points_with_label}")
         self.get_logger().info(f"Current special_labels: {self.special_labels}")
         self.get_logger().info(f"Current task_to_delivery: {self.task_to_delivery}")
+
+    def change_task_priority_callback(self, msg):
+        task_label = msg.task_label
+        priority = msg.priority
+        
+        self.get_logger().info(f"=== CHANGE_TASK_PRIORITY_CALLBACK TRIGGERED ===")
+        self.get_logger().info(f"Received priority change request: task '{task_label}' to priority '{priority}'")
+        
+        if task_label not in [label for label in self.points_with_label.values()]:
+            self.get_logger().error(f"Task label '{task_label}' not found in current tasks")
+            return
+        
+        if priority not in ['high', 'low', 'normal']:
+            self.get_logger().error(f"Invalid priority '{priority}'. Must be 'high', 'low', or 'normal'")
+            return
+        
+        old_priority = self.task_priorities.get(task_label, 'normal')
+        
+        if old_priority == 'high' and priority == 'high':
+            self.get_logger().info(f"Task '{task_label}' is already high priority, skipping duplicate processing")
+            return
+        
+        self.task_priorities[task_label] = priority
+        
+        self.get_logger().info(f"Updated task '{task_label}' priority from '{old_priority}' to '{priority}'")
+        self.get_logger().info(f"Current task priorities: {self.task_priorities}")
+        
+        if priority == 'high':
+            self.handle_high_priority_task(task_label)
+        else:
+            self.handle_priority_change_reassignment(task_label, priority)
+
+    def handle_priority_change_reassignment(self, task_label, priority):
+        affected_clusters = []
+        
+        if hasattr(self, 'cluster_task_labels'):
+            for cluster_idx, task_labels in self.cluster_task_labels.items():
+                if task_label in task_labels:
+                    affected_clusters.append(cluster_idx)
+        
+        if affected_clusters:
+            self.get_logger().info(f"Task '{task_label}' found in clusters: {affected_clusters}")
+        else:
+            self.get_logger().info(f"Task '{task_label}' not currently in any assigned cluster")
+
+    def find_available_robot(self):
+
+        for robot_name in self.robot_names:
+            if hasattr(self, 'broke_agents') and robot_name in self.broke_agents:
+                continue
+            
+            current_tasks = getattr(self, 'robot_task_sequence', {}).get(robot_name, [])
+            if not current_tasks:
+                self.get_logger().info(f"Found available robot with no current tasks: {robot_name}")
+                return robot_name
+        
+        min_tasks = float('inf')
+        best_robot = None
+        for robot_name in self.robot_names:
+            if hasattr(self, 'broke_agents') and robot_name in self.broke_agents:
+                continue
+            
+            current_tasks = getattr(self, 'robot_task_sequence', {}).get(robot_name, [])
+            task_count = len(current_tasks)
+            if task_count < min_tasks:
+                min_tasks = task_count
+                best_robot = robot_name
+        
+        if best_robot:
+            self.get_logger().info(f"Found available robot with fewest tasks ({min_tasks}): {best_robot}")
+            return best_robot
+        
+        for robot_name in self.robot_names:
+            if not (hasattr(self, 'broke_agents') and robot_name in self.broke_agents):
+                self.get_logger().warn(f"All robots busy, assigning to first available: {robot_name}")
+                return robot_name
+        
+        self.get_logger().error("No available robots found!")
+        return None
+
+    def remove_task_from_current_assignment(self, task_label, task_coord):
+
+        self.assigned_points_global.discard(task_coord)
+        
+        task_index = self.label_to_index.get(task_label)
+        if task_index:
+            for robot_name, task_sequence in getattr(self, 'robot_task_sequence', {}).items():
+                if task_index in task_sequence:
+                    task_sequence.remove(task_index)
+                    self.get_logger().info(f"Removed task {task_label} (index {task_index}) from {robot_name}'s task sequence")
+                    break
+        
+        for robot_name, route_labels in getattr(self, 'robot_route_labels', {}).items():
+            if task_label in route_labels:
+                route_labels.remove(task_label)
+                self.get_logger().info(f"Removed task {task_label} from {robot_name}'s route labels")
+                break
+        
+        for cluster_idx, task_labels in getattr(self, 'cluster_task_labels', {}).items():
+            if task_label in task_labels:
+                task_labels.remove(task_label)
+
+                if not task_labels and cluster_idx in getattr(self, 'cluster_delivery_labels', {}):
+                    del self.cluster_delivery_labels[cluster_idx]
+                self.get_logger().info(f"Removed task {task_label} from cluster {cluster_idx}")
+                break
+
+    def handle_high_priority_task(self, task_label):
+        self.get_logger().info(f"\n=== HANDLING HIGH PRIORITY TASK: {task_label} ===")
+        
+        for cluster_idx, task_labels in getattr(self, 'cluster_task_labels', {}).items():
+            if task_label in task_labels and cluster_idx >= 1000:
+                assigned_robot = None
+                for robot_name, robot_cluster_idx in getattr(self, 'robot_cluster_indices', {}).items():
+                    if robot_cluster_idx == cluster_idx:
+                        assigned_robot = robot_name
+                        break
+                
+                self.get_logger().info(f"Task {task_label} is already in high priority cluster {cluster_idx} assigned to {assigned_robot}")
+                self.get_logger().info("Skipping duplicate high priority processing")
+                return
+        
+        task_coord = None
+        for coord, label in self.points_with_label.items():
+            if label == task_label:
+                task_coord = coord
+                break
+        
+        if not task_coord:
+            self.get_logger().error(f"Could not find coordinates for task {task_label}")
+            return
+        
+        if task_coord in self.assigned_points_global:
+            self.get_logger().info(f"Task {task_label} is already assigned, removing from current assignment for high priority handling")
+            self.remove_task_from_current_assignment(task_label, task_coord)
+        
+        available_robot = self.find_available_robot()
+        if not available_robot:
+            self.get_logger().error(f"No available robot found for high priority task {task_label}")
+            return
+        
+        single_task_cluster = [task_coord]
+        cluster_center = task_coord
+        
+        if not hasattr(self, 'robot_cluster_map'):
+            self.robot_cluster_map = {}
+        if not hasattr(self, 'robot_cluster_indices'):
+            self.robot_cluster_indices = {}
+        
+        self.robot_cluster_map[available_robot] = single_task_cluster
+        
+        high_priority_cluster_idx = len(getattr(self, 'cluster_centers', [])) + 1000
+        self.robot_cluster_indices[available_robot] = high_priority_cluster_idx
+        
+        if not hasattr(self, 'cluster_task_labels'):
+            self.cluster_task_labels = {}
+        if not hasattr(self, 'cluster_delivery_labels'):
+            self.cluster_delivery_labels = {}
+        
+        self.cluster_task_labels[high_priority_cluster_idx] = [task_label]
+        delivery_label = self.task_to_delivery.get(task_label, None)
+        self.cluster_delivery_labels[high_priority_cluster_idx] = [delivery_label] if delivery_label else [None]
+        
+        self.get_logger().info(f"Created high priority cluster {high_priority_cluster_idx} for task {task_label}")
+        self.get_logger().info(f"Assigned high priority task to robot: {available_robot}")
+        
+        self.last_assigned_robot = available_robot
+        
+        self.generate_task_sequences(robot_names=[available_robot])
+        
+        self.publish_task_reassignments()
+        
+        self.update_clusters_after_assignment()
+        
+        self.get_logger().info(f"High priority task {task_label} successfully assigned to {available_robot}")
+
+    def apply_priority_adjustment(self, base_score, cluster_index):
+        if base_score <= 0:
+            return base_score
+            
+        cluster_task_labels = []
+        if hasattr(self, 'cluster_task_labels') and cluster_index in self.cluster_task_labels:
+            cluster_task_labels = self.cluster_task_labels[cluster_index]
+        elif hasattr(self, 'cluster_points') and cluster_index < len(self.cluster_points):
+            for coord in self.cluster_points[cluster_index]:
+                for point_coord, label in self.points_with_label.items():
+                    if abs(point_coord[0] - coord[0]) < 1e-6 and abs(point_coord[1] - coord[1]) < 1e-6:
+                        cluster_task_labels.append(label)
+                        break
+        
+        if not cluster_task_labels:
+            return base_score
+        
+
+        has_high_priority = False
+        has_low_priority = False
+        
+        for task_label in cluster_task_labels:
+            priority = self.task_priorities.get(task_label, 'normal')
+            if priority == 'high':
+                has_high_priority = True
+            elif priority == 'low':
+                has_low_priority = True
+        
+        adjusted_score = base_score
+        if has_high_priority:
+            adjusted_score = base_score / 10.0
+            self.get_logger().info(f"Cluster {cluster_index} has high priority tasks, score adjusted: {base_score} -> {adjusted_score}")
+        elif has_low_priority:
+            adjusted_score = base_score * 10.0 
+            self.get_logger().info(f"Cluster {cluster_index} has low priority tasks, score adjusted: {base_score} -> {adjusted_score}")
+        
+        return adjusted_score
 
     def task_fail_callback(self, msg):  # Called when a task failure is reported
         self.solo_failure_task = msg.task_label
@@ -378,12 +602,12 @@ class TaskAssignNode(Node):
 
     def assign_new_cluster(self, msg):
         self.get_logger().info(f"Received new cluster assign request from Robot{msg.robot_id}.")
-        # 检查是否还有未分配任务
+
         all_points = list(self.points_with_label.keys())
         unassigned_points = [pt for pt in all_points if pt not in self.assigned_points_global]
         if not unassigned_points:
             self.get_logger().info("No unassigned tasks left, publishing NoTask message.")
-            # 发布NoTask消息给请求的机器人
+
             robot_id = msg.robot_id  # robot_id is an integer (1,2,3,4)
             robot_index = robot_id - 1
             robot_name = self.robot_names[robot_index]
@@ -412,7 +636,6 @@ class TaskAssignNode(Node):
         cluster_types = self.cluster_types
         self.get_logger().info(f"all_clusters: {all_clusters}")
         self.get_logger().info(f"cluster_types: {cluster_types}")
-        # 判断是否所有cluster都是normal
         all_normal = all(t == 'normal' for t in cluster_types)
         # Compute the score for the requested robot only with γ adjustment.
         scores = []
@@ -434,7 +657,6 @@ class TaskAssignNode(Node):
                     continue
                 dist = np.linalg.norm(np.array(new_position) - np.array(center))
                 base_score = dist
-                # 如果全是normal类型，直接用base_score
                 if all_normal:
                     score = base_score
                 else:
@@ -446,8 +668,9 @@ class TaskAssignNode(Node):
                             score = base_score / gamma_param
                         else:
                             score = base_score
-                scores.append(score)
-                self.get_logger().info(f"score: {score}")
+                adjusted_score = self.apply_priority_adjustment(score, j)
+                scores.append(adjusted_score)
+                self.get_logger().info(f"base score: {score}, adjusted score: {adjusted_score}")
 
         # Select the best candidate index for this robot.
         best_index = -1
@@ -485,8 +708,6 @@ class TaskAssignNode(Node):
             self.get_logger().info(f"Cluster {best_index} task labels: {task_labels}")
             self.get_logger().info(f"Cluster {best_index} delivery labels: {delivery_labels}")
 
-        for pt in self.robot_cluster_map[robot_name]:
-            self.assigned_points_global.add(tuple(pt))
         # Record this robot as the one that was just re-assigned.
         self.last_assigned_robot = robot_name
         # self.get_logger().info(f"robot_cluster_map: {self.robot_cluster_map}")
@@ -530,7 +751,6 @@ class TaskAssignNode(Node):
                 # Get γ value for this cluster
                 gamma_param = self.cluster_gamma[j]
                 
-                # 统一公式：normal robot用乘法，special robot用除法
                 if self.robot_types[i] == 'normal':
                     score = base_score * gamma_param
                 else:  # special robot
@@ -539,7 +759,8 @@ class TaskAssignNode(Node):
                     else:
                         score = base_score  # 当γ=0时使用base_score
                 
-                robot_scores.append(score)
+                adjusted_score = self.apply_priority_adjustment(score, j)
+                robot_scores.append(adjusted_score)
             scores.append(robot_scores)
 
         # self.get_logger().info(f"scores: {scores}")
@@ -708,7 +929,28 @@ class TaskAssignNode(Node):
                     self.robot_task_sequence[robot_name], self.robot_route_labels[robot_name] = self._nearest_neighbor_fallback(
                         robot_start, task_points, task_labels
                     )
+                    
+                    nn_route_labels = self.robot_route_labels[robot_name]
+                    pickup_labels_from_nn = [label for label in nn_route_labels if label in pickup_labels]
+                    selected_nn_points = []
+                    for pickup_label in pickup_labels_from_nn:
+                        for pt, label in self.points_with_label.items():
+                            if label == pickup_label:
+                                selected_nn_points.append(pt)
+                                self.assigned_points_global.add(pt)
+                                break
+                    self.get_logger().info(f"NN selected {len(pickup_labels_from_nn)} pickup tasks: {pickup_labels_from_nn}")
+                    self.get_logger().info(f"Marked {len(selected_nn_points)} NN selected tasks as assigned")
                 else:
+                    # Log MILP selection details
+                    self.get_logger().info(f"\n=== MILP Selection Details for {robot_name} ===")
+                    self.get_logger().info(f"Cluster had {len(pickup_labels)} pickup tasks: {pickup_labels}")
+                    self.get_logger().info(f"MILP selected {len(chosen_pickups)} pickups: {chosen_pickups}")
+                    unselected_pickups = [label for label in pickup_labels if label not in chosen_pickups]
+                    if unselected_pickups:
+                        self.get_logger().warn(f"MILP did NOT select these pickups: {unselected_pickups}")
+                        self.get_logger().warn(f"These unselected tasks will remain in unassigned list for future allocation")
+                    
                     # Convert route labels to task indices
                     task_indices = []
                     for label in route_labels:
@@ -717,6 +959,15 @@ class TaskAssignNode(Node):
                     
                     self.robot_task_sequence[robot_name] = task_indices
                     self.robot_route_labels[robot_name] = route_labels
+                    
+                    selected_pickup_points = []
+                    for pickup_label in chosen_pickups:
+                        for pt, label in self.points_with_label.items():
+                            if label == pickup_label:
+                                selected_pickup_points.append(pt)
+                                self.assigned_points_global.add(pt)
+                                break
+                    self.get_logger().info(f"Marked {len(selected_pickup_points)} selected pickup tasks as assigned")
                     
                     # self.get_logger().info(f"Chosen pickups: {chosen_pickups}")
                     # self.get_logger().info(f"Chosen deliveries: {chosen_deliveries}")
@@ -730,20 +981,57 @@ class TaskAssignNode(Node):
                 self.robot_task_sequence[robot_name], self.robot_route_labels[robot_name] = self._nearest_neighbor_fallback(
                     robot_start, task_points, task_labels
                 )
+                
+                fallback_route_labels = self.robot_route_labels[robot_name]
+                pickup_labels_from_fallback = [label for label in fallback_route_labels if label in task_labels]
+                selected_fallback_points = []
+                for pickup_label in pickup_labels_from_fallback:
+                    for pt, label in self.points_with_label.items():
+                        if label == pickup_label:
+                            selected_fallback_points.append(pt)
+                            self.assigned_points_global.add(pt)
+                            break
+                self.get_logger().info(f"Exception fallback selected {len(pickup_labels_from_fallback)} pickup tasks: {pickup_labels_from_fallback}")
+                self.get_logger().info(f"Marked {len(selected_fallback_points)} fallback selected tasks as assigned")
 
         self.get_logger().info("\n=== Final Task Execution Sequences (by task index) ===")
         for robot, seq in self.robot_task_sequence.items():
             self.get_logger().info(f"{robot}: {seq}")
 
-        for tasks in self.robot_task_sequence.values():
-            for idx in tasks:
-                # idx 是任务的 label index，需要反查 label 和坐标
-                for pt, label in self.points_with_label.items():
-                    if self.label_to_index[label] == idx:
-                        self.assigned_points_global.add(pt)
-                        break
+        self.log_unassigned_tasks()
 
         # self.get_logger().info(f"assigned_points_global: {self.assigned_points_global}")
+
+    def log_unassigned_tasks(self):
+        """记录所有未分配的任务"""
+        all_task_points = set(self.points_with_label.keys())
+        unassigned_points = all_task_points - self.assigned_points_global
+        
+        if unassigned_points:
+            unassigned_labels = []
+            for pt in unassigned_points:
+                label = self.points_with_label.get(pt)
+                if label:
+                    unassigned_labels.append(label)
+            
+            self.get_logger().warn(f"\n=== UNASSIGNED TASKS DETECTED ===")
+            self.get_logger().warn(f"The number of unassigned tasks: {len(unassigned_points)}")
+            self.get_logger().warn(f"The labels of unassigned tasks: {unassigned_labels}")
+            self.get_logger().warn(f"The coordinations of unassigned tasks: {list(unassigned_points)}")
+            
+            for cluster_idx, task_labels in getattr(self, 'cluster_task_labels', {}).items():
+                cluster_unassigned = [label for label in task_labels if label in unassigned_labels]
+                if cluster_unassigned:
+                    assigned_robot = None
+                    for robot_name, robot_cluster_idx in getattr(self, 'robot_cluster_indices', {}).items():
+                        if robot_cluster_idx == cluster_idx:
+                            assigned_robot = robot_name
+                            break
+                    
+                    self.get_logger().warn(f"Cluster {cluster_idx} (is assigned to {assigned_robot}) including: {cluster_unassigned}")
+                    self.get_logger().warn(f"The task label in the cluster: {task_labels}")
+        else:
+            self.get_logger().info("\n=== ALL TASKS ASSIGNED ===")
 
     def _get_delivery_point(self, delivery_label):
         """Get delivery point coordinates for a given delivery label"""
@@ -763,23 +1051,19 @@ class TaskAssignNode(Node):
         remaining = list(range(len(task_points)))
         pickup_sequence = []
 
-        # 1. 先对pickup点做最近邻排序
         while remaining:
             nearest_idx = min(remaining, key=lambda i: np.linalg.norm(np.array(current_pos) - np.array(task_points[i])))
             pickup_sequence.append(nearest_idx)
             current_pos = task_points[nearest_idx]
             remaining.remove(nearest_idx)
 
-        # 2. 先所有pickup，再所有delivery（去重）
         pickup_labels_ordered = [task_labels[idx] for idx in pickup_sequence]
         
-        # 收集所有对应的delivery标签并去重
         delivery_labels_set = set()
         for label in pickup_labels_ordered:
             if label in self.task_to_delivery:
                 delivery_labels_set.add(self.task_to_delivery[label])
         
-        # 转换为有序列表
         delivery_labels_ordered = list(delivery_labels_set)
         full_labels = pickup_labels_ordered + delivery_labels_ordered
 
@@ -800,7 +1084,6 @@ class TaskAssignNode(Node):
             self.task_pubs[robot].publish(msg)
             self.get_logger().info(f"Published task sequence to {robot}: {msg.task_sequence}")
             self.get_logger().info(f"Published route labels to {robot}: {msg.route_labels}")
-        # 每次发布后，重新聚类未分配的任务
         self.update_clusters_after_assignment()
 
     def publish_task_reassignments(self):
@@ -815,26 +1098,20 @@ class TaskAssignNode(Node):
             self.task_pubs[robot].publish(msg)
             self.get_logger().info(f"Published task sequence to {robot}: {msg.task_sequence}")
             self.get_logger().info(f"Published route labels to {robot}: {msg.route_labels}")
-            # 每次发布后，重新聚类未分配的任务
             self.update_clusters_after_assignment()
         else:
             self.get_logger().warn("No new assignment available to publish.")
 
     def update_clusters_after_assignment(self):
-        # 获取所有未分配的任务点
         all_points = list(self.points_with_label.keys())
-        # 未分配的点
         unassigned_points = [pt for pt in all_points if pt not in self.assigned_points_global]
         unassigned_labels = [self.points_with_label[pt] for pt in unassigned_points]
         # self.get_logger().info(f"unassigned_points: {unassigned_points}")
-        # 重新聚类
         if unassigned_points:
-            # 只聚类未分配的点，传入label和坐标
             self.cluster_centers, self.cluster_points = self.clusterer.cluster(
                 task_points=unassigned_labels,
                 task_coords=unassigned_points
             )
-            # 重新计算cluster类型和gamma
             self.cluster_gamma = []
             self.cluster_types = []
             for i, (center, points) in enumerate(zip(self.cluster_centers, self.cluster_points)):

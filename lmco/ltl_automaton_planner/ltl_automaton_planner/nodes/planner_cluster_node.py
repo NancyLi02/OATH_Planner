@@ -137,27 +137,20 @@ class MainPlanner(Node):
             raise
 
     def generate_ltl_formula(self, route_labels):
-        """
-        根据route_labels生成LTL公式
-        从route_labels中推断pickup和delivery标签，然后调用Gen_LTL.py中的函数
-        """
         if not route_labels:
             self.get_logger().warn("Empty route_labels received")
             return ""
         
-        # 从route_labels中推断pickup和delivery标签
-        # pickup标签通常是两个字母（如'bc', 'cc', 'dc', 'ec'）
-        # delivery标签通常是单个字母（如'b', 'c', 'd', 'e'）
         pickup_labels = []
         delivery_labels = []
         
         for label in route_labels:
-            if len(label) == 2:  # 两个字母的标签通常是pickup
+            if len(label) == 2:
                 pickup_labels.append(label)
-            elif len(label) == 1:  # 单个字母的标签通常是delivery
+            elif len(label) == 1:
                 delivery_labels.append(label)
         
-        # 去重
+
         pickup_labels = list(set(pickup_labels))
         delivery_labels = list(set(delivery_labels))
         
@@ -165,94 +158,12 @@ class MainPlanner(Node):
         self.get_logger().info(f"Inferred delivery labels: {delivery_labels}")
     
         
-        # 调用Gen_LTL.py中的函数生成LTL公式
         ltl_formula = generate_ltl_formula(route_labels, pickup_labels, delivery_labels)
         
         self.get_logger().info(f"Generated LTL formula: {ltl_formula}")
         
         return ltl_formula
 
-    # def initialize_automaton(self):
-    #     # Import state models from TS
-    #     state_models = state_models_from_ts(self.transition_system, self.initial_state_ts_dict)
-
-    #     # Maintain multiple `Product Automaton` and `LTLPlanner` instances, each corresponding to a predefined task
-    #     if not hasattr(self, 'product_automata'):
-    #         self.product_automata = {}  # Initialize dictionary to store `ProdAut`
-    #     if not hasattr(self, 'ltl_planners'):
-    #         self.ltl_planners = {}  # Store LTLPlanner instances per task
-    #         self.score_planners = {}
-
-    #     # Define four tasks, each with its own LTL specification
-    #     for task_id in self.task_index:
-    #         task_id = f'task{task_id}'
-    #         hard_task = self.task_data[task_id]['hard_task']
-    #         soft_task = ''
-
-    #         # Create Task Product Automaton
-    #         self.get_logger().info(f"{self.agent_name} creating new Product Automaton for task {task_id}...")
-    #         robot_model = TSModel(state_models)
-    #         product_automaton = ProdAut(robot_model, mission_to_buchi(hard_task, soft_task), self.initial_beta)
-    #         # self.get_logger().info(f"Step 4: ProdAut 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
-    #         product_automaton.graph['ts'].build_full()  # Fully initialize the automaton during construction
-    #         # self.get_logger().info(f"Step 5: build_full 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
-    #         product_automaton.build_full_relaxed()
-    #         # self.get_logger().info(f"Step 6: build_full_relaxed 完成，product nodes: {len(product_automaton.nodes)}, edges: {len(product_automaton.edges)}")
-
-
-    #         # self.get_logger().info(f"Product Automaton Nodes before calling optimal: {product_automaton.graph['initial']}")
-
-    #         # Initialize LTL Planner for each task
-    #         # self.get_logger().info(f"Step 7: LTLPlanner 初始化 开始")
-    #         ltl_planner = LTLPlanner(robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
-    #         # self.get_logger().info(f"Step 8: LTLPlanner 初始化 完成")
-    #         ltl_planner.optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
-    #         # self.get_logger().info(f"Step 9: LTLPlanner.optimal 完成")
-
-    #         # Store the newly created product automaton and LTL planner
-    #         self.product_automata[task_id] = product_automaton
-    #         self.ltl_planners[task_id] = ltl_planner  # Store LTLPlanner for later use
-            
-    #         # Initialize storage for the set of possible runs in the product
-    #         self.ltl_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
-    #         self.ltl_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
-
-    #         # Seperate planner for score calculating
-    #         score_planner = LTLPlanner(robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
-    #         score_planner.optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
-
-    #         # Store the newly created product automaton and LTL planner
-    #         self.score_planners[task_id] = score_planner  # Store LTLPlanner for later use
-            
-    #         # Initialize storage for the set of possible runs in the product
-    #         self.score_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
-    #         self.score_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
-
-
-    # def update_and_run_automaton(self, task_id, new_initial_ts_state):
-    #     # Check if `ProdAut` for `task_id` exists
-    #     if task_id not in self.product_automata:
-    #         raise ValueError(f"Product Automaton for task {task_id} has not been initialized. Call initialize_automaton first.")
-        
-    #     if task_id not in self.ltl_planners:
-    #         raise ValueError(f"LTLPlanner for task {task_id} has not been initialized. Call initialize_automaton first.")
-
-    #     product_automaton = self.product_automata[task_id]
-
-    #     # Ensure correct format if input is a dictionary
-    #     if isinstance(new_initial_ts_state, dict):
-    #         new_initial_ts_state = (new_initial_ts_state['2d_pose_region'], new_initial_ts_state['Drone_state'])
-
-    #     # Update the initial state in the expected format
-    #     product_automaton.graph['ts'].graph['initial'] = {new_initial_ts_state}
-    #     product_automaton.build_initial()  # Only update the initial state
-
-    #     # Update LTL Planner's current state and possible runs
-    #     self.ltl_planners[task_id].curr_ts_state = list(product_automaton.graph['ts'].graph['initial'])[0]
-    #     self.ltl_planners[task_id].posb_runs = set([(n,) for n in product_automaton.graph['initial']])
-
-    #     # Use the corresponding LTLPlanner instance for this task
-    #     self.ltl_planners[task_id].optimal(product_automaton, algo=self.algo_type, N=self.grid_size)
 
     
     def build_and_run_automaton(self, ltl_formula, initial_state_ts_dict):
@@ -329,20 +240,7 @@ class MainPlanner(Node):
             'replanning_request',
             self.listener_callback,
             10)
-        
-        # self.taskassignment_sub = self.create_subscription(
-        #     TaskAssignment,
-        #     'task_assignment',
-        #     self.taskassignment_callback,
-        #     10
-        # )
 
-        # self.new_task_sub = self.create_subscription(
-        #     TaskReAssignment,
-        #     'task_reassignment',
-        #     self.new_task_callback,
-        #     10
-        # )
 
         self.cluster_task_sub = self.create_subscription(
             ClusterTaskassign,
@@ -390,11 +288,9 @@ class MainPlanner(Node):
     def add_task_callback(self, msg):
         self.get_logger().info(f"Received add task command from LLM, new {msg.task_type} task appears at {msg.location}, updating map......")
         self.add_point_to_map = True
-        # 传递(label, 坐标)
-        point = tuple(msg.location)  # 转成tuple更保险
+        point = tuple(msg.location)
         label = msg.task_label
         
-        # 检查是否已经存在相同的point和label组合
         new_task = (point, label)
         if new_task not in self.new_task_points:
             self.new_task_points.append(new_task)
@@ -460,7 +356,6 @@ class MainPlanner(Node):
         self.get_logger().info(f"Received task list for {self.agent_name}: {msg.route_labels}")
 
         self.current_task_list = list(msg.route_labels)
-        # 只保留pickup的点（两个字母的label），并保持顺序
         self.pickup_labels = [label for label in self.current_task_list if len(label) == 2]
 
         self.current_ltl_formula = self.generate_ltl_formula(msg.route_labels)
@@ -479,30 +374,6 @@ class MainPlanner(Node):
         # Publish the generated plan
         self.publish_cluster_plan()
 
-    # def handle_task(self, task_index):
-    #     # Get and format current pose
-    #     new_initial_pose = self.pose_index
-    #     formatted_pose = f'{new_initial_pose}'
-
-    #     # Prepare initial state
-    #     self.initial_state_ts_dict = {
-    #         '2d_pose_region': formatted_pose,
-    #         'Drone_state': 'unloaded'
-    #     }
-
-    #     # Verify task existence
-    #     task_id = f'task{int(task_index)}'
-    #     self.cur_task = task_id
-    #     if task_id not in self.task_data:
-    #         self.get_logger().error(f"Invalid task index received: {task_index}")
-    #         return
-
-    #     # Run automaton and plan
-    #     # self.get_logger().info(f"Calculating plan for {task_id} assigned to {self.agent_name}")
-    #     self.update_and_run_automaton(task_id, self.initial_state_ts_dict)
-
-    #     # Publish result
-    #     self.publish_plan(task_id)
 
     def get_score_list(self, msg):
         formatted_pose = f'{msg.pose_index}'

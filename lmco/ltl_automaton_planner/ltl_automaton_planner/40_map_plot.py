@@ -22,9 +22,8 @@ def plot_initial_map():
     wall_yaml = os.path.join(config_dir, 'wall.yaml')
     halton_points_csv = os.path.join(current_dir, 'all_points_in_Halton.csv')
     output_figure = os.path.join(current_dir, 'initial_map_40x40.png')
-    wall_thick = 0.2  # 调整墙体粗度：0.05(很细) -> 0.1(默认) -> 0.2(较粗) -> 0.5(很粗)
+    wall_thick = 0.2 
 
-    # --- Matplotlib Colors (normalized from 0-255 to 0-1) ---
     # As defined in showmove_node.py
     GREEN = (107/255, 142/255, 35/255)       # For unload task points
     CYAN = (0/255, 255/255, 255/255)         # For unfinished load task points
@@ -81,7 +80,7 @@ def plot_initial_map():
         x, y = obs.exterior.xy
         ax.fill(x, y, color='dimgray', alpha=1.0, zorder=2)
 
-    # # 1.5. Draw Unknown Walls (red)
+
     # for poly in BLOCK_POLYGONS:
     #     x, y = poly.exterior.xy
     #     ax.fill(x, y, color=RED, alpha=0.8, zorder=2)
@@ -102,7 +101,6 @@ def plot_initial_map():
     #             bush_circle = Circle((rand_x, rand_y), rand_radius, color=color, alpha=0.6, zorder=3, ec=None)
     #             ax.add_patch(bush_circle)
 
-    # 2. Draw Delaunay graph of Halton points
     if len(halton_coords) > 0:
         tri = Delaunay(halton_coords)
         for simplex in tri.simplices:
@@ -114,7 +112,7 @@ def plot_initial_map():
                 if not any(edge.intersects(obs) for obs in obstacles):
                     ax.plot([p1_coord[0], p2_coord[0]], [p1_coord[1], p2_coord[1]], color='lightgray', linewidth=0.5, zorder=1)
     
-    # 3. Draw Task and Delivery Points
+
     task_size = 0.5  # World units
     
     # Loading tasks
@@ -139,7 +137,6 @@ def plot_initial_map():
         ax.add_patch(shape)
         ax.text(x, y, label, fontsize=10, ha='center', va='center', color='black', weight='bold', zorder=5)
         
-    # 4. Draw Robots
     for robot_id, pt in robot_positions.items():
         x, y = pt
         is_special = robot_id in special_robot_ids

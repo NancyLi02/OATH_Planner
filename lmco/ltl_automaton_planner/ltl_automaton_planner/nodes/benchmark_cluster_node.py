@@ -281,7 +281,7 @@ class LTLControllerDrone(Node):
         self.new_task_points = []
         self.processed_obstacles = set()
 
-        # 从yaml文件加载任务点和pickup/delivery映射
+
         def str_to_tuple(s):
             nums = re.findall(r"[-+]?\d*\.?\d+", s)
             return tuple(float(x) if '.' in x else int(x) for x in nums)
@@ -302,6 +302,8 @@ class LTLControllerDrone(Node):
             
         self.get_logger().info(f"Received obstacle update: {msg.obstacle_type} at {msg.obstacle_location}")
         self.processed_obstacles.add(obstacle_key)
+        self.world.block.clear()
+        self.world.bump.clear()
 
         # Convert flattened coordinates back to list of tuples
         coords_flat = msg.obstacle_location
@@ -449,8 +451,8 @@ class LTLControllerDrone(Node):
         self.cur_task_list = msg.route_labels
         self.i = 0
         self.cur_task = self.cur_task_list[self.i]
-        # self.world.block.clear()
-        # self.world.bump.clear()
+        self.world.block.clear()
+        self.world.bump.clear()
         if self.final_on_hold == False:
             self.mode = EquipmentMode.UNLOADED
             self.on_hold = False
@@ -690,7 +692,6 @@ class LTLControllerDrone(Node):
                             self.mode = EquipmentMode.UNLOADED
                             self.act = 'u'
                         elif str(act) == "load":
-                            # 只有到达任务点时才发布UpdateValidTasks
                             for pt, label in self.task_points.items():
                                 if abs(self.pose[0] - pt[0]) < 1e-6 and abs(self.pose[1] - pt[1]) < 1e-6:
                                     self.mode = EquipmentMode.LOADED

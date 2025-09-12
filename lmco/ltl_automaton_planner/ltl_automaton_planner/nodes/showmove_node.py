@@ -25,6 +25,7 @@ import yaml
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 import re
 from ament_index_python.packages import get_package_share_directory
+import time
 
 #=======================================================================
 #  Interfaces between ShowMoveNode and other nodes
@@ -115,20 +116,17 @@ class ShowMoveNode(Node):
         # Create a lock for thread-safe access to shared resources
         self.lock = threading.Lock()
 
-        # === 从YAML读取任务点、delivery点、special robot ===
         package_share = get_package_share_directory('ltl_automaton_planner')
         task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
         with open(task_points_yaml, 'r') as f:
             yaml_data = yaml.safe_load(f)
 
-        # 解析任务点
         points_with_label = {}
         for k, v in yaml_data['task_points'].items():
             match = re.match(r"([\d\.]+),([\d\.]+)", k)
             if match:
                 x, y = float(match.group(1)), float(match.group(2))
                 points_with_label[(x, y)] = v
-        # 解析delivery点
         delivery_points = {}
         if 'delivery_points' in yaml_data:
             for k, v in yaml_data['delivery_points'].items():
@@ -136,7 +134,6 @@ class ShowMoveNode(Node):
                 if match:
                     x, y = float(match.group(1)), float(match.group(2))
                     delivery_points[(x, y)] = v
-        # 合并所有点
         self.points = {**points_with_label, **delivery_points}
         # Set of unload points for quick lookup
         self.unloaded_points = set(delivery_points.keys())
@@ -145,19 +142,17 @@ class ShowMoveNode(Node):
             label for pt, label in self.points.items()
             if pt not in self.unloaded_points
         ]
-        # 读取 special robot
+        # special robot
         self.special_robot_ids = yaml_data.get('special_robot', [])
-        # 读取 special labels
+        # special labels
         self.special_labels = set(yaml_data.get('special_labels', []))
 
-        # List of robot IDs 从yaml读取
         self.robot_ids = list(yaml_data.get('robot_positions', {}).keys())
 
-        # 动态生成颜色映射
-        PINK_LOADED = (255, 105, 180)      # 粉色 loaded
-        PINK_UNLOADED = (255, 182, 193)    # 粉色 unloaded
-        BLUE_LOADED = (0, 0, 255)          # 蓝色 loaded
-        BLUE_UNLOADED = (135, 206, 250)    # 浅蓝 unloaded
+        PINK_LOADED = (255, 105, 180)
+        PINK_UNLOADED = (255, 182, 193)
+        BLUE_LOADED = (0, 0, 255)       
+        BLUE_UNLOADED = (135, 206, 250)   
         self.color_mapping = {}
         for robot_id in self.robot_ids:
             if robot_id in self.special_robot_ids:
@@ -173,7 +168,6 @@ class ShowMoveNode(Node):
         
         self.failed_task_list = []
 
-        # 新增：初始化用于新任务的变量，防止未定义报错
         self.new_task_points = []
         self.map_needs_update = False
         self.processed_obstacles = set()
@@ -185,6 +179,12 @@ class ShowMoveNode(Node):
         
         # Initialize finished tasks set to store completed task indices
         self.finished_tasks = set()
+
+
+        self.start_time = time.time()  
+        self.end_time = None  
+        self.timing_completed = False 
+        self.get_logger().info(f"Start timing at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.start_time))}")
 
         # Create subscribers for each robot topic (e.g., "/robot1/show_position")
         for robot_id in self.robot_ids:
@@ -244,6 +244,42 @@ class ShowMoveNode(Node):
         # Create a timer for periodic simulation updates (e.g., every 0.1 seconds)
         self.timer = self.create_timer(0.1, self.simulate)
 
+    def _action_nodes_exist(self, action):
+        try:
+            pose_ab = extract_numbers(action)
+            pose_a = str(pose_ab[0])
+            pose_b = str(pose_ab[1])
+            return pose_a in self.nodes and pose_b in self.nodes
+        except:
+            return False
+
+    def check_all_robots_notask(self):
+        if not self.timing_completed and len(self.robot_positions) >= len(self.robot_ids):
+            all_notask = True
+            for robot_id in self.robot_ids:
+                if robot_id in self.robot_positions:
+                    if self.robot_positions[robot_id]['mode'] != self.notask_color:
+                        all_notask = False
+                        break
+                else:
+                    all_notask = False
+                    break
+            
+            if all_notask:
+                self.end_time = time.time()
+                self.timing_completed = True
+                total_time = self.end_time - self.start_time
+                self.get_logger().info("="*60)
+                self.get_logger().info("🎉 All robots have finished tasks!")
+                self.get_logger().info(f"📊 Time:")
+                self.get_logger().info(f"   Starting Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.start_time))}")
+                self.get_logger().info(f"   Ending Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.end_time))}")
+                self.get_logger().info(f"   Total Time: {total_time:.2f} 秒")
+                self.get_logger().info(f"   Robot number: {len(self.robot_ids)}")
+                self.get_logger().info("="*60)
+                return True
+        return False
+
     def obstacle_update_callback(self, msg):
         obstacle_key = tuple(msg.obstacle_location)
         if obstacle_key in self.processed_obstacles:
@@ -286,12 +322,10 @@ class ShowMoveNode(Node):
         point = tuple(msg.location)
         label = msg.task_label
         
-        # 检查是否已经存在相同的点坐标
         if point in self.points:
             self.get_logger().info(f"Task point already exists at {point}, skipping...")
             return
             
-        # 直接更新self.points
         self.points[point] = label
     
         if msg.task_type == "special":
@@ -300,28 +334,19 @@ class ShowMoveNode(Node):
 
     
     def task_fail_callback(self, msg):
-        # 直接用label字符串
         try:
             label = msg.task_label
-            # 如果之前标记为完成，移除
             if label in self.finished_tasks:
                 self.finished_tasks.remove(label)
-            # 加入失败列表
             if label not in self.failed_task_list:
                 self.failed_task_list.append(label)
         except Exception:
             pass
 
     def update_valid_tasks(self, msg):
-        """
-        Callback for update_valid_tasks topic.
-        现在直接用label字符串，不再用数字。
-        """
         label = msg.loaded_task
-        # 如果在失败列表，移除
         if label in self.failed_task_list:
             self.failed_task_list.remove(label)
-        # 加入完成列表
         self.finished_tasks.add(label)
 
     def position_callback(self, msg):
@@ -336,6 +361,7 @@ class ShowMoveNode(Node):
         # Use lock to ensure thread-safe update of shared data
         with self.lock:
             self.robot_positions[msg.robot_id] = {'pose': pos, 'mode': color}
+            self.check_all_robots_notask()
         # self.get_logger().info(f"Received {msg.robot_id}: position {pos}, mode {msg.mode}")
 
     def get_color(self, robot_id, mode):
@@ -374,6 +400,12 @@ class ShowMoveNode(Node):
             self.get_logger().info("Locally updating map visualization due to new wall...")
             # Perform a local update instead of a full rebuild
             update_graph_with_obstacle(self.nodes, self.actions, self.last_added_obstacle)
+            
+            self.world.block = [action for action in self.world.block 
+                               if self._action_nodes_exist(action)]
+            self.world.bump = [action for action in self.world.bump 
+                              if self._action_nodes_exist(action)]
+            
             self.map_needs_update = False
             del self.last_added_obstacle # Clear after processing
             self.get_logger().info("Map visualization updated locally.")
@@ -414,7 +446,6 @@ class ShowMoveNode(Node):
             if pt in unloaded_points:
                 color = GREEN
             else:
-                # 直接用label判断是否完成
                 if label in self.finished_tasks:
                     color = self.finished_tasks_color
                     special_color = self.finished_tasks_color
@@ -454,6 +485,9 @@ class ShowMoveNode(Node):
             pose_a = pose_ab[0]
             pose_b = pose_ab[1]
             
+            if str(pose_a) not in self.nodes or str(pose_b) not in self.nodes:
+                continue
+            
             start_pos = (
                 int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
                 int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
@@ -473,6 +507,9 @@ class ShowMoveNode(Node):
             pose_a = pose_ab[0]
             pose_b = pose_ab[1]
             
+            if str(pose_a) not in self.nodes or str(pose_b) not in self.nodes:
+                continue
+            
             start_pos = (
                 int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),
                 int(self.world.height - (self.nodes[str(pose_a)]['attr']['pose'][1] * self.world.cell_size))
@@ -489,6 +526,9 @@ class ShowMoveNode(Node):
             pose_ab = extract_numbers(action)
             pose_a = pose_ab[0]
             pose_b = pose_ab[1]
+            
+            if str(pose_a) not in self.nodes or str(pose_b) not in self.nodes:
+                continue
             
             start_pos = (
                 int(self.nodes[str(pose_a)]['attr']['pose'][0] * self.world.cell_size),

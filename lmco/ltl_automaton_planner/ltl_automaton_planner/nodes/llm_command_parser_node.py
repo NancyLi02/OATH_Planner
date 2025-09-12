@@ -3,7 +3,7 @@ import json
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
-from ltl_automaton_msgs.msg import AddTask, ObstacleUpdate
+from ltl_automaton_msgs.msg import AddTask, ObstacleUpdate, ChangeTaskPriority
 from openai import OpenAI
 import yaml
 from ament_index_python.packages import get_package_share_directory
@@ -36,9 +36,16 @@ class LLMCommandParserNode(Node):
             topic = f'/{robot}/obstacle_update'
             self.obstacle_pubs[robot] = self.create_publisher(ObstacleUpdate, topic, 10)
 
+        self.change_task_priority_pubs = {}
+        for robot in robot_names:
+            topic = f'/{robot}/change_task_priority'
+            self.change_task_priority_pubs[robot] = self.create_publisher(ChangeTaskPriority, topic, 10)
+
         self.task_pub = self.create_publisher(AddTask, '/add_task', 10)
 
         self.obstacle_pub = self.create_publisher(ObstacleUpdate, '/obstacle_update', 10)
+
+        self.change_task_priority_pub = self.create_publisher(ChangeTaskPriority, '/change_task_priority', 10)
 
         self.get_logger().info('LLM Command Parser Node initialized.')
 
@@ -67,7 +74,6 @@ class LLMCommandParserNode(Node):
 
                 elif intent == "obstacle_update":
                     msg_out = ObstacleUpdate()
-                    # 处理多边形顶点坐标，将 [(x1,y1), (x2,y2), ...] 格式转换为 [x1, y1, x2, y2, ...] 格式
                     obstacle_vertices = parameters.get("obstacle_location", [(0.0, 0.0)])
                     flattened_coords = []
                     for vertex in obstacle_vertices:
@@ -80,6 +86,12 @@ class LLMCommandParserNode(Node):
                     self.publish_obstacle_update(msg_out)
                     self.get_logger().info(f'Published ObstacleUpdate: {msg_out}')
 
+                elif intent == "change_task_priority":
+                    msg_out = ChangeTaskPriority()
+                    msg_out.task_label = parameters.get("task_label", "")
+                    msg_out.priority = parameters.get("priority", "normal")
+                    self.publish_change_task_priority(msg_out)
+                    self.get_logger().info(f'Published ChangeTaskPriority: {msg_out}')
                 else:
                     self.get_logger().warn(f'Unknown intent: {intent}')
 
@@ -89,7 +101,7 @@ class LLMCommandParserNode(Node):
     def call_llm(self, instruction_text):
         prompt = f"""
 You are a command parser. Convert the following instruction into a JSON array, where each element represents one intent.
-Possible intents: "add_task" or "obstacle_update".
+Possible intents: "add_task" or "obstacle_update" or "change_task_priority".
 
 Each element should follow one of the following formats:
 
@@ -110,6 +122,15 @@ For "obstacle_update":
   "parameters": {{
     "obstacle_location": [[4.1, 1.1], [4.1, 2.0], [2.5, 2.0], [2.5, 1.1]],
     "obstacle_type": "wall"
+  }}
+}}
+
+For "change_task_priority":
+{{
+  "intent": "change_task_priority",
+  "parameters": {{
+    "task_label": "fb",
+    "priority": "high"
   }}
 }}
 
@@ -137,6 +158,11 @@ Return ONLY the JSON array. Do NOT add any explanation.
         for pub in self.obstacle_pubs.values():
             pub.publish(msg)
         self.obstacle_pub.publish(msg)
+
+    def publish_change_task_priority(self, msg):
+        for pub in self.change_task_priority_pubs.values():
+            pub.publish(msg)
+        self.change_task_priority_pub.publish(msg)
 
 
 def main(args=None):
