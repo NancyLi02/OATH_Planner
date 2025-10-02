@@ -8,13 +8,13 @@ setup:
 agents:
     - id: 1
       type: quad
-      initial_position: [0, 0, 0]
+      initial_position: [1, 19, 0]
     - id: 2
       type: turtle
-      initial_position: [1, 1, 0]
+      initial_position: [11, 19, 0]
     - id: 3
       type: turtle
-      initial_position: [2, 2, 0]
+      initial_position: [9, 11, 0]
     - id: 4
       type: quad
-      initial_position: [3, 3, 0]
+      initial_position: [11, 9, 0]

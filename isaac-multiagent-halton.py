@@ -420,7 +420,7 @@ if __name__ == "__main__":
             if not init_paths:
                 for agent in agent_nodes:
                     num = agent["number"]
-                    if agent["next_flag"] == 'i':
+                    if agent["next_flag"] == 'g':
                         init_status = Status()
                         init_status.agent = agent["name"]
                         init_status.start = True
@@ -450,7 +450,7 @@ if __name__ == "__main__":
                 next_x = agent["next_step"][0]
                 next_y = agent["next_step"][1]
                 next_flag = agent["next_flag"]
-                # print(f"Agent {num} - Type: {agents[num]['type']})")
+                # print(f"Agent {num} - Flag: {next_flag})")
                 if agents[num]["type"] == "quad":
                     if next_flag == 'g':
                         next_z = 3.0
@@ -460,6 +460,8 @@ if __name__ == "__main__":
                         next_z = 1.0
                     elif next_flag == 'b':
                         next_z = 0.0
+                    else:
+                        next_z = 3.0
                 robot_list[num]["info"].setNext(next_x, next_y, next_z, next_flag)
                 robot_obj = robot_list[num]["info"]
 
@@ -502,12 +504,12 @@ if __name__ == "__main__":
                     if np.abs(delx) <= 0.5 and np.abs(dely) <= 0.5 and np.abs(delz) <= 0.05:
                         print(f"Agent {num} - Flag:  {flag}")
                         if flag == 's' and not stay_flag[num]:
-                            stay_flag[num] = True
+                            # stay_flag[num] = True
                             robot_status.agent = agent["name"]
                             robot_status.arrived = True
                             agent["status_publisher"].publish(robot_status)
                         elif flag == 'b' and not stay_flag[num]:
-                            stay_flag[num] = True
+                            # stay_flag[num] = True
                             robot_status.agent = agent["name"]
                             robot_status.arrived = True
                             agent["status_publisher"].publish(robot_status)
@@ -518,11 +520,11 @@ if __name__ == "__main__":
 
                     vel = Gf.Vec3f(vx,vy,vz)
                     robot_rb.GetVelocityAttr().Set(vel)
-                    if np.all(np.array(finalgoal_check)):
-                        print("All goals reach!")
-                        start = not start
+                    # if np.all(np.array(finalgoal_check)):
+                    #     print("All goals reach!")
+                    #     # start = not start
                 else:
-                    finalgoal_check[num] = True
+                    # finalgoal_check[num] = True
 
                     vel = Gf.Vec3f(0,0,0)
                     robot_rb.GetVelocityAttr().Set(vel)

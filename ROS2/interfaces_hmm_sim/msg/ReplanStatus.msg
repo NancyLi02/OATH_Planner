@@ -1,0 +1,2 @@
+bool on_hold
+bool final_on_hold
