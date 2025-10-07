@@ -27,20 +27,28 @@ lines = [LineString(coords) for coords in wall_data.get('lines', [])]
 obstacles = [line.buffer(wall_thick, cap_style=3) for line in lines]
 
 # ------------------------ Load Halton Points from CSV ------------------------
-def load_halton_points_from_csv(csv_path):
-    """Load Halton points from the pre-generated CSV file"""
+def load_halton_points_from_csv(csv_path, task_points_yaml_path):
+    """Load Halton points from the pre-generated CSV file and filter only task_points"""
     df = pd.read_csv(csv_path)
     points = []
     points_with_label = {}
+    
+    # Load task_points from YAML to filter only task points
+    with open(task_points_yaml_path, 'r') as f:
+        yaml_data = yaml.safe_load(f)
+    
+    task_point_labels = set()
+    if 'task_points' in yaml_data:
+        for coord_str, label in yaml_data['task_points'].items():
+            task_point_labels.add(label)
     
     for _, row in df.iterrows():
         x, y, label = row['x'], row['y'], row['label']
         point = Point(x, y)
         points.append(point)
         
-        # Store labeled points for task assignment
-        # Handle NaN values and empty strings
-        if pd.notna(label) and str(label).strip():  # Only store non-empty labels
+        # Only store labels that are in task_points
+        if pd.notna(label) and str(label).strip() and str(label) in task_point_labels:
             points_with_label[(x, y)] = str(label)
     
     return points, points_with_label
@@ -48,10 +56,12 @@ def load_halton_points_from_csv(csv_path):
 # Load points from the pre-generated CSV file
 csv_path = os.path.join(current_dir, 'all_points_in_Halton.csv')
 csv_path = os.path.abspath(csv_path)
-valid_points, points_with_label = load_halton_points_from_csv(csv_path)
+task_points_yaml_path = os.path.join(current_dir, '..', 'config', 'Task_Points.yaml')
+task_points_yaml_path = os.path.abspath(task_points_yaml_path)
+valid_points, points_with_label = load_halton_points_from_csv(csv_path, task_points_yaml_path)
 
 print(f"Loaded {len(valid_points)} points from CSV")
-print(f"Found {len(points_with_label)} labeled task points")
+print(f"Found {len(points_with_label)} labeled task points (only from task_points section)")
 
 point_coords = [(p.x, p.y) for p in valid_points]
 point_index = {pt: i for i, pt in enumerate(point_coords)}
@@ -98,7 +108,10 @@ def reconstruct_path(prev, start, goal):
 label_indices = {label: point_index[(x, y)] for (x, y), label in points_with_label.items()}
 
 # ------------------------ Visualize Specific Path ------------------------
-fig, ax = plt.subplots(figsize=(10, 10))
+fig, ax = plt.subplots(figsize=(8, 8))
+
+# 设置字体大小
+plt.rcParams.update({'font.size': 18})
 
 # Draw walls
 for obs in obstacles:
@@ -131,13 +144,14 @@ for i in range(len(labels)):
 # Draw labeled task points
 for (x, y), label in points_with_label.items():
     ax.plot(x, y, 'bo')
-    ax.text(x + 0.2, y + 0.2, label, fontsize=9)
+    # ax.text(x + 0.2, y + 0.2, label, fontsize=16)
 
 ax.set_xlim(0, x_length)
 ax.set_ylim(0, y_length)
 ax.set_aspect('equal')
-# ax.set_title("Multi-Source Dijkstra: Shortest Paths Between All Task Points")
-plt.grid(True)
+ax.tick_params(axis='both', which='major', labelsize=18)
+# ax.set_title("Multi-Source Dijkstra: Shortest Paths Between All Task Points", fontsize=18)
+plt.grid(False)
 plt.show()
 
 # -------- Save one-way pairwise distances to CSV --------

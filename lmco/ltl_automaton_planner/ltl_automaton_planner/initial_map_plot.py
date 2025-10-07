@@ -141,7 +141,7 @@ def plot_initial_map():
             # Rectangle for normal tasks
             shape = Rectangle((x - task_size/2, y - task_size/2), task_size, task_size, color=color, zorder=3)
         ax.add_patch(shape)
-        ax.text(x, y, label, fontsize=10, ha='center', va='center', color='black', weight='bold', zorder=5)
+        ax.text(x, y, label, fontsize=16, ha='center', va='center', color='black', weight='bold', zorder=5)
 
     # # Delivery points
     # for pt, label in delivery_points.items():
@@ -159,7 +159,7 @@ def plot_initial_map():
         
         circle = Circle((x, y), radius, color=color, zorder=4)
         ax.add_patch(circle)
-        ax.text(x, y, robot_id, fontsize=10, ha='center', va='center', color=BLACK, weight='bold', zorder=5)
+        ax.text(x, y, robot_id, fontsize=16, ha='center', va='center', color=BLACK, weight='bold', zorder=5)
 
     # --- Plot Configuration ---
     ax.add_patch(Rectangle((0, 0), 20, 20, linewidth=2, edgecolor='black', facecolor='none', zorder=0))
@@ -168,6 +168,11 @@ def plot_initial_map():
     ax.set_ylim(0, 20)
     ax.set_aspect('equal')
     ax.grid(True, linestyle='--', alpha=0.6)
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_xlabel("")
+    ax.set_ylabel("")
     plt.tight_layout()
     plt.savefig(output_figure, dpi=300)
     print(f"Initial map plot saved to {output_figure}")

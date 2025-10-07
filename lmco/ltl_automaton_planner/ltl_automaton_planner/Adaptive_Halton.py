@@ -128,6 +128,10 @@ obstacles = [line.buffer(wall_thick, cap_style=3) for line in lines]
 
 fig, ax = plt.subplots(figsize=(8, 8))
 
+# 设置字体大小
+plt.rcParams.update({'font.size': 18})
+ax.tick_params(axis='both', which='major', labelsize=18)
+
 for buffered in obstacles:
     x_buffered, y_buffered = buffered.exterior.xy
     ax.fill(x_buffered, y_buffered, alpha=0.6, color='red')
@@ -140,7 +144,8 @@ ax.scatter([p.x for p in valid_points], [p.y for p in valid_points], s=5, color=
 ax.set_xlim(0, x_length)
 ax.set_ylim(0, y_length)
 ax.set_aspect('equal')
-# plt.title('Adaptive Halton Sequence Map')
+
+# plt.title('Adaptive Halton Sequence Map', fontsize=16)
 plt.grid(False)
 plt.show()
 

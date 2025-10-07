@@ -130,7 +130,10 @@ def reconstruct_path(prev, start, goal):
     return path
 
 # ----------------- Plotting -----------------
-fig, ax = plt.subplots(figsize=(10, 8))
+fig, ax = plt.subplots(figsize=(8, 8))
+
+# 设置字体大小
+plt.rcParams.update({'font.size': 18})
 
 # Draw walls
 for obs in obstacles:
@@ -182,6 +185,7 @@ ax.add_patch(Rectangle((0, 0), 20, 20, linewidth=2, edgecolor='black', facecolor
 ax.set_xlim(0, 20)
 ax.set_ylim(0, 20)
 ax.set_aspect('equal')
-ax.grid(True)
+ax.tick_params(axis='both', which='major', labelsize=18)
+plt.grid(False)
 plt.tight_layout()
 plt.show()

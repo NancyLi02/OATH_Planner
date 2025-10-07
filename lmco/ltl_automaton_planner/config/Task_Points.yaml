@@ -1,55 +1,46 @@
+# 18 tasks
 task_points:
-
-#11111111111111111111111111111111111111111111
   "1,4": 'bb'
   "6,6": 'cb'
   "1,6.5": 'db'
   "5.5,9.5": 'eb'
   "9,6.5": 'fb'
-  "1,1.5": 'gb'
 
   "1,13.5": 'bc'
   "9,16.5": 'cc'
   "1,16": 'dc'
   "6,13": 'ec'
-  "5,19.5": 'fc'
-  "9,19.5": 'gc'
 
   "11,13.5": 'bd'
   "11,16.5": 'cd'
   "19,16.5": 'dd'
   "19,19": 'ed'
   "15,19.5": 'fd'
-  "19,11": 'gd'
 
   "11,4": 'be'
   "19,6.5": 'ce'
   "16,3": 'de'
   "19,1": 'ee'
-  "11,1.5": 'fe'
-  "19,9.5": 'ge'
-  "11,6.5": 'he'
 
-
-
-
-task_to_delivery:
-  'b': ['bb', 'cb', 'db', 'eb', 'fb', 'gb']
-  'c': ['bc', 'cc', 'dc', 'ec', 'fc', 'gc']
-  'd': ['bd', 'cd', 'dd', 'ed', 'fd', 'gd']
-  'e': ['be', 'ce', 'de', 'ee', 'fe', 'ge', 'he']
-
-
-
-special_labels: ['db', 'eb', 'bb', 'cd', 'fd', 'df', 'ef', 'bf', 'ci', 'fi']
-
+# 4 delivery points
 delivery_points:
   "6,3": 'b'
   "5,16": 'c'
   "16,13": 'd'
   "16,5.5": 'e'
 
+# task to delivery mapping
+task_to_delivery:
+  'b': ['bb', 'cb', 'db']
+  'c': ['bc', 'cc', 'dc', 'ec']
+  'd': ['bd', 'cd', 'dd', 'ed']
+  'e': ['be', 'ce', 'de', 'ee']
 
+# special labels
+special_labels: ['db', 'eb', 'bb', 'cd', 'fd']
+
+
+# robot positions
 robot_positions:
   "robot1": "1,19"
   "robot2": "11,19"
@@ -57,4 +48,5 @@ robot_positions:
   "robot4": "11,9"
 
 
+# special robots
 special_robot: ['robot2', 'robot3']

@@ -42,7 +42,7 @@ class ProdAut(DiGraph):
         # Build initial possible state set from initial state
         self.possible_states = set(self.graph['initial'])
 
-        # rospy.loginfo('LTL Planner: full product constructed with %d states and %s transitions' %(len(self.nodes()), len(self.edges())))
+        print('LTL Planner: full product constructed with %d states and %s transitions' %(len(self.nodes()), len(self.edges())))
 
     def build_full_relaxed(self):
         # Iterate over all TS nodes and buchi nodes
@@ -71,7 +71,7 @@ class ProdAut(DiGraph):
         # Build initial possible state set from initial state
         self.possible_states = set(self.graph['initial'])
 
-        # rospy.loginfo('LTL Planner: full product constructed with %d states and %s transitions' %(len(self.nodes()), len(self.edges())))
+        print('LTL Planner: full relaxed product constructed with %d states and %s transitions' %(len(self.nodes()), len(self.edges())))
     
     # Build required for IRL
     def build_full_margin(self, opt_path):
