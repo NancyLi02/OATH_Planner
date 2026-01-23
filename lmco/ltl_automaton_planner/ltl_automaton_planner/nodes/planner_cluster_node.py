@@ -93,9 +93,12 @@ class MainPlanner(Node):
         # Load the base transition system structure, but the nodes and actions will be populated by build_graph_halton
         self.transition_system = import_ts_from_file(transition_system_textfile)
         # We now generate the graph once at initialization
-        self.nodes, self.actions = build_graph_halton(20, 20, 1000)
+        self.nodes, generated_actions = build_graph_halton(20, 20, 1000)
         self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
-        self.transition_system['actions'].update(self.actions)
+        self.transition_system['actions'].update(generated_actions)
+        # IMPORTANT: self.actions must point to the same object as transition_system['actions']
+        # so that update_graph_with_obstacle() modifications are reflected correctly
+        self.actions = self.transition_system['actions']
 
         self.init_state = self.get_parameter('init_state').value
         self.initial_state_ts_dict = {'2d_pose_region': f'{self.init_state}',
@@ -180,8 +183,9 @@ class MainPlanner(Node):
                 update_graph_with_obstacle(self.nodes, self.actions, obstacle)
             self.pending_obstacles.clear()
             # Update transition system with modified graph
-            self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
-            self.transition_system['actions'].update(self.actions)
+            # Note: self.nodes and self.transition_system['...']['nodes'] should be the same object
+            # Note: self.actions and self.transition_system['actions'] should be the same object
+            # So modifications by update_graph_with_obstacle() are already reflected
             self.get_logger().info(f"[{self.agent_name}] Graph updated with new obstacles for this task round.")
 
         if self.add_point_to_map:

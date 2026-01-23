@@ -45,19 +45,22 @@ def load_lines_from_yaml():
 
 def update_graph_with_obstacle(nodes, actions, new_obstacle_polygon):
     """
-    Locally updates the graph by removing nodes and actions that fall within a new obstacle,
-    and removing edges that intersect with the new obstacle.
+    Locally updates the graph by removing edges that intersect with a new obstacle.
+    Nodes inside the obstacle are NOT deleted - they become isolated (no connections).
+    This avoids complex reference cleanup issues.
     """
-    nodes_to_remove = set()
+    nodes_inside_obstacle = set()
     actions_to_remove = set()
 
-    # Step 1: Identify nodes inside the new obstacle
+    # Step 1: Identify nodes inside the new obstacle (they will become isolated, not deleted)
     for node_id, node_data in nodes.items():
         pose = node_data['attr']['pose']
         if new_obstacle_polygon.contains(Point(pose)):
-            nodes_to_remove.add(node_id)
+            nodes_inside_obstacle.add(node_id)
     
-    # Step 2: Identify edges that intersect the new obstacle
+    # Step 2: Identify ALL edges that need to be removed:
+    #   - Edges that intersect the obstacle
+    #   - Edges connected to nodes inside the obstacle
     for action_name in list(actions.keys()):
         if not action_name.startswith("from_"):
             continue
@@ -67,52 +70,56 @@ def update_graph_with_obstacle(nodes, actions, new_obstacle_polygon):
         except (TypeError, ValueError):
             continue
 
-        if from_idx not in nodes_to_remove and to_idx not in nodes_to_remove:
-            if from_idx in nodes and to_idx in nodes:
-                from_pose = nodes[from_idx]['attr']['pose']
-                to_pose = nodes[to_idx]['attr']['pose']
-                
-                connection = LineString([from_pose, to_pose])
-                
-                if connection.intersects(new_obstacle_polygon):
-                    actions_to_remove.add(action_name)
-                    reverse_action_name = f"from_{to_idx}_to_{from_idx}"
-                    actions_to_remove.add(reverse_action_name)
+        # Case A: Edge connects to a node inside the obstacle -> remove it
+        if from_idx in nodes_inside_obstacle or to_idx in nodes_inside_obstacle:
+            actions_to_remove.add(action_name)
+            continue
+        
+        # Case B: Edge intersects the obstacle -> remove it
+        if from_idx in nodes and to_idx in nodes:
+            from_pose = nodes[from_idx]['attr']['pose']
+            to_pose = nodes[to_idx]['attr']['pose']
+            
+            connection = LineString([from_pose, to_pose])
+            
+            if connection.intersects(new_obstacle_polygon):
+                actions_to_remove.add(action_name)
+                # Also mark the reverse edge for removal
+                reverse_action_name = f"from_{to_idx}_to_{from_idx}"
+                actions_to_remove.add(reverse_action_name)
 
-    if not nodes_to_remove and not actions_to_remove:
+    if not nodes_inside_obstacle and not actions_to_remove:
         print("New obstacle does not conflict with any existing nodes or edges.")
         return
 
-    # Step 3: Consolidate all actions connected to nodes that are being removed
-    for node_id in nodes_to_remove:
-        if node_id in nodes:
-            for action in nodes[node_id]['connected_to'].values():
-                actions_to_remove.add(action)
+    print(f"Obstacle affects {len(nodes_inside_obstacle)} nodes (will become isolated)")
+    print(f"Removing {len(actions_to_remove)} edges/actions")
 
-    # Step 4: Execute removals
-    if nodes_to_remove:
-        print(f"Removing {len(nodes_to_remove)} nodes inside the new obstacle.")
-        for node_id in nodes_to_remove:
-            if node_id in nodes:
-                del nodes[node_id]
-
-    if actions_to_remove:
-        print(f"Removing {len(actions_to_remove)} actions due to conflicts.")
-        for action_name in actions_to_remove:
-            if action_name in actions:
-                del actions[action_name]
+    # Step 3: Delete actions from the actions dictionary
+    for action_name in actions_to_remove:
+        if action_name in actions:
+            del actions[action_name]
+    
+    # Step 4: Update connected_to for ALL nodes (including those inside obstacle)
+    # Nodes inside obstacle will have their connected_to cleared (become isolated)
+    for node_id in list(nodes.keys()):
+        connections_to_pop = []
+        for connected_node_id, action_name in nodes[node_id]['connected_to'].items():
+            # Remove connection if:
+            # - The action was deleted
+            # - The connected node is inside the obstacle
+            # - This node itself is inside the obstacle (clear all its connections)
+            if (action_name in actions_to_remove or 
+                connected_node_id in nodes_inside_obstacle or 
+                node_id in nodes_inside_obstacle):
+                # Keep 'stay' action for isolated nodes so they still have a self-loop
+                if action_name == 'stay' and connected_node_id == node_id:
+                    continue
+                connections_to_pop.append(connected_node_id)
         
-        for node_id in list(nodes.keys()): # Iterate over a copy of the keys
-            if node_id not in nodes: # Check if node still exists
-                continue
-            connections_to_pop = []
-            for connected_node_id, action_name in nodes[node_id]['connected_to'].items():
-                if action_name in actions_to_remove or connected_node_id in nodes_to_remove:
-                    connections_to_pop.append(connected_node_id)
-            
-            for conn_id in connections_to_pop:
-                if conn_id in nodes[node_id]['connected_to']:
-                    del nodes[node_id]['connected_to'][conn_id]
+        for conn_id in connections_to_pop:
+            if conn_id in nodes[node_id]['connected_to']:
+                del nodes[node_id]['connected_to'][conn_id]
 
 # Import TS and action attributes from file
 def import_ts_from_file(transition_system_textfile):
@@ -290,6 +297,11 @@ def state_models_from_ts(TS_dict, initial_states_dict=None, new_task_points=None
         # if they differ from the initial setup. For now, they are hardcoded.
         nodes, actions = build_graph_halton(20, 20, 1000, new_task_points)
         TS_dict['state_models']['2d_pose_region']['nodes'] = nodes
+        # IMPORTANT: First delete all old movement actions, then add new ones
+        # dict.update() only adds/updates keys, it doesn't delete existing keys
+        keys_to_delete = [k for k in TS_dict['actions'] if k.startswith('from_')]
+        for k in keys_to_delete:
+            del TS_dict['actions'][k]
         TS_dict['actions'].update(actions)
     
     # If initial states are given as argument
@@ -320,9 +332,17 @@ def state_models_from_ts(TS_dict, initial_states_dict=None, new_task_points=None
         for node in state_model_dict['nodes']:
             # Go through all connected node
             for connected_node in state_model_dict['nodes'][node]['connected_to']:
+                # Safety check: skip if connected_node was deleted but not cleaned from connected_to
+                if connected_node not in state_model_dict['nodes']:
+                    print(f"Warning: connected_node '{connected_node}' not found in nodes, skipping edge from '{node}'")
+                    continue
                 # Add edge between node and connected node
                 # Get associated action from "connected_to" tag of state node
                 act = TS_dict['state_models'][model_dim]["nodes"][node]['connected_to'][connected_node]
+                # Safety check: skip if action was deleted but not cleaned from connected_to
+                if act not in TS_dict['actions']:
+                    print(f"Warning: action '{act}' not found in actions, skipping edge from '{node}' to '{connected_node}'")
+                    continue
                 # Use action to retrieve weight and guard from action dictionnary
                 act_guard = TS_dict['actions'][act]['guard']
                 act_weight = TS_dict['actions'][act]['weight']

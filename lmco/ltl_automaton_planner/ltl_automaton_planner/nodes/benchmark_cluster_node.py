@@ -222,10 +222,12 @@ class LTLControllerDrone(Node):
         self.declare_parameter('init_state', 0)
         self.init_pose = self.get_parameter('init_state').value
 
-        self.nodes, self.actions = build_graph_halton(20, 20, 1000)
+        self.nodes, generated_actions = build_graph_halton(20, 20, 1000)
         
         self.transition_system ['state_models']['2d_pose_region']['nodes'] = self.nodes
-        self.transition_system ['actions'].update(self.actions)
+        self.transition_system ['actions'].update(generated_actions)
+        # IMPORTANT: self.actions must point to the same object as transition_system['actions']
+        self.actions = self.transition_system['actions']
 
         self.mode = EquipmentMode.UNLOADED
         self.total_cost = 0
@@ -521,9 +523,14 @@ class LTLControllerDrone(Node):
             for point, label in self.new_task_points:
                 self.task_points[point] = label
             # Rebuild the transition system with the new points
-            self.nodes, self.actions = build_graph_halton(20, 20, 1000, self.new_task_points)
+            self.nodes, generated_actions = build_graph_halton(20, 20, 1000, self.new_task_points)
             self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
-            self.transition_system['actions'].update(self.actions)
+            # Clear old movement actions and add new ones
+            keys_to_delete = [k for k in self.transition_system['actions'] if k.startswith('from_')]
+            for k in keys_to_delete:
+                del self.transition_system['actions'][k]
+            self.transition_system['actions'].update(generated_actions)
+            self.actions = self.transition_system['actions']
             self.get_logger().info("Transition system and task points updated.")
             # Clear the list after updating
             self.new_task_points.clear()
