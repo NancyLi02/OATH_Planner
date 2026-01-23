@@ -1,5 +1,6 @@
 import os
 import json
+import math
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -9,6 +10,45 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def expand_line_to_rectangle(vertices, thickness=0.2):
+    """
+    If vertices define a line segment (2 points), expand it to a rectangle with given thickness.
+    For example: [[7, 5], [8, 5]] with thickness 0.2 becomes a rectangle:
+    [[7, 4.9], [8, 4.9], [8, 5.1], [7, 5.1]]
+    """
+    if len(vertices) != 2:
+        return vertices  # Not a line segment, return as-is
+    
+    p1 = vertices[0]
+    p2 = vertices[1]
+    
+    # Direction vector from p1 to p2
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    
+    # Length of the line
+    length = math.sqrt(dx * dx + dy * dy)
+    if length < 1e-6:
+        return vertices  # Points are the same, can't create rectangle
+    
+    # Normalized perpendicular vector (rotate 90 degrees)
+    # Perpendicular to (dx, dy) is (-dy, dx)
+    perp_x = -dy / length
+    perp_y = dx / length
+    
+    # Half thickness offset
+    offset = thickness / 2.0
+    
+    # Create 4 corners of the rectangle
+    # Order: counter-clockwise to form a proper polygon
+    corner1 = [p1[0] - perp_x * offset, p1[1] - perp_y * offset]  # p1 - offset
+    corner2 = [p2[0] - perp_x * offset, p2[1] - perp_y * offset]  # p2 - offset
+    corner3 = [p2[0] + perp_x * offset, p2[1] + perp_y * offset]  # p2 + offset
+    corner4 = [p1[0] + perp_x * offset, p1[1] + perp_y * offset]  # p1 + offset
+    
+    return [corner1, corner2, corner3, corner4]
 
 class LLMCommandParserNode(Node):
     def __init__(self):
@@ -75,6 +115,13 @@ class LLMCommandParserNode(Node):
                 elif intent == "obstacle_update":
                     msg_out = ObstacleUpdate()
                     obstacle_vertices = parameters.get("obstacle_location", [(0.0, 0.0)])
+                    
+                    # If only 2 points (a line segment), expand to rectangle with thickness 0.2
+                    if len(obstacle_vertices) == 2:
+                        self.get_logger().info(f'Detected line segment wall: {obstacle_vertices}')
+                        obstacle_vertices = expand_line_to_rectangle(obstacle_vertices, thickness=0.2)
+                        self.get_logger().info(f'Expanded to rectangle: {obstacle_vertices}')
+                    
                     flattened_coords = []
                     for vertex in obstacle_vertices:
                         if isinstance(vertex, (list, tuple)) and len(vertex) >= 2:

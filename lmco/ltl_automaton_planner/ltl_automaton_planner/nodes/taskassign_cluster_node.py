@@ -1114,9 +1114,17 @@ class TaskAssignNode(Node):
             )
             self.cluster_gamma = []
             self.cluster_types = []
+            
+            # Clear and rebuild cluster_task_labels and cluster_delivery_labels for new clusters
+            self.cluster_task_labels = {}
+            self.cluster_delivery_labels = {}
+            
             for i, (center, points) in enumerate(zip(self.cluster_centers, self.cluster_points)):
                 normal_count = 0
                 special_count = 0
+                task_labels = []
+                delivery_labels = []
+                
                 for coord in points:
                     for point_coord, label in self.points_with_label.items():
                         if abs(point_coord[0] - coord[0]) < 1e-6 and abs(point_coord[1] - coord[1]) < 1e-6:
@@ -1124,7 +1132,14 @@ class TaskAssignNode(Node):
                                 special_count += 1
                             else:
                                 normal_count += 1
+                            # Build task and delivery labels for this cluster
+                            task_labels.append(label)
+                            if label in self.task_to_delivery:
+                                delivery_labels.append(self.task_to_delivery[label])
+                            else:
+                                delivery_labels.append(None)
                             break
+                
                 gamma_param = (special_count + 0.1) / (normal_count + 0.1)
                 self.cluster_gamma.append(gamma_param)
                 if normal_count > 0 and special_count > 0:
@@ -1134,6 +1149,11 @@ class TaskAssignNode(Node):
                 else:
                     cluster_type = 'normal'
                 self.cluster_types.append(cluster_type)
+                
+                # Store task and delivery labels for this cluster
+                self.cluster_task_labels[i] = task_labels
+                self.cluster_delivery_labels[i] = delivery_labels
+                
             self.valid_cluster = [1] * len(self.cluster_centers)
         else:
             self.cluster_centers = []
@@ -1141,6 +1161,8 @@ class TaskAssignNode(Node):
             self.cluster_gamma = []
             self.cluster_types = []
             self.valid_cluster = []
+            self.cluster_task_labels = {}
+            self.cluster_delivery_labels = {}
 
 def main(args=None):
     rclpy.init(args=args)

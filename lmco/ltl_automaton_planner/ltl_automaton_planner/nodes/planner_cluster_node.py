@@ -116,6 +116,10 @@ class MainPlanner(Node):
         self.persistent_modified_edges = set()
         self.processed_obstacles = set()
         self.no_more_tasks = False  # Flag to track if no more tasks are available
+        
+        # Store new obstacles for deferred processing (to be applied in next task round)
+        self.pending_obstacles = []
+        
         self.obstacle_update_sub = self.create_subscription(
             ObstacleUpdate,
             'obstacle_update',
@@ -167,13 +171,24 @@ class MainPlanner(Node):
 
     
     def build_and_run_automaton(self, ltl_formula, initial_state_ts_dict):
-        self.get_logger().info(f"Building and running automaton for {self.agent_name}.")
+        self.get_logger().info(f"[{self.agent_name}] Building and running automaton.")
+
+        # Apply any pending obstacles from previous round to the graph
+        if self.pending_obstacles:
+            self.get_logger().info(f"[{self.agent_name}] Applying {len(self.pending_obstacles)} pending obstacles to graph for new task round...")
+            for obstacle in self.pending_obstacles:
+                update_graph_with_obstacle(self.nodes, self.actions, obstacle)
+            self.pending_obstacles.clear()
+            # Update transition system with modified graph
+            self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
+            self.transition_system['actions'].update(self.actions)
+            self.get_logger().info(f"[{self.agent_name}] Graph updated with new obstacles for this task round.")
 
         if self.add_point_to_map:
             self.add_point_to_map = False
-            self.get_logger().info(f"New task points: {self.new_task_points} appear, start updating map......")
+            self.get_logger().info(f"[{self.agent_name}] New task points: {self.new_task_points} appear, start updating map......")
             state_models = state_models_from_ts(self.transition_system, initial_state_ts_dict, self.new_task_points)
-            self.get_logger().info(f"Finish updating map, building new automaton......")
+            self.get_logger().info(f"[{self.agent_name}] Finish updating map, building new automaton......")
         else:
             state_models = state_models_from_ts(self.transition_system, initial_state_ts_dict, self.new_task_points)
 
@@ -303,16 +318,16 @@ class MainPlanner(Node):
     def obstacle_update_callback(self, msg):
         obstacle_key = tuple(msg.obstacle_location)
         if obstacle_key in self.processed_obstacles:
-            self.get_logger().info(f"Ignoring duplicate obstacle update for location: {msg.obstacle_location}")
+            self.get_logger().info(f"[{self.agent_name}] Ignoring duplicate obstacle update for location: {msg.obstacle_location}")
             return
 
-        self.get_logger().info(f"Received obstacle update: {msg.obstacle_type} at {msg.obstacle_location}")
+        self.get_logger().info(f"[{self.agent_name}] Received obstacle update: {msg.obstacle_type} at {msg.obstacle_location}")
         self.processed_obstacles.add(obstacle_key)
         
         # Convert flattened coordinates back to list of tuples
         coords_flat = msg.obstacle_location
         if len(coords_flat) % 2 != 0:
-            self.get_logger().error("Received obstacle with an odd number of coordinates.")
+            self.get_logger().error(f"[{self.agent_name}] Received obstacle with an odd number of coordinates.")
             return
         
         vertices = []
@@ -321,18 +336,15 @@ class MainPlanner(Node):
 
         if msg.obstacle_type == 'wall' or msg.obstacle_type == 'block':
             new_obstacle = Polygon(vertices)
-            add_block_polygon(vertices) # For visualization consistency
             
-            # Update the main transition system in memory
-            update_graph_with_obstacle(self.nodes, self.actions, new_obstacle)
-            self.get_logger().info("Planner's main graph (nodes and actions) updated locally.")
-
-            # Silently rebuild the current automaton in the background if a task is active
-            # This readies the planner for a replan request without sending a new plan preemptively.
-            if hasattr(self, 'ltl_planner') and self.current_ltl_formula:
-                self.get_logger().info("Silently rebuilding planner automaton with updated map...")
-                self.build_and_run_automaton(self.current_ltl_formula, self.initial_state_ts_dict)
-                self.get_logger().info("Planner ready for potential replan requests on updated map.")
+            # Store the obstacle for next task round (deferred graph update)
+            # Do NOT update the graph immediately - let the robot finish current task round
+            self.pending_obstacles.append(new_obstacle)
+            self.get_logger().info(f"[{self.agent_name}] Stored new obstacle for next task round. Graph will be updated when new task is assigned.")
+            
+            # Note: We don't rebuild the automaton here. The benchmark_cluster_node will
+            # send a replan request if the current path is blocked, and the planner will
+            # handle it via the replanning_delete_callback.
 
     def assign_new_task(self, msg):
         # Update current robot pose
@@ -595,27 +607,31 @@ class MainPlanner(Node):
 
     def replanning_modify_callback(self, task_replanning_req):
         if task_replanning_req:
-            # self.get_logger().info("Replanning [modify] Callback")
+            self.get_logger().info(f"[{self.agent_name}] Replanning [Modify] Callback for edge {task_replanning_req.from_pose} -> {task_replanning_req.to_pose}")
             update_info = dict()
             update_info["modified"] = set()
             update_info["deleted"] = set()
             update_info["relabel"] = set()
             # TODO: check both from_pose and to_pose have only two elements
             # change position in tuple to ts node of the format ('c0_r5', 'unloaded')
+            edges_found = 0
             for node in self.ltl_planner.product.graph['ts'].nodes():
                 if tuple(task_replanning_req.from_pose) == self.nodes[node[0]]['attr']['pose']:
                     for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.to_pose) == self.nodes[succ_node[0]]['attr']['pose']:
                             update_info["modified"].add((node, succ_node, task_replanning_req.cost))
                             self.persistent_modified_edges.add((node, succ_node, task_replanning_req.cost))
+                            edges_found += 1
                 if tuple(task_replanning_req.to_pose) == self.nodes[node[0]]['attr']['pose']:
                     for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.from_pose) == self.nodes[succ_node[0]]['attr']['pose']:
                             update_info["modified"].add((node, succ_node, task_replanning_req.cost))
                             self.persistent_modified_edges.add((node, succ_node, task_replanning_req.cost))
-            # print(update_info["modified"])
+                            edges_found += 1
+            
+            self.get_logger().info(f"[{self.agent_name}] Found {edges_found} edges to modify in product automaton")
+            
             modified_edges_dict = self.ltl_planner.revise_product(update_info)
-            # self.get_logger().info("Finished revise")
             
             success = False
             if self.algo_type == 'dstar' or self.algo_type =="dstar-relaxed":
@@ -628,7 +644,13 @@ class MainPlanner(Node):
                 if self.ltl_planner.dijkstra_rewire(task_replanning_req.exec_index):
                     success = True
             
-            self._publish_replan_response(self.ltl_planner.run)
+            if success:
+                self.get_logger().info(f"[{self.agent_name}] Local replanning succeeded. Publishing new plan.")
+            else:
+                self.get_logger().error(f"[{self.agent_name}] Local replanning FAILED.")
+            
+            # Pass the actual success status to the response
+            self._publish_replan_response(self.ltl_planner.run, success=success)
             return
             
         self.get_logger().error("Error in replanning modify callback")
@@ -637,27 +659,34 @@ class MainPlanner(Node):
         
     def replanning_delete_callback(self, task_replanning_req):
         if task_replanning_req:
-            # self.get_logger().info("Replanning [Delete] Callback")
+            self.get_logger().info(f"[{self.agent_name}] Replanning [Delete] Callback for edge {task_replanning_req.from_pose} -> {task_replanning_req.to_pose}")
             update_info = dict()
             update_info["modified"] = set()
             update_info["deleted"] = set()
             update_info["relabel"] = set()
             # TODO: check both from_pose and to_pose have only two elements
             # change position in tuple to ts node of the format ('c0_r5', 'unloaded')
+            edges_found = 0
             for node in self.ltl_planner.product.graph['ts'].nodes():
                 if tuple(task_replanning_req.from_pose) == self.nodes[node[0]]['attr']['pose']:
                     for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.to_pose) == self.nodes[succ_node[0]]['attr']['pose'] :
                             update_info["deleted"].add((node, succ_node))
                             self.persistent_deleted_edges.add((node, succ_node))
+                            edges_found += 1
                 if tuple(task_replanning_req.to_pose) == self.nodes[node[0]]['attr']['pose']:
                     for succ_node in self.ltl_planner.product.graph['ts'].successors(node):
                         if tuple(task_replanning_req.from_pose) == self.nodes[succ_node[0]]['attr']['pose']:
                             update_info["deleted"].add((node, succ_node))
                             self.persistent_deleted_edges.add((node, succ_node))
-            # print(update_info["deleted"])
+                            edges_found += 1
+            
+            self.get_logger().info(f"[{self.agent_name}] Found {edges_found} edges to delete in product automaton")
+            
+            if edges_found == 0:
+                self.get_logger().warn(f"[{self.agent_name}] No matching edges found for deletion. Replanning may fail.")
+            
             modified_edges_dict = self.ltl_planner.revise_product(update_info)
-            # self.get_logger().info("finished revise")
             
             success = False
             if self.algo_type == 'dstar' or self.algo_type =="dstar-relaxed":
@@ -669,9 +698,14 @@ class MainPlanner(Node):
             elif self.algo_type == 'brute-force' or self.algo_type == "relaxed":
                 if self.ltl_planner.dijkstra_rewire(task_replanning_req.exec_index):
                     success = True
-            # self.get_logger().info("finished revise successfully")
             
-            self._publish_replan_response(self.ltl_planner.run)
+            if success:
+                self.get_logger().info(f"[{self.agent_name}] Local replanning succeeded. Publishing new plan.")
+            else:
+                self.get_logger().error(f"[{self.agent_name}] Local replanning FAILED. No alternative path found.")
+            
+            # Pass the actual success status to the response
+            self._publish_replan_response(self.ltl_planner.run, success=success)
             return
             
         self.get_logger().error("Error in replanning delete callback")

@@ -302,8 +302,7 @@ class LTLControllerDrone(Node):
             
         self.get_logger().info(f"Received obstacle update: {msg.obstacle_type} at {msg.obstacle_location}")
         self.processed_obstacles.add(obstacle_key)
-        self.world.block.clear()
-        self.world.bump.clear()
+        # Don't clear world.block and world.bump here - let them accumulate for visualization
 
         # Convert flattened coordinates back to list of tuples
         coords_flat = msg.obstacle_location
@@ -317,51 +316,133 @@ class LTLControllerDrone(Node):
 
         if msg.obstacle_type == 'wall' or msg.obstacle_type == 'block':
             new_obstacle = Polygon(vertices)
-            # add_block_polygon(vertices) # For visualization consistency
-            update_graph_with_obstacle(self.nodes, self.actions, new_obstacle)
-            self.get_logger().info("Graph updated locally. Checking current path for collision.")
-            self.check_path_for_new_obstacle()
+            # Add obstacle to BLOCK_POLYGONS so check_in_block() in next_move() can detect it
+            # This ensures the robot won't walk through even if replan fails
+            add_block_polygon(vertices)
+            # Also store the obstacle for the current path check
+            self.get_logger().info("New wall obstacle received. Added to BLOCK_POLYGONS. Checking current path for collision...")
+            self.check_path_for_new_obstacle(new_obstacle)
         elif msg.obstacle_type == 'bush' or msg.obstacle_type == 'bump':
             add_bump_polygon(vertices)
             self.get_logger().info("New bump obstacle added.")
             # Bumps add cost, but don't block, so we might not need to replan immediately unless the path becomes too costly
             # Or we can just let the existing bump logic handle it on the next move.
         
-    def check_path_for_new_obstacle(self):
+    def check_path_for_new_obstacle(self, new_obstacle_polygon):
+        """
+        Check if current path passes through the new obstacle.
+        If YES: request local replanning via RelayRequest (similar to block detection in next_move)
+        If NO: keep current plan and continue
+        
+        The graph update will happen in the NEXT task round.
+        """
         # We need to check if the current or upcoming path segment is now blocked.
-        # This checks the entire remaining prefix plan.
-        if (len(self.prefix_action_list) == 0):
+        if len(self.prefix_action_list) == 0 and len(self.suffix_action_list) == 0:
+            self.get_logger().info("No active plan. New obstacle will be applied in next task round.")
             return
 
-        plan_is_valid = True
+        # Check prefix plan
+        affected_action = None
+        affected_index = -1
+        
         for i in range(self.plan_index, len(self.prefix_action_list)):
             action_to_check = self.prefix_action_list[i]
 
             if not str(action_to_check).startswith("from_"):
                 continue
 
-            # Check if the action itself has been removed from the graph
-            if action_to_check not in self.actions:
-                self.get_logger().warn(f"Path invalidated: Action '{action_to_check}' no longer exists in the graph.")
-                plan_is_valid = False
-                break
-            
-            # Legacy check for nodes (belt-and-suspenders)
+            # Check if this action's path intersects with the new obstacle
             from_idx, to_idx = extract_numbers(str(action_to_check))
             if str(from_idx) not in self.nodes or str(to_idx) not in self.nodes:
-                self.get_logger().warn(f"Path invalidated: Node for action '{action_to_check}' was removed.")
-                plan_is_valid = False
+                continue
+                
+            from_pose = self.nodes[str(from_idx)]['attr']['pose']
+            to_pose = self.nodes[str(to_idx)]['attr']['pose']
+            
+            # Create a line segment for this action
+            action_line = LineString([from_pose, to_pose])
+            
+            # Check if this line intersects the new obstacle
+            if action_line.intersects(new_obstacle_polygon):
+                self.get_logger().warn(f"Path affected: Action '{action_to_check}' intersects with new obstacle.")
+                affected_action = action_to_check
+                affected_index = i
                 break
         
-        if not plan_is_valid:
-            self.get_logger().info("Current plan is no longer valid due to new obstacle. Requesting new task assignment.")
-            # Stop current movement and request a new plan/task from the central planner
+        # Also check suffix plan if prefix is not affected
+        if affected_action is None and len(self.suffix_action_list) > 0:
+            suffix_start = max(0, self.plan_index - len(self.prefix_action_list))
+            for i in range(suffix_start, len(self.suffix_action_list)):
+                action_to_check = self.suffix_action_list[i]
+                
+                if not str(action_to_check).startswith("from_") and not str(action_to_check).startswith("goto"):
+                    continue
+                
+                from_idx, to_idx = extract_numbers(str(action_to_check))
+                if from_idx is None or to_idx is None:
+                    continue
+                if str(from_idx) not in self.nodes or str(to_idx) not in self.nodes:
+                    continue
+                    
+                from_pose = self.nodes[str(from_idx)]['attr']['pose']
+                to_pose = self.nodes[str(to_idx)]['attr']['pose']
+                
+                action_line = LineString([from_pose, to_pose])
+                
+                if action_line.intersects(new_obstacle_polygon):
+                    self.get_logger().warn(f"Suffix path affected: Action '{action_to_check}' intersects with new obstacle.")
+                    affected_action = action_to_check
+                    affected_index = len(self.prefix_action_list) + i
+                    break
+        
+        if affected_action is None:
+            self.get_logger().info("Current path is NOT affected by new obstacle. Continuing with current plan.")
+            self.get_logger().info("New obstacle will be applied in next task round.")
+            return
+        
+        # Path IS affected - request local replanning via RelayRequest
+        self.get_logger().info(f"Current path IS affected by new obstacle at action index {affected_index}. Requesting local replan...")
+        self.get_logger().info(f"Current robot position: pose={self.pose}, pose_index={self.pose_index}, plan_index={self.plan_index}")
+        
+        # Get the affected edge's from/to poses
+        from_idx, to_idx = extract_numbers(str(affected_action))
+        from_pose = self.nodes[str(from_idx)]['attr']['pose']
+        to_pose = self.nodes[str(to_idx)]['attr']['pose']
+        
+        # Determine the current state for replanning - use self.plan_index (current robot position)
+        # NOT affected_index (where the blocked action is)
+        if self.plan_index < len(self.prefix_state_sequence):
+            current_state = self.prefix_state_sequence[self.plan_index]
+        elif len(self.suffix_state_sequence) > 0:
+            suffix_idx = (self.plan_index - len(self.prefix_action_list)) % len(self.suffix_state_sequence)
+            current_state = self.suffix_state_sequence[suffix_idx]
+        else:
+            # Fallback: use the last available state
+            current_state = self.prefix_state_sequence[-1] if self.prefix_state_sequence else None
+            if current_state is None:
+                self.get_logger().error("No valid state for replanning!")
+                return
+        
+        # IMPORTANT: Save current pose before requesting replan
+        # This ensures relay_callback resets to the correct position (not some old position)
+        self.previous_pose = self.pose
+        self.previous_pose_index = self.pose_index
+        
+        # Send replanning request (type "delete" to remove the blocked edge)
+        # exec_index should be self.plan_index (current robot position), NOT affected_index
+        try: 
             self.on_hold = True
-            # Clearing the plan will prevent further movement and the logic will naturally
-            # lead to a new task request after the current (now empty) plan is "finished".
-            self.prefix_action_list = []
-            self.suffix_action_list = []
-            self.publish_task_request()
+            publish_msg = RelayRequest()
+            publish_msg.type = "delete"
+            publish_msg.current_state = current_state
+            publish_msg.from_pose.extend(list(from_pose))
+            publish_msg.to_pose.extend(list(to_pose))
+            publish_msg.exec_index = self.plan_index  # Use current position, not affected action index
+            publish_msg.cost = 0.0
+            self.relay_pub.publish(publish_msg)
+            self.get_logger().info(f"Published local replan request for obstacle-blocked edge from {from_pose} to {to_pose}, exec_index={self.plan_index}")
+        except Exception as e:
+            self.get_logger().error(f'Failed to publish replan request: {e}')
 
 
     def add_task_callback(self, msg):
@@ -480,14 +561,26 @@ class LTLControllerDrone(Node):
         # self.suffix_action_list = [(int(s.split('c')[1]), int(s.split('r')[1])) for s in action_seq]
         
     def relay_callback(self, msg):
-        # self.get_logger().info("receive relay sub")
+        self.get_logger().info(f"[{self.agent_name}] Received replanning response. Success: {msg.success}")
         self.pose = self.previous_pose
+        self.pose_index = self.previous_pose_index
         if msg.success:
             self.prefix_action_list = msg.new_plan_prefix.action_sequence
             self.prefix_state_sequence = msg.new_plan_prefix.ts_state_sequence
             self.suffix_action_list = msg.new_plan_suffix.action_sequence
             self.suffix_state_sequence = msg.new_plan_suffix.ts_state_sequence
+            # NOTE: Do NOT reset plan_index! The replanning returns a modified plan
+            # where actions before plan_index stay the same, only future actions change.
             self.on_hold = False
+            self.get_logger().info(f"[{self.agent_name}] Local replanning succeeded. Resuming with new plan at index {self.plan_index}.")
+        else:
+            # Local replanning failed - no alternative path found
+            # Fall back to requesting a new task assignment
+            self.get_logger().warn(f"[{self.agent_name}] Local replanning FAILED. Requesting new task assignment as fallback.")
+            self.prefix_action_list = []
+            self.suffix_action_list = []
+            self.on_hold = True
+            self.publish_task_request()
 
     def status_callback(self, msg):
         self.sim_arrived = msg.arrived
@@ -529,13 +622,15 @@ class LTLControllerDrone(Node):
                             self.act = 'g'
                             for pt, label in self.task_points.items():
                                 if abs(self.pose[0] - pt[0]) < 1e-6 and abs(self.pose[1] - pt[1]) < 1e-6:
-                                    self.mode = EquipmentMode.LOADED
-                                    msg = UpdateValidTasks()
-                                    msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
-                                    msg.loaded_task = label
-                                    self.update_valid_tasks_pub.publish(msg)
-                                    self.act = 'l'
-                                    # self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
+                                    # Only publish UpdateValidTasks if this task is in the assigned task list
+                                    if hasattr(self, 'cur_task_list') and label in self.cur_task_list:
+                                        self.mode = EquipmentMode.LOADED
+                                        msg = UpdateValidTasks()
+                                        msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
+                                        msg.loaded_task = label
+                                        self.update_valid_tasks_pub.publish(msg)
+                                        self.act = 'l'
+                                        # self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
                                     break
                             # self.get_logger().info(f"previous pose: {self.previous_pose}")
                             # self.get_logger().info(f"pose: {self.pose}")
@@ -694,13 +789,15 @@ class LTLControllerDrone(Node):
                         elif str(act) == "load":
                             for pt, label in self.task_points.items():
                                 if abs(self.pose[0] - pt[0]) < 1e-6 and abs(self.pose[1] - pt[1]) < 1e-6:
-                                    self.mode = EquipmentMode.LOADED
-                                    msg = UpdateValidTasks()
-                                    msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
-                                    msg.loaded_task = label
-                                    self.update_valid_tasks_pub.publish(msg)
-                                    self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
-                                    self.act = 'l'
+                                    # Only publish UpdateValidTasks if this task is in the assigned task list
+                                    if hasattr(self, 'cur_task_list') and label in self.cur_task_list:
+                                        self.mode = EquipmentMode.LOADED
+                                        msg = UpdateValidTasks()
+                                        msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
+                                        msg.loaded_task = label
+                                        self.update_valid_tasks_pub.publish(msg)
+                                        self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
+                                        self.act = 'l'
                                     break
                             self.previous_pose = self.pose
                             self.previous_pose_index = self.pose_index
@@ -832,7 +929,7 @@ class LTLControllerDrone(Node):
                 # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
             elif self.mode == EquipmentMode.NOTASK:
                 mode = 'NoTask'
-                self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
+                # self.get_logger().info(f"================Total Plan Index is {self.total_plan_index}.================")
             elif self.mode == EquipmentMode.FAIL:
                 mode = 'Fail'
 

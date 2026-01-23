@@ -1,0 +1,61 @@
+id,instruction,gt_intent,clarity
+1,"There is a new delivery task at location (4.5, 12.0). Please deliver it to point B.",add_task,clear
+2,"Add a new inspection task at coordinates (7, 9) and send the result to station D.",add_task,clear
+3,"A special task appears at (15.2, 3.8). Take it to room C.",add_task,clear
+4,"Please create a new task at location (6, 18) with delivery destination E.",add_task,clear
+5,"There is an additional pickup task at (2, 11). Deliver it to point A.",add_task,clear
+6,"Add a new task located at (9.5, 14.1) and mark it as a delivery task to room B.",add_task,clear
+7,"A new urgent task shows up at coordinates (12, 6). Bring it to location D.",add_task,clear
+8,"Please register a new task at (3, 7.5) and deliver it to room E.",add_task,clear
+9,"There is a newly detected task at (10, 10). Assign it to delivery point C.",add_task,clear
+10,"Create a new task at (5, 16) and send it to room B.",add_task,clear
+11,"There is something new that needs to be handled near (8, 13).",add_task,ambiguous
+12,"We just found another thing to take care of around coordinate (6, 9).",add_task,ambiguous
+13,"A new job popped up close to room C.",add_task,ambiguous
+14,"There is an extra request coming from the area near (11, 4).",add_task,ambiguous
+15,"Something new appeared on the map near point D.",add_task,ambiguous
+16,"We need to deal with an additional task close to the eastern corridor.",add_task,ambiguous
+17,"There is a new situation near (7, 15) that needs attention.",add_task,ambiguous
+18,"A new assignment just came in near the entrance.",add_task,ambiguous
+19,"Another task seems to have appeared near room B.",add_task,ambiguous
+20,"There is a newly discovered task close to the north side of the map.",add_task,ambiguous
+21,"A wall has been detected between points (7, 5), (8, 5), (8, 4.8), and (7, 4.8).",obstacle_update,clear
+22,"There is a new obstacle blocking the corridor at coordinates (10, 9) to (10, 11).",obstacle_update,clear
+23,"Please update the map with a wall located at [(3, 6), (4, 6), (4, 7), (3, 7)].",obstacle_update,clear
+24,"An obstacle has appeared near (12, 14), please avoid this area.",obstacle_update,clear
+25,"A barrier was detected along the hallway from (5, 2) to (5, 6).",obstacle_update,clear
+26,"There is a newly detected wall near the entrance of room C.",obstacle_update,clear
+27,"Please add an obstacle at coordinates [(9, 9), (10, 9), (10, 10), (9, 10)].",obstacle_update,clear
+28,"A blockage has been observed near (14, 3).",obstacle_update,clear
+29,"A wall is now present near the passage connecting rooms B and D.",obstacle_update,clear
+30,"Update the environment with a newly detected obstacle at (6, 12).",obstacle_update,clear
+31,"Something is blocking the way near room A.",obstacle_update,ambiguous
+32,"The path near the center does not seem passable anymore.",obstacle_update,ambiguous
+33,"There is an issue near the corridor, robots should not go there.",obstacle_update,ambiguous
+34,"The area around (8, 8) looks unsafe now.",obstacle_update,ambiguous
+35,"Movement near the west side might be restricted.",obstacle_update,ambiguous
+36,"The robots should avoid the narrow passage near room D.",obstacle_update,ambiguous
+37,"The path we used before is no longer clear.",obstacle_update,ambiguous
+38,"There might be an obstruction close to the storage area.",obstacle_update,ambiguous
+39,"That route near point C is not available anymore.",obstacle_update,ambiguous
+40,"The corridor close to the entrance should be avoided.",obstacle_update,ambiguous
+41,"Please make task \"bd\" the highest priority.",change_task_priority,clear
+42,"Change the priority of task \"cd\" to high.",change_task_priority,clear
+43,"Task \"af\" should be completed before all others.",change_task_priority,clear
+44,"Lower the priority of task \"eg\".",change_task_priority,clear
+45,"Please prioritize task \"dc\" over the remaining tasks.",change_task_priority,clear
+46,"Task \"bb\" should be handled first.",change_task_priority,clear
+47,"Increase the priority of task \"ac\".",change_task_priority,clear
+48,"Task \"de\" is urgent and should be done earlier.",change_task_priority,clear
+49,"Please mark task \"cf\" as high priority.",change_task_priority,clear
+50,"Reorder the tasks so that \"ab\" is executed first.",change_task_priority,clear
+51,"Please do task \"cd\" first.",change_task_priority,ambiguous
+52,"Focus on \"bd\" before anything else.",change_task_priority,ambiguous
+53,"That task near room C should be handled earlier.",change_task_priority,ambiguous
+54,"Make sure the task at point B is done first.",change_task_priority,ambiguous
+55,"The delivery to room D is more important now.",change_task_priority,ambiguous
+56,"Finish the inspection near room A as soon as possible.",change_task_priority,ambiguous
+57,"The task close to the entrance should go first.",change_task_priority,ambiguous
+58,"Handle the task near (6, 10) before the others.",change_task_priority,ambiguous
+59,"That one near room E is urgent.",change_task_priority,ambiguous
+60,"Please take care of the task near room B first.",change_task_priority,ambiguous

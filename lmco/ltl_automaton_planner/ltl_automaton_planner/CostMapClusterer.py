@@ -12,7 +12,7 @@ import heapq
 class CostMapClusterer:
     def __init__(self, points_with_label, wall_yaml_path,
                  map_bounds=(0, 0, 20, 20),
-                 num_clusters=4,
+                 num_clusters=None,
                  halton_points_csv=None, wall_thick=0.1,
                  precomputed_distances_csv=None):
         self.points_with_label = points_with_label

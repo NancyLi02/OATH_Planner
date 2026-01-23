@@ -186,6 +186,14 @@ class ShowMoveNode(Node):
         self.timing_completed = False 
         self.get_logger().info(f"Start timing at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.start_time))}")
 
+        # Dictionary to store waypoint history for each robot
+        # Format: {'robot_id': [[x1, y1], [x2, y2], ...]}
+        self.robot_waypoints = {}
+        self.waypoints_saved = False
+        # Save to package share directory (install/ltl_automaton_planner/share/ltl_automaton_planner/config/)
+        self.waypoints_file = os.path.join(package_share, 'config', 'robot_waypoints.yaml')
+        self.get_logger().info(f"📁 Waypoints will be saved to: {os.path.abspath(self.waypoints_file)}")
+
         # Create subscribers for each robot topic (e.g., "/robot1/show_position")
         for robot_id in self.robot_ids:
             topic = f"/{robot_id}/show_position"
@@ -277,6 +285,10 @@ class ShowMoveNode(Node):
                 self.get_logger().info(f"   Total Time: {total_time:.2f} seconds")
                 self.get_logger().info(f"   Robot number: {len(self.robot_ids)}")
                 self.get_logger().info("="*60)
+                
+                # Save waypoints when all tasks are completed
+                # self.save_waypoints_to_yaml()
+                
                 return True
         return False
 
@@ -331,6 +343,11 @@ class ShowMoveNode(Node):
         if msg.task_type == "special":
             self.special_labels.add(label)
         
+        # Remove from finished_tasks if exists (this is a new task, should not be marked as finished)
+        if label in self.finished_tasks:
+            self.finished_tasks.discard(label)
+            self.get_logger().info(f"Removed '{label}' from finished_tasks as it's a new task")
+        
 
     
     def task_fail_callback(self, msg):
@@ -361,8 +378,71 @@ class ShowMoveNode(Node):
         # Use lock to ensure thread-safe update of shared data
         with self.lock:
             self.robot_positions[msg.robot_id] = {'pose': pos, 'mode': color}
+            
+            # Record waypoint for this robot
+            self._record_waypoint(msg.robot_id, pos)
+            
             self.check_all_robots_notask()
         # self.get_logger().info(f"Received {msg.robot_id}: position {pos}, mode {msg.mode}")
+
+    def _record_waypoint(self, robot_id, pos):
+        """
+        Record the waypoint for a robot. Only adds if position has changed significantly.
+        """
+        # Convert pos to list format [x, y]
+        waypoint = [float(pos[0]), float(pos[1])]
+        
+        # Initialize list for this robot if not exists
+        if robot_id not in self.robot_waypoints:
+            self.robot_waypoints[robot_id] = []
+        
+        # Only add if this is a new position (avoid duplicates)
+        if len(self.robot_waypoints[robot_id]) == 0:
+            self.robot_waypoints[robot_id].append(waypoint)
+        else:
+            last_waypoint = self.robot_waypoints[robot_id][-1]
+            # Check if position has changed (with small tolerance to avoid floating point issues)
+            distance = ((waypoint[0] - last_waypoint[0])**2 + (waypoint[1] - last_waypoint[1])**2)**0.5
+            if distance > 0.01:  # Only record if moved more than 0.01 units
+                self.robot_waypoints[robot_id].append(waypoint)
+
+    def save_waypoints_to_yaml(self):
+        """
+        Save all recorded robot waypoints to a YAML file.
+        """
+        if self.waypoints_saved:
+            return
+        
+        self.waypoints_saved = True
+        
+        # Prepare data in the required format
+        waypoints_data = {}
+        for robot_id in sorted(self.robot_waypoints.keys()):
+            waypoints_data[robot_id] = self.robot_waypoints[robot_id]
+        
+        # Write to YAML file with custom formatting
+        try:
+            with open(self.waypoints_file, 'w') as f:
+                f.write("# Waypoints configuration for robots\n")
+                f.write("# Each robot has a list of [x, y] waypoints to follow sequentially\n")
+                f.write(f"# Generated at {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                
+                for robot_id in sorted(waypoints_data.keys()):
+                    f.write(f"{robot_id}:\n")
+                    for waypoint in waypoints_data[robot_id]:
+                        f.write(f"  - [{waypoint[0]:.4f}, {waypoint[1]:.4f}]\n")
+                    f.write("\n")
+            
+            abs_path = os.path.abspath(self.waypoints_file)
+            self.get_logger().info("="*60)
+            self.get_logger().info("📁 WAYPOINTS FILE SAVED!")
+            self.get_logger().info(f"📍 Full path: {abs_path}")
+            self.get_logger().info("="*60)
+            self.get_logger().info(f"   Total robots: {len(waypoints_data)}")
+            for robot_id, waypoints in waypoints_data.items():
+                self.get_logger().info(f"   {robot_id}: {len(waypoints)} waypoints")
+        except Exception as e:
+            self.get_logger().error(f"Failed to save waypoints: {e}")
 
     def get_color(self, robot_id, mode):
         """
@@ -585,6 +665,8 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
+        # Save waypoints before shutting down (in case not saved yet)
+        # showposition.save_waypoints_to_yaml()
         showposition.destroy_node()
         main_node.destroy_node()
         rclpy.shutdown()

@@ -126,8 +126,16 @@ def generate_launch_description():
         output='screen',
     )
 
+    human_llm_chat_node = Node(
+        package='ltl_automaton_planner',
+        executable='human_llm_chat_node',
+        name='human_llm_chat_node',
+        output='screen',
+    )
+
     
     ld.add_action(taskassign_node)
     ld.add_action(showmove_node)
     ld.add_action(llm_command_parser_node)
+    ld.add_action(human_llm_chat_node)
     return ld
