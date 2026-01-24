@@ -1,6 +1,7 @@
 import os
 import json
 import math
+import time
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -87,14 +88,26 @@ class LLMCommandParserNode(Node):
 
         self.change_task_priority_pub = self.create_publisher(ChangeTaskPriority, '/change_task_priority', 10)
 
+        # Timing data publisher
+        self.timing_pub = self.create_publisher(String, '/timing_data', 10)
+
         self.get_logger().info('LLM Command Parser Node initialized.')
 
     def instruction_callback(self, msg):
         instruction = msg.data
         self.get_logger().info(f'Received instruction: "{instruction}"')
+        
+        # Record parsing start time using monotonic clock (not affected by system clock changes)
+        parse_start_mono = time.monotonic()
+        parse_start_time = time.time()  # For timestamp reference
 
         try:
             parsed_intents = self.call_llm(instruction)
+            
+            # Record LLM call completion time using monotonic clock
+            llm_call_end_mono = time.monotonic()
+            llm_call_duration = llm_call_end_mono - parse_start_mono
+            self.get_logger().info(f'[TIMING] LLM call completed. Duration: {llm_call_duration:.4f}s')
 
             if not isinstance(parsed_intents, list):
                 raise ValueError("LLM response is not a list")
@@ -102,6 +115,9 @@ class LLMCommandParserNode(Node):
             for intent_obj in parsed_intents:
                 intent = intent_obj.get("intent", "")
                 parameters = intent_obj.get("parameters", {})
+                
+                # Record command publish start time
+                publish_start_time = time.time()
 
                 if intent == "add_task":
                     msg_out = AddTask()
@@ -111,6 +127,23 @@ class LLMCommandParserNode(Node):
                     msg_out.task_type = parameters.get("task_type", "normal")
                     self.publish_add_task(msg_out)
                     self.get_logger().info(f'Published AddTask: {msg_out}')
+                    
+                    # Publish timing for add_task command (using monotonic time for accurate duration)
+                    publish_end_mono = time.monotonic()
+                    total_parse_duration = publish_end_mono - parse_start_mono
+                    timing_msg = String()
+                    timing_msg.data = json.dumps({
+                        'type': 'command_published',
+                        'command': 'add_task',
+                        'task_label': msg_out.task_label,
+                        'parse_start_time': parse_start_time,
+                        'llm_call_duration': llm_call_duration,
+                        'publish_time': time.time(),
+                        'total_parse_duration': total_parse_duration,
+                        'timestamp': time.time()
+                    })
+                    self.timing_pub.publish(timing_msg)
+                    self.get_logger().info(f'[TIMING] add_task total_parse_duration: {total_parse_duration:.4f}s')
 
                 elif intent == "obstacle_update":
                     msg_out = ObstacleUpdate()
@@ -132,6 +165,23 @@ class LLMCommandParserNode(Node):
                     msg_out.obstacle_type = parameters.get("obstacle_type", "unknown")
                     self.publish_obstacle_update(msg_out)
                     self.get_logger().info(f'Published ObstacleUpdate: {msg_out}')
+                    
+                    # Publish timing for obstacle_update command (using monotonic time for accurate duration)
+                    publish_end_mono = time.monotonic()
+                    total_parse_duration = publish_end_mono - parse_start_mono
+                    timing_msg = String()
+                    timing_msg.data = json.dumps({
+                        'type': 'command_published',
+                        'command': 'obstacle_update',
+                        'obstacle_type': msg_out.obstacle_type,
+                        'parse_start_time': parse_start_time,
+                        'llm_call_duration': llm_call_duration,
+                        'publish_time': time.time(),
+                        'total_parse_duration': total_parse_duration,
+                        'timestamp': time.time()
+                    })
+                    self.timing_pub.publish(timing_msg)
+                    self.get_logger().info(f'[TIMING] obstacle_update total_parse_duration: {total_parse_duration:.4f}s')
 
                 elif intent == "change_task_priority":
                     msg_out = ChangeTaskPriority()
@@ -139,6 +189,24 @@ class LLMCommandParserNode(Node):
                     msg_out.priority = parameters.get("priority", "normal")
                     self.publish_change_task_priority(msg_out)
                     self.get_logger().info(f'Published ChangeTaskPriority: {msg_out}')
+                    
+                    # Publish timing for change_task_priority command (using monotonic time for accurate duration)
+                    publish_end_mono = time.monotonic()
+                    total_parse_duration = publish_end_mono - parse_start_mono
+                    timing_msg = String()
+                    timing_msg.data = json.dumps({
+                        'type': 'command_published',
+                        'command': 'change_task_priority',
+                        'task_label': msg_out.task_label,
+                        'priority': msg_out.priority,
+                        'parse_start_time': parse_start_time,
+                        'llm_call_duration': llm_call_duration,
+                        'publish_time': time.time(),
+                        'total_parse_duration': total_parse_duration,
+                        'timestamp': time.time()
+                    })
+                    self.timing_pub.publish(timing_msg)
+                    self.get_logger().info(f'[TIMING] change_task_priority total_parse_duration: {total_parse_duration:.4f}s')
                 else:
                     self.get_logger().warn(f'Unknown intent: {intent}')
 

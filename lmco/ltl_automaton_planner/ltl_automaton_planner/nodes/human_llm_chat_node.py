@@ -8,6 +8,7 @@ from openai import OpenAI
 import threading
 import tkinter as tk
 from tkinter import scrolledtext
+import time
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -48,9 +49,18 @@ class HumanLLMChatNode(Node):
         
         self.instruction_pub = self.create_publisher(String, '/human_instruction', 10)
         
+        # Timing data publisher
+        self.timing_pub = self.create_publisher(String, '/timing_data', 10)
+        
         self.conversation_history = []
         self.current_intent = None
         self.collected_params = {}
+        
+        # Timing tracking variables (using monotonic time for durations)
+        self.input_start_mono = None  # When user starts typing (monotonic)
+        self.input_start_time = None  # When user starts typing (wall clock for reference)
+        self.llm_start_mono = None    # When LLM processing starts (monotonic)
+        self.is_typing = False        # Track if user has started typing
         
         self.get_logger().info('Human-LLM Chat Node initialized.')
         
@@ -115,6 +125,7 @@ class HumanLLMChatNode(Node):
         )
         self.input_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=10, padx=(0, 10))
         self.input_entry.bind('<Return>', self.on_send)
+        self.input_entry.bind('<KeyRelease>', self.on_key_release)  # Track when user starts typing
         
         # Send button
         self.send_btn = tk.Button(
@@ -158,6 +169,21 @@ Just tell me what you need, for example:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.mainloop()
     
+    def on_key_release(self, event):
+        """Track when user starts typing (first character)"""
+        current_text = self.input_entry.get()
+        # If user just started typing (from empty to non-empty)
+        if current_text and not self.is_typing:
+            self.input_start_mono = time.monotonic()
+            self.input_start_time = time.time()
+            self.is_typing = True
+            self.get_logger().info(f'[TIMING] User started typing')
+        # If user cleared the input
+        elif not current_text and self.is_typing:
+            self.is_typing = False
+            self.input_start_mono = None
+            self.input_start_time = None
+    
     def append_message(self, message, tag='system'):
         self.chat_display.config(state=tk.NORMAL)
         
@@ -180,6 +206,31 @@ Just tell me what you need, for example:
         if not user_input:
             return
         
+        # Record input end time using monotonic clock (when user presses send/enter)
+        input_end_mono = time.monotonic()
+        input_end_time = time.time()
+        
+        # Calculate and publish UI input timing
+        if self.input_start_mono is not None:
+            ui_input_duration = input_end_mono - self.input_start_mono
+            self.get_logger().info(f'[TIMING] UI input completed. Duration: {ui_input_duration:.4f}s')
+            
+            # Publish UI input timing data
+            timing_msg = String()
+            timing_msg.data = json.dumps({
+                'type': 'ui_input',
+                'start_time': self.input_start_time,
+                'end_time': input_end_time,
+                'duration': ui_input_duration,
+                'timestamp': time.time()
+            })
+            self.timing_pub.publish(timing_msg)
+        
+        # Reset typing state
+        self.is_typing = False
+        self.input_start_mono = None
+        self.input_start_time = None
+        
         self.input_entry.delete(0, tk.END)
         self.append_message(user_input, 'user')
         
@@ -188,15 +239,54 @@ Just tell me what you need, for example:
     
     def process_input(self, user_input):
         self.get_logger().info(f'Processing user input: "{user_input}"')
+        
+        # Record LLM processing start time (monotonic for accurate duration)
+        llm_start_mono = time.monotonic()
+        llm_start_time = time.time()
+        
         try:
             result = self.analyze_with_llm(user_input)
+            
+            # Record LLM processing end time (monotonic for accurate duration)
+            llm_end_mono = time.monotonic()
+            llm_end_time = time.time()
+            llm_processing_duration = llm_end_mono - llm_start_mono
+            
             self.get_logger().info(f'Analysis result status: {result.get("status")}')
+            self.get_logger().info(f'[TIMING] LLM processing completed. Duration: {llm_processing_duration:.4f}s')
+            
+            # Publish LLM processing timing data
+            timing_msg = String()
+            timing_msg.data = json.dumps({
+                'type': 'llm_processing',
+                'start_time': llm_start_time,
+                'end_time': llm_end_time,
+                'duration': llm_processing_duration,
+                'intent': result.get('intent', 'unknown'),
+                'status': result.get('status', 'unknown'),
+                'timestamp': time.time()
+            })
+            self.timing_pub.publish(timing_msg)
             
             if result.get("status") == "complete":
                 # All parameters collected, send the instruction
                 final_instruction = result.get("instruction", user_input)
                 self.get_logger().info(f'Command complete, sending instruction: {final_instruction}')
+                
+                # Record instruction send time
+                instruction_send_time = time.time()
                 self.send_instruction(final_instruction)
+                
+                # Publish instruction sent timing
+                timing_msg = String()
+                timing_msg.data = json.dumps({
+                    'type': 'instruction_sent',
+                    'intent': result.get('intent', 'unknown'),
+                    'send_time': instruction_send_time,
+                    'timestamp': time.time()
+                })
+                self.timing_pub.publish(timing_msg)
+                
                 self.root.after(0, lambda: self.append_message(
                     f"Command sent successfully!\nInstruction: {final_instruction}", 
                     'success'
@@ -220,6 +310,11 @@ Just tell me what you need, for example:
                 ))
                 
         except Exception as e:
+            # Record LLM processing end time even on error (using monotonic time)
+            llm_end_mono = time.monotonic()
+            llm_processing_duration = llm_end_mono - llm_start_mono
+            self.get_logger().info(f'[TIMING] LLM processing failed after {llm_processing_duration:.4f}s')
+            
             error_msg = str(e)  # Capture error message before lambda
             self.get_logger().error(f'Error processing input: {type(e).__name__}: {e}')
             self.get_logger().error(f'Full traceback: {traceback.format_exc()}')

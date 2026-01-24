@@ -19,6 +19,7 @@ from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, 
 # Import LTL automaton message definitions
 from ltl_automaton_msgs.msg import AddTask, AgentFail, ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID, ObstacleUpdate, NoTask
 from ltl_automaton_msgs.srv import * #TaskPlanning, TaskPlanningResponse, TaskReplanningAdd, TaskReplanningDelete, TaskReplanningRelabel, TaskReplanningAddResponse, TaskReplanningDeleteResponse
+from std_msgs.msg import String
 
 # Import dynamic reconfigure components for dynamic parameters (see dynamic_reconfigure and dynamic_params package)
 
@@ -26,6 +27,7 @@ from ltl_automaton_planner.ltl_tools.ts import TSModel
 from ltl_automaton_planner.ltl_tools.ltl_planner import LTLPlanner
 
 import time
+import json
 import yaml
 from example_interfaces.srv import AddTwoInts
 import re
@@ -122,6 +124,9 @@ class MainPlanner(Node):
         
         # Store new obstacles for deferred processing (to be applied in next task round)
         self.pending_obstacles = []
+        
+        # Timing data publisher
+        self.timing_pub = self.create_publisher(String, '/timing_data', 10)
         
         self.obstacle_update_sub = self.create_subscription(
             ObstacleUpdate,
@@ -320,6 +325,10 @@ class MainPlanner(Node):
 
 
     def obstacle_update_callback(self, msg):
+        # Record response start time (monotonic for accurate duration)
+        response_start_mono = time.monotonic()
+        response_start_time = time.time()
+        
         obstacle_key = tuple(msg.obstacle_location)
         if obstacle_key in self.processed_obstacles:
             self.get_logger().info(f"[{self.agent_name}] Ignoring duplicate obstacle update for location: {msg.obstacle_location}")
@@ -349,6 +358,25 @@ class MainPlanner(Node):
             # Note: We don't rebuild the automaton here. The benchmark_cluster_node will
             # send a replan request if the current path is blocked, and the planner will
             # handle it via the replanning_delete_callback.
+            
+            # Record response end time and publish timing (monotonic for accurate duration)
+            response_end_mono = time.monotonic()
+            response_duration = response_end_mono - response_start_mono
+            self.get_logger().info(f'[TIMING] [{self.agent_name}] obstacle_update response completed. Duration: {response_duration:.4f}s')
+            
+            timing_msg = String()
+            timing_msg.data = json.dumps({
+                'type': 'system_response',
+                'command': 'obstacle_update',
+                'node': 'planner_cluster_node',
+                'agent_name': self.agent_name,
+                'obstacle_type': msg.obstacle_type,
+                'start_time': response_start_time,
+                'end_time': time.time(),
+                'duration': response_duration,
+                'timestamp': time.time()
+            })
+            self.timing_pub.publish(timing_msg)
 
     def assign_new_task(self, msg):
         # Update current robot pose
@@ -370,6 +398,11 @@ class MainPlanner(Node):
 
     def cluster_task_callback(self, msg):
         self.get_logger().info(f"Received task list for {self.agent_name}: {msg.route_labels}")
+
+        # Reset no_more_tasks flag when receiving new task assignment
+        if self.no_more_tasks:
+            self.get_logger().info(f"Resetting no_more_tasks flag for {self.agent_name} - new task received!")
+            self.no_more_tasks = False
 
         self.current_task_list = list(msg.route_labels)
         self.pickup_labels = [label for label in self.current_task_list if len(label) == 2]

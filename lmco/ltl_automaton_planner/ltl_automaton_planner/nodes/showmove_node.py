@@ -19,9 +19,11 @@ from ltl_automaton_planner.ltl_automaton_utilities import (
 import sys
 import cv2
 from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks, TaskFail, AddTask, ObstacleUpdate, ChangeTaskPriority
+from std_msgs.msg import String
 from enum import Enum
 import threading
 import yaml
+import json
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 import re
 from ament_index_python.packages import get_package_share_directory
@@ -176,6 +178,10 @@ class ShowMoveNode(Node):
         self.high_priority_tasks = set()  # Set of task labels with high priority
         self.blink_state = True  # Toggle state for blinking effect
         self.blink_counter = 0  # Counter for controlling blink speed
+        
+        # Track robots that have been assigned a new task but haven't started executing yet
+        # This prevents position_callback from overwriting the 'waiting' state with 'NoTask'
+        self.robots_waiting_for_plan = set()
 
         # Initialize subscriptions lists
         self.position_subscriptions = []
@@ -185,6 +191,16 @@ class ShowMoveNode(Node):
         # Initialize finished tasks set to store completed task indices
         self.finished_tasks = set()
 
+        # ========== TIMING DATA COLLECTION ==========
+        # Timing data storage
+        self.timing_data = {
+            'ui_inputs': [],           # UI input timing records
+            'llm_processing': [],      # LLM processing timing records
+            'command_published': [],   # Command parsing/publishing timing records
+            'system_responses': [],    # System response timing records (add_task, obstacle, priority)
+            'robot_finished': {},      # Robot completion records {agent_name: {total_steps, timestamp}}
+        }
+        self.timing_summary_printed = False
 
         self.start_time = time.time()  
         self.end_time = None  
@@ -262,6 +278,22 @@ class ShowMoveNode(Node):
             10
         )
 
+        # Subscribe to timing data from all nodes
+        self.timing_data_sub = self.create_subscription(
+            String,
+            '/timing_data',
+            self.timing_data_callback,
+            10
+        )
+
+        # Subscribe to immediate robot state updates from taskassign_cluster_node
+        self.robot_state_update_sub = self.create_subscription(
+            String,
+            '/robot_state_update',
+            self.robot_state_update_callback,
+            10
+        )
+
         # Create a timer for periodic simulation updates (e.g., every 0.1 seconds)
         self.timer = self.create_timer(0.1, self.simulate)
 
@@ -273,6 +305,111 @@ class ShowMoveNode(Node):
             return pose_a in self.nodes and pose_b in self.nodes
         except:
             return False
+
+    def robot_state_update_callback(self, msg):
+        """
+        Handle immediate robot state update from taskassign_cluster_node.
+        This is called RIGHT AFTER task assignment, BEFORE planner builds automaton.
+        """
+        try:
+            data = json.loads(msg.data)
+            if data.get('type') != 'robot_state_update':
+                return
+            
+            robot_id = data.get('robot_id')
+            new_state = data.get('new_state')
+            
+            if not robot_id:
+                return
+            
+            self.get_logger().info(f"📥 Received immediate state update: {robot_id} -> {new_state}")
+            
+            with self.lock:
+                # Check if robot was in no_task state
+                was_notask = False
+                if robot_id in self.robot_positions:
+                    if self.robot_positions[robot_id]['mode'] == self.notask_color:
+                        was_notask = True
+                
+                # Update robot state to waiting color immediately
+                if new_state == 'waiting':
+                    # Add to waiting set to prevent position_callback from overwriting
+                    self.robots_waiting_for_plan.add(robot_id)
+                    
+                    if robot_id in self.robot_positions:
+                        self.robot_positions[robot_id]['mode'] = self.waiting_color
+                    else:
+                        # Robot not in positions yet, create entry with waiting color
+                        # Use last known position or default
+                        self.robot_positions[robot_id] = {
+                            'pose': [0, 0],  # Will be updated by next position message
+                            'mode': self.waiting_color
+                        }
+                    
+                    self.get_logger().info(f"🔄 [{robot_id}] Immediately changed to WAITING (task assigned, waiting for plan)")
+                
+                # Reset timing if robot was in no_task state
+                if was_notask:
+                    self.timing_completed = False
+                    self.timing_summary_printed = False
+                    self.get_logger().info(f"⏱️ [{robot_id}] Reset timing - continuing to count...")
+                    
+        except json.JSONDecodeError as e:
+            self.get_logger().error(f"Failed to parse robot state update: {e}")
+
+    def timing_data_callback(self, msg):
+        """Process incoming timing data from various nodes"""
+        try:
+            data = json.loads(msg.data)
+            timing_type = data.get('type', 'unknown')
+            
+            if timing_type == 'ui_input':
+                duration = data.get('duration', 0)
+                if duration < 0:
+                    self.get_logger().warn(f"[TIMING WARNING] Negative UI input duration detected: {duration:.4f}s (clock sync issue?)")
+                    data['duration'] = max(0.0, duration)
+                self.timing_data['ui_inputs'].append(data)
+                self.get_logger().info(f"[TIMING COLLECTED] UI input: {data.get('duration', 0):.4f}s")
+                
+            elif timing_type == 'llm_processing':
+                duration = data.get('duration', 0)
+                if duration < 0:
+                    self.get_logger().warn(f"[TIMING WARNING] Negative LLM processing duration detected: {duration:.4f}s (clock sync issue?)")
+                    data['duration'] = max(0.0, duration)
+                self.timing_data['llm_processing'].append(data)
+                self.get_logger().info(f"[TIMING COLLECTED] LLM processing: {data.get('duration', 0):.4f}s, intent: {data.get('intent', 'unknown')}")
+                
+            elif timing_type == 'command_published':
+                total_parse_duration = data.get('total_parse_duration', 0)
+                llm_call_duration = data.get('llm_call_duration', 0)
+                if total_parse_duration < 0:
+                    self.get_logger().warn(f"[TIMING WARNING] Negative parse duration detected: {total_parse_duration:.4f}s (clock sync issue?)")
+                    data['total_parse_duration'] = max(0.0, total_parse_duration)
+                if llm_call_duration < 0:
+                    self.get_logger().warn(f"[TIMING WARNING] Negative LLM call duration detected: {llm_call_duration:.4f}s (clock sync issue?)")
+                    data['llm_call_duration'] = max(0.0, llm_call_duration)
+                self.timing_data['command_published'].append(data)
+                self.get_logger().info(f"[TIMING COLLECTED] Command published: {data.get('command', 'unknown')}, parse duration: {data.get('total_parse_duration', 0):.4f}s")
+                
+            elif timing_type == 'system_response':
+                duration = data.get('duration', 0)
+                if duration < 0:
+                    self.get_logger().warn(f"[TIMING WARNING] Negative system response duration detected: {duration:.4f}s (clock sync issue?)")
+                    data['duration'] = max(0.0, duration)
+                self.timing_data['system_responses'].append(data)
+                self.get_logger().info(f"[TIMING COLLECTED] System response: {data.get('command', 'unknown')}, duration: {data.get('duration', 0):.4f}s")
+                
+            elif timing_type == 'robot_finished':
+                agent_name = data.get('agent_name', 'unknown')
+                self.timing_data['robot_finished'][agent_name] = data
+                self.get_logger().info(f"[TIMING COLLECTED] Robot {agent_name} finished with {data.get('total_steps', 0)} steps")
+                
+            elif timing_type == 'instruction_sent':
+                # Store instruction sent timing for correlation
+                pass  # Can be used for more detailed analysis if needed
+                
+        except json.JSONDecodeError as e:
+            self.get_logger().error(f"Failed to parse timing data: {e}")
 
     def check_all_robots_notask(self):
         if not self.timing_completed and len(self.robot_positions) >= len(self.robot_ids):
@@ -299,11 +436,162 @@ class ShowMoveNode(Node):
                 self.get_logger().info(f"   Robot number: {len(self.robot_ids)}")
                 self.get_logger().info("="*60)
                 
+                # Print comprehensive timing summary
+                self.print_timing_summary()
+                
                 # Save waypoints when all tasks are completed
                 # self.save_waypoints_to_yaml()
                 
                 return True
         return False
+
+    def print_timing_summary(self):
+        """Print comprehensive timing summary when all tasks are completed"""
+        if self.timing_summary_printed:
+            return
+        self.timing_summary_printed = True
+        
+        self.get_logger().info("")
+        self.get_logger().info("="*80)
+        self.get_logger().info("📊 COMPREHENSIVE TIMING SUMMARY")
+        self.get_logger().info("="*80)
+        
+        # 1. UI Input Timing Summary
+        self.get_logger().info("")
+        self.get_logger().info("┌─────────────────────────────────────────────────────────────────────────────┐")
+        self.get_logger().info("│ 1. UI INPUT TIMING (User typing to message sent)                           │")
+        self.get_logger().info("├─────────────────────────────────────────────────────────────────────────────┤")
+        if self.timing_data['ui_inputs']:
+            ui_durations = [d['duration'] for d in self.timing_data['ui_inputs']]
+            self.get_logger().info(f"│   Total UI inputs: {len(ui_durations):<58}│")
+            self.get_logger().info(f"│   Average input time: {sum(ui_durations)/len(ui_durations):.4f}s{' '*48}│")
+            self.get_logger().info(f"│   Min input time: {min(ui_durations):.4f}s{' '*52}│")
+            self.get_logger().info(f"│   Max input time: {max(ui_durations):.4f}s{' '*52}│")
+            self.get_logger().info(f"│   Total input time: {sum(ui_durations):.4f}s{' '*50}│")
+        else:
+            self.get_logger().info("│   No UI input timing data collected                                         │")
+        self.get_logger().info("└─────────────────────────────────────────────────────────────────────────────┘")
+        
+        # 2. LLM Processing Timing Summary
+        self.get_logger().info("")
+        self.get_logger().info("┌─────────────────────────────────────────────────────────────────────────────┐")
+        self.get_logger().info("│ 2. LLM PROCESSING TIMING (Processing user input and generating response)   │")
+        self.get_logger().info("├─────────────────────────────────────────────────────────────────────────────┤")
+        if self.timing_data['llm_processing']:
+            llm_durations = [d['duration'] for d in self.timing_data['llm_processing']]
+            self.get_logger().info(f"│   Total LLM calls: {len(llm_durations):<58}│")
+            self.get_logger().info(f"│   Average processing time: {sum(llm_durations)/len(llm_durations):.4f}s{' '*42}│")
+            self.get_logger().info(f"│   Min processing time: {min(llm_durations):.4f}s{' '*46}│")
+            self.get_logger().info(f"│   Max processing time: {max(llm_durations):.4f}s{' '*46}│")
+            self.get_logger().info(f"│   Total processing time: {sum(llm_durations):.4f}s{' '*44}│")
+            # Group by intent
+            intent_times = {}
+            for d in self.timing_data['llm_processing']:
+                intent = d.get('intent', 'unknown')
+                if intent not in intent_times:
+                    intent_times[intent] = []
+                intent_times[intent].append(d['duration'])
+            self.get_logger().info("│   By intent:                                                                │")
+            for intent, times in intent_times.items():
+                avg_time = sum(times) / len(times)
+                self.get_logger().info(f"│     - {intent}: count={len(times)}, avg={avg_time:.4f}s{' '*(51-len(intent)-len(str(len(times))))}│")
+        else:
+            self.get_logger().info("│   No LLM processing timing data collected                                   │")
+        self.get_logger().info("└─────────────────────────────────────────────────────────────────────────────┘")
+        
+        # 3. Command Parsing/Publishing Timing Summary
+        self.get_logger().info("")
+        self.get_logger().info("┌─────────────────────────────────────────────────────────────────────────────┐")
+        self.get_logger().info("│ 3. COMMAND PARSING & PUBLISHING TIMING (LLM parser to system)              │")
+        self.get_logger().info("├─────────────────────────────────────────────────────────────────────────────┤")
+        if self.timing_data['command_published']:
+            parse_durations = [d['total_parse_duration'] for d in self.timing_data['command_published']]
+            llm_call_durations = [d.get('llm_call_duration', 0) for d in self.timing_data['command_published']]
+            self.get_logger().info(f"│   Total commands parsed: {len(parse_durations):<52}│")
+            self.get_logger().info(f"│   Average total parse time: {sum(parse_durations)/len(parse_durations):.4f}s{' '*40}│")
+            self.get_logger().info(f"│   Average LLM call time: {sum(llm_call_durations)/len(llm_call_durations):.4f}s{' '*43}│")
+            # Group by command type
+            cmd_times = {}
+            for d in self.timing_data['command_published']:
+                cmd = d.get('command', 'unknown')
+                if cmd not in cmd_times:
+                    cmd_times[cmd] = []
+                cmd_times[cmd].append(d['total_parse_duration'])
+            self.get_logger().info("│   By command type:                                                          │")
+            for cmd, times in cmd_times.items():
+                avg_time = sum(times) / len(times)
+                self.get_logger().info(f"│     - {cmd}: count={len(times)}, avg={avg_time:.4f}s{' '*(51-len(cmd)-len(str(len(times))))}│")
+        else:
+            self.get_logger().info("│   No command parsing timing data collected                                  │")
+        self.get_logger().info("└─────────────────────────────────────────────────────────────────────────────┘")
+        
+        # 4. System Response Timing Summary
+        self.get_logger().info("")
+        self.get_logger().info("┌─────────────────────────────────────────────────────────────────────────────┐")
+        self.get_logger().info("│ 4. SYSTEM RESPONSE TIMING (Robot system executing commands)                │")
+        self.get_logger().info("├─────────────────────────────────────────────────────────────────────────────┤")
+        if self.timing_data['system_responses']:
+            # Group by command type
+            response_by_cmd = {}
+            for d in self.timing_data['system_responses']:
+                cmd = d.get('command', 'unknown')
+                if cmd not in response_by_cmd:
+                    response_by_cmd[cmd] = []
+                response_by_cmd[cmd].append(d)
+            
+            for cmd, responses in response_by_cmd.items():
+                durations = [r['duration'] for r in responses]
+                self.get_logger().info(f"│   {cmd}:                                                                  │"[:78] + "│")
+                self.get_logger().info(f"│     - Count: {len(durations):<62}│")
+                self.get_logger().info(f"│     - Average response time: {sum(durations)/len(durations):.4f}s{' '*38}│")
+                self.get_logger().info(f"│     - Min response time: {min(durations):.4f}s{' '*42}│")
+                self.get_logger().info(f"│     - Max response time: {max(durations):.4f}s{' '*42}│")
+                self.get_logger().info(f"│     - Total response time: {sum(durations):.4f}s{' '*40}│")
+        else:
+            self.get_logger().info("│   No system response timing data collected                                  │")
+        self.get_logger().info("└─────────────────────────────────────────────────────────────────────────────┘")
+        
+        # 5. Robot Step Count Summary
+        self.get_logger().info("")
+        self.get_logger().info("┌─────────────────────────────────────────────────────────────────────────────┐")
+        self.get_logger().info("│ 5. ROBOT STEP COUNT SUMMARY                                                 │")
+        self.get_logger().info("├─────────────────────────────────────────────────────────────────────────────┤")
+        if self.timing_data['robot_finished']:
+            total_steps = 0
+            for agent_name, data in sorted(self.timing_data['robot_finished'].items()):
+                steps = data.get('total_steps', 0)
+                total_steps += steps
+                self.get_logger().info(f"│   {agent_name}: {steps} steps{' '*(60-len(agent_name)-len(str(steps)))}│")
+            self.get_logger().info("│   ─────────────────────────────────────────────────────────────────────── │")
+            self.get_logger().info(f"│   TOTAL STEPS (ALL ROBOTS): {total_steps:<48}│")
+        else:
+            self.get_logger().info("│   No robot step count data collected                                        │")
+        self.get_logger().info("└─────────────────────────────────────────────────────────────────────────────┘")
+        
+        # 6. Overall Summary
+        self.get_logger().info("")
+        self.get_logger().info("┌─────────────────────────────────────────────────────────────────────────────┐")
+        self.get_logger().info("│ 6. OVERALL SUMMARY                                                          │")
+        self.get_logger().info("├─────────────────────────────────────────────────────────────────────────────┤")
+        total_task_time = self.end_time - self.start_time if self.end_time else 0
+        self.get_logger().info(f"│   Total task completion time: {total_task_time:.2f} seconds{' '*(39-len(f'{total_task_time:.2f}'))}│")
+        self.get_logger().info(f"│   Number of robots: {len(self.robot_ids):<56}│")
+        
+        total_steps_all = sum(d.get('total_steps', 0) for d in self.timing_data['robot_finished'].values())
+        self.get_logger().info(f"│   Total steps (all robots): {total_steps_all:<48}│")
+        
+        total_ui_time = sum(d['duration'] for d in self.timing_data['ui_inputs']) if self.timing_data['ui_inputs'] else 0
+        total_llm_time = sum(d['duration'] for d in self.timing_data['llm_processing']) if self.timing_data['llm_processing'] else 0
+        total_parse_time = sum(d['total_parse_duration'] for d in self.timing_data['command_published']) if self.timing_data['command_published'] else 0
+        total_response_time = sum(d['duration'] for d in self.timing_data['system_responses']) if self.timing_data['system_responses'] else 0
+        
+        self.get_logger().info(f"│   Total UI input time: {total_ui_time:.4f}s{' '*(46-len(f'{total_ui_time:.4f}'))}│")
+        self.get_logger().info(f"│   Total LLM processing time: {total_llm_time:.4f}s{' '*(40-len(f'{total_llm_time:.4f}'))}│")
+        self.get_logger().info(f"│   Total command parsing time: {total_parse_time:.4f}s{' '*(39-len(f'{total_parse_time:.4f}'))}│")
+        self.get_logger().info(f"│   Total system response time: {total_response_time:.4f}s{' '*(39-len(f'{total_response_time:.4f}'))}│")
+        self.get_logger().info("└─────────────────────────────────────────────────────────────────────────────┘")
+        self.get_logger().info("")
+        self.get_logger().info("="*80)
 
     def obstacle_update_callback(self, msg):
         obstacle_key = tuple(msg.obstacle_location)
@@ -408,7 +696,31 @@ class ShowMoveNode(Node):
         color = self.get_color(robot_id=msg.robot_id, mode=msg.mode)
         # Use lock to ensure thread-safe update of shared data
         with self.lock:
+            # Check if this robot was previously in no_task state and is now active again
+            previous_color = None
+            if msg.robot_id in self.robot_positions:
+                previous_color = self.robot_positions[msg.robot_id]['mode']
+            
+            # Check if robot is waiting for plan (has been assigned task but planner hasn't finished)
+            if msg.robot_id in self.robots_waiting_for_plan:
+                if msg.mode == 'NoTask':
+                    # Robot is still waiting for plan, keep waiting color, only update position
+                    self.robot_positions[msg.robot_id] = {'pose': pos, 'mode': self.waiting_color}
+                    # Don't update color, don't record waypoint, don't check completion
+                    return
+                else:
+                    # Robot received plan and started executing, remove from waiting set
+                    self.robots_waiting_for_plan.discard(msg.robot_id)
+                    self.get_logger().info(f"✅ [{msg.robot_id}] Received plan and started executing (mode: {msg.mode})")
+            
             self.robot_positions[msg.robot_id] = {'pose': pos, 'mode': color}
+            
+            # If robot was in no_task state (notask_color) and now has a different state,
+            # it means the robot received a new task - reset timing to continue counting
+            if previous_color == self.notask_color and color != self.notask_color:
+                self.get_logger().info(f"🔄 [{msg.robot_id}] Recovered from no_task state (received new task), continuing timing...")
+                self.timing_completed = False
+                self.timing_summary_printed = False
             
             # Record waypoint for this robot
             self._record_waypoint(msg.robot_id, pos)

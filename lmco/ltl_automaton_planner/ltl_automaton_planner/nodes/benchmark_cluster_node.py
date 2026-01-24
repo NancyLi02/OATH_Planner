@@ -21,12 +21,14 @@ import cv2
 import numpy as np
 import time
 import csv
+import json
 from shapely.geometry import Point, LineString, Polygon
 from example_interfaces.srv import AddTwoInts
 import re
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 from interfaces_hmm_sim.msg import Status, ReplanStatus, AgentGoTo
 from ament_index_python.packages import get_package_share_directory
+from std_msgs.msg import String
 
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
@@ -282,6 +284,20 @@ class LTLControllerDrone(Node):
 
         self.new_task_points = []
         self.processed_obstacles = set()
+        
+        # Step counter for timing summary
+        self.total_steps = 0
+        
+        # Timing data publisher
+        self.timing_pub = self.create_publisher(String, '/timing_data', 10)
+        
+        # Subscribe to global completion message (all robots finished)
+        self.all_robots_finished_sub = self.create_subscription(
+            String,
+            '/all_robots_finished',
+            self.all_robots_finished_callback,
+            10
+        )
 
 
         def str_to_tuple(s):
@@ -297,6 +313,10 @@ class LTLControllerDrone(Node):
         # self.simulate()
 
     def obstacle_update_callback(self, msg):
+        # Record response start time (monotonic for accurate duration)
+        response_start_mono = time.monotonic()
+        response_start_time = time.time()
+        
         obstacle_key = tuple(msg.obstacle_location)
         if obstacle_key in self.processed_obstacles:
             self.get_logger().info(f"Ignoring duplicate obstacle update for location: {msg.obstacle_location}")
@@ -324,6 +344,25 @@ class LTLControllerDrone(Node):
             # Also store the obstacle for the current path check
             self.get_logger().info("New wall obstacle received. Added to BLOCK_POLYGONS. Checking current path for collision...")
             self.check_path_for_new_obstacle(new_obstacle)
+            
+            # Record response end time and publish timing (monotonic for accurate duration)
+            response_end_mono = time.monotonic()
+            response_duration = response_end_mono - response_start_mono
+            self.get_logger().info(f'[TIMING] [{self.agent_name}] obstacle_update response completed (including path check). Duration: {response_duration:.4f}s')
+            
+            timing_msg = String()
+            timing_msg.data = json.dumps({
+                'type': 'system_response',
+                'command': 'obstacle_update',
+                'node': 'benchmark_cluster_node',
+                'agent_name': self.agent_name,
+                'obstacle_type': msg.obstacle_type,
+                'start_time': response_start_time,
+                'end_time': time.time(),
+                'duration': response_duration,
+                'timestamp': time.time()
+            })
+            self.timing_pub.publish(timing_msg)
         elif msg.obstacle_type == 'bush' or msg.obstacle_type == 'bump':
             add_bump_polygon(vertices)
             self.get_logger().info("New bump obstacle added.")
@@ -489,6 +528,31 @@ class LTLControllerDrone(Node):
         self.final_on_hold = True
         self.mode = EquipmentMode.NOTASK
         
+        # Log that this robot is now idle, but don't publish final timing yet
+        # Wait for all robots to be in no_task state (global completion)
+        self.get_logger().info(f'[{self.agent_name}] Entered no_task state. Current steps: {self.total_steps}')
+        self.get_logger().info(f'[{self.agent_name}] Waiting for all robots to finish or new task assignment...')
+
+    def all_robots_finished_callback(self, msg):
+        """
+        Called when all robots are in no_task state.
+        Publish final timing data for this robot.
+        """
+        self.get_logger().info(f'[{self.agent_name}] Received ALL_ROBOTS_FINISHED signal!')
+        self.get_logger().info(f'[TIMING] {self.agent_name} FINAL stats - Total steps: {self.total_steps}, Total plan index: {self.total_plan_index}')
+        
+        # Publish final timing data for this robot
+        timing_msg = String()
+        timing_msg.data = json.dumps({
+            'type': 'robot_finished',
+            'agent_name': self.agent_name,
+            'total_steps': self.total_steps,
+            'total_plan_index': self.total_plan_index,
+            'final': True,
+            'timestamp': time.time()
+        })
+        self.timing_pub.publish(timing_msg)
+        
 
     
     def get_current_pos(self, msg=None):
@@ -535,18 +599,23 @@ class LTLControllerDrone(Node):
             # Clear the list after updating
             self.new_task_points.clear()
 
+        # Reset no_task and final_on_hold flags when receiving new task
+        # This allows robots to recover from no_task state
+        if self.no_task or self.final_on_hold:
+            self.get_logger().info(f"[{self.agent_name}] Recovering from no_task state - new task received!")
+            self.no_task = False
+            self.final_on_hold = False
+
         self.plan_index = 0
         self.cur_task_list = msg.route_labels
         self.i = 0
         self.cur_task = self.cur_task_list[self.i]
         self.world.block.clear()
         self.world.bump.clear()
-        if self.final_on_hold == False:
-            self.mode = EquipmentMode.UNLOADED
-            self.on_hold = False
-        else:
-            self.mode = EquipmentMode.NOTASK
-            # self.on_hold = True
+        
+        # Always reset to UNLOADED when receiving new task
+        self.mode = EquipmentMode.UNLOADED
+        self.on_hold = False
         # self.get_logger().info("receive data pre")
         self.prefix_action_list = msg.action_sequence
         # self.get_logger().info(f"length prefix_action_list: {len(self.prefix_action_list)}")
@@ -700,6 +769,7 @@ class LTLControllerDrone(Node):
                             pass
                         self.plan_index += 1
                         self.total_plan_index += 1
+                        self.total_steps += 1  # Increment step counter
                         # self.get_logger().info(f"plan index: {self.plan_index}")
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
@@ -814,6 +884,7 @@ class LTLControllerDrone(Node):
                             pass
                         self.plan_index += 1
                         self.total_plan_index += 1
+                        self.total_steps += 1  # Increment step counter
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
                         self.next_interval = action_dict['weight']*5 # +1

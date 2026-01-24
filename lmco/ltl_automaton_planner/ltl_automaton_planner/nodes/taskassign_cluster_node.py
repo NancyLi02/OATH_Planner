@@ -1,10 +1,13 @@
 import os
 import numpy as np
+import time
+import json
 import rclpy
 from rclpy.node import Node
 from ltl_automaton_planner.CostMapClusterer import CostMapClusterer
 from ltl_automaton_planner.MILP import ClusterTaskPlanner
 from ltl_automaton_msgs.msg import ClusterTaskassign, RobotID, ClusterRequest, AgentFailTask, TaskFail, AddTask, NoTask, ChangeTaskPriority
+from std_msgs.msg import String
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 import yaml
 import re
@@ -117,6 +120,9 @@ class TaskAssignNode(Node):
             # NoTask publisher with namespace
             no_task_topic = f"/{robot}/no_task"
             self.no_task_pubs[robot] = self.create_publisher(NoTask, no_task_topic, 10)
+        
+        # Publisher for immediate robot state update (to showmove_node)
+        self.robot_state_update_pub = self.create_publisher(String, '/robot_state_update', 10)
 
         # Subscribers for new cluster request topics
         self.new_cluster_request_subs = []
@@ -159,10 +165,20 @@ class TaskAssignNode(Node):
         )
         self.get_logger().info("Successfully created subscriptions to change_task_priority topics")
 
+        # Timing data publisher
+        self.timing_pub = self.create_publisher(String, '/timing_data', 10)
+
         self.broke_agents = []
         
         self.task_priorities = {}  # task_label -> 'high'/'low'/'normal'
         self.high_priority_pending_tasks = set()  # Tasks with high priority waiting to be assigned
+        
+        # Track robots in no_task state with their positions
+        self.no_task_robots = {}  # robot_name -> (x, y) position
+        
+        # Publisher for global completion (all robots finished)
+        self.all_robots_finished_pub = self.create_publisher(String, '/all_robots_finished', 10)
+        self.all_finished_published = False  # Flag to avoid duplicate publishing
 
         # ----- Load wall and task info -----
         package_share = get_package_share_directory('ltl_automaton_planner')
@@ -248,9 +264,32 @@ class TaskAssignNode(Node):
         self.finish_callback()
 
     def add_task_callback(self, msg):
+        # Record response start time (monotonic for accurate duration)
+        response_start_mono = time.monotonic()
+        response_start_time = time.time()
+        
         self.get_logger().info("=== ADD_TASK_CALLBACK TRIGGERED ===")
         self.get_logger().info(f"Received add task command from LLM, new {msg.task_type} task appears at {msg.location}, assignning new task......")
         self.add_task(msg.location, msg.task_type, msg.task_label, msg.delivery_point)
+        
+        # Record response end time and publish timing (monotonic for accurate duration)
+        response_end_mono = time.monotonic()
+        response_duration = response_end_mono - response_start_mono
+        self.get_logger().info(f'[TIMING] add_task response completed. Duration: {response_duration:.4f}s')
+        
+        timing_msg = String()
+        timing_msg.data = json.dumps({
+            'type': 'system_response',
+            'command': 'add_task',
+            'task_label': msg.task_label,
+            'task_type': msg.task_type,
+            'location': list(msg.location),
+            'start_time': response_start_time,
+            'end_time': time.time(),
+            'duration': response_duration,
+            'timestamp': time.time()
+        })
+        self.timing_pub.publish(timing_msg)
 
     def add_task(self, location, task_type, task_label, delivery_point):
         self.get_logger().info(f"Adding task {task_label} at {location} with delivery point {delivery_point}.")
@@ -305,8 +344,159 @@ class TaskAssignNode(Node):
         self.get_logger().info(f"Task {task_label} added successfully. Current points_with_label: {self.points_with_label}")
         self.get_logger().info(f"Current special_labels: {self.special_labels}")
         self.get_logger().info(f"Current task_to_delivery: {self.task_to_delivery}")
+        
+        # Check if there are no_task robots that can take this new task
+        if self.no_task_robots:
+            self.get_logger().info(f"Found {len(self.no_task_robots)} no_task robots. Triggering auction for new task...")
+            self.auction_new_task_to_idle_robots(location_tuple, task_label, task_type)
+
+    def publish_robot_state_update(self, robot_name, new_state):
+        """
+        Immediately publish robot state update to showmove_node.
+        This is called right after task assignment, before planner builds automaton.
+        """
+        state_msg = String()
+        state_msg.data = json.dumps({
+            'type': 'robot_state_update',
+            'robot_id': robot_name,
+            'new_state': new_state,  # 'waiting' or 'active'
+            'timestamp': time.time()
+        })
+        self.robot_state_update_pub.publish(state_msg)
+        self.get_logger().info(f"📤 Immediately published state update: {robot_name} -> {new_state}")
+
+    def check_all_robots_finished(self):
+        """
+        Check if all robots are in no_task state.
+        If yes, publish global completion message.
+        """
+        # Count active (non-broken) robots
+        active_robots = [name for name in self.robot_names if name not in self.broke_agents]
+        
+        # Check if all active robots are in no_task state
+        all_finished = all(robot in self.no_task_robots for robot in active_robots)
+        
+        if all_finished and not self.all_finished_published:
+            self.get_logger().info("="*60)
+            self.get_logger().info("ALL ROBOTS FINISHED - Publishing global completion message")
+            self.get_logger().info(f"No task robots: {list(self.no_task_robots.keys())}")
+            self.get_logger().info("="*60)
+            
+            # Publish global completion message
+            completion_msg = String()
+            completion_msg.data = json.dumps({
+                'type': 'all_robots_finished',
+                'robots': list(self.no_task_robots.keys()),
+                'timestamp': time.time()
+            })
+            self.all_robots_finished_pub.publish(completion_msg)
+            self.all_finished_published = True
+            
+            # Also publish to timing_data topic for logging
+            timing_msg = String()
+            timing_msg.data = json.dumps({
+                'type': 'global_completion',
+                'all_robots_finished': True,
+                'robot_count': len(active_robots),
+                'timestamp': time.time()
+            })
+            self.timing_pub.publish(timing_msg)
+        elif not all_finished:
+            # Reset the flag if not all robots are finished (some robot got new task)
+            self.all_finished_published = False
+
+    def auction_new_task_to_idle_robots(self, task_location, task_label, task_type):
+        """
+        Auction a new task to idle (no_task) robots based on distance.
+        The closest robot that can complete the task wins.
+        """
+        self.get_logger().info(f"\n=== AUCTIONING NEW TASK '{task_label}' TO IDLE ROBOTS ===")
+        self.get_logger().info(f"Task location: {task_location}, Task type: {task_type}")
+        self.get_logger().info(f"Available no_task robots: {list(self.no_task_robots.keys())}")
+        
+        is_special_task = task_type == 'special' or task_label in self.special_labels
+        
+        # Calculate distance for each idle robot and filter by capability
+        candidates = []
+        for robot_name, robot_pos in self.no_task_robots.items():
+            robot_index = self.robot_names.index(robot_name)
+            robot_type = self.robot_types[robot_index]
+            
+            # Check if robot is broken
+            if robot_name in self.broke_agents:
+                self.get_logger().info(f"  {robot_name}: SKIPPED (broken)")
+                continue
+            
+            # Check capability: normal robots cannot do special tasks
+            if is_special_task and robot_type == 'normal':
+                self.get_logger().info(f"  {robot_name}: SKIPPED (normal robot cannot do special task)")
+                continue
+            
+            # Calculate distance
+            dist = np.linalg.norm(np.array(robot_pos) - np.array(task_location))
+            candidates.append((robot_name, robot_pos, dist, robot_index))
+            self.get_logger().info(f"  {robot_name} at {robot_pos}: distance = {dist:.2f}")
+        
+        if not candidates:
+            self.get_logger().warn("No eligible robots found for new task auction")
+            return
+        
+        # Sort by distance (closest first)
+        candidates.sort(key=lambda x: x[2])
+        winner_name, winner_pos, winner_dist, winner_index = candidates[0]
+        
+        self.get_logger().info(f"AUCTION WINNER: {winner_name} (distance: {winner_dist:.2f})")
+        
+        # Remove winner from no_task_robots
+        del self.no_task_robots[winner_name]
+        
+        # IMMEDIATELY publish state update to showmove_node (before planner builds automaton)
+        self.publish_robot_state_update(winner_name, 'waiting')
+        
+        # Create a single-task cluster for this robot
+        single_task_cluster = [task_location]
+        
+        if not hasattr(self, 'robot_cluster_map'):
+            self.robot_cluster_map = {}
+        if not hasattr(self, 'robot_cluster_indices'):
+            self.robot_cluster_indices = {}
+        
+        self.robot_cluster_map[winner_name] = single_task_cluster
+        
+        # Use a unique high index for this new task cluster
+        new_task_cluster_idx = len(getattr(self, 'cluster_centers', [])) + 2000 + len(self.assigned_points_global)
+        self.robot_cluster_indices[winner_name] = new_task_cluster_idx
+        
+        # Update cluster task labels and delivery labels
+        if not hasattr(self, 'cluster_task_labels'):
+            self.cluster_task_labels = {}
+        if not hasattr(self, 'cluster_delivery_labels'):
+            self.cluster_delivery_labels = {}
+        
+        self.cluster_task_labels[new_task_cluster_idx] = [task_label]
+        delivery_label = self.task_to_delivery.get(task_label, None)
+        self.cluster_delivery_labels[new_task_cluster_idx] = [delivery_label] if delivery_label else [None]
+        
+        # Update robot pose for planning
+        self.robot_poses[winner_index] = winner_pos
+        
+        self.last_assigned_robot = winner_name
+        
+        # Generate task sequence and publish
+        self.generate_task_sequences(robot_names=[winner_name])
+        self.publish_task_reassignments()
+        self.update_clusters_after_assignment()
+        
+        # Reset all_finished state since a robot is now active again
+        self.check_all_robots_finished()
+        
+        self.get_logger().info(f"Successfully assigned new task '{task_label}' to {winner_name}")
 
     def change_task_priority_callback(self, msg):
+        # Record response start time (monotonic for accurate duration)
+        response_start_mono = time.monotonic()
+        response_start_time = time.time()
+        
         task_label = msg.task_label
         priority = msg.priority
         
@@ -341,6 +531,25 @@ class TaskAssignNode(Node):
             # Remove from high priority pending if it was there
             self.high_priority_pending_tasks.discard(task_label)
             self.handle_priority_change_reassignment(task_label, priority)
+        
+        # Record response end time and publish timing (monotonic for accurate duration)
+        response_end_mono = time.monotonic()
+        response_duration = response_end_mono - response_start_mono
+        self.get_logger().info(f'[TIMING] change_task_priority response completed. Duration: {response_duration:.4f}s')
+        
+        timing_msg = String()
+        timing_msg.data = json.dumps({
+            'type': 'system_response',
+            'command': 'change_task_priority',
+            'task_label': task_label,
+            'old_priority': old_priority,
+            'new_priority': priority,
+            'start_time': response_start_time,
+            'end_time': time.time(),
+            'duration': response_duration,
+            'timestamp': time.time()
+        })
+        self.timing_pub.publish(timing_msg)
 
     def handle_priority_change_reassignment(self, task_label, priority):
         affected_clusters = []
@@ -696,6 +905,11 @@ class TaskAssignNode(Node):
         self.robot_poses[robot_index] = new_position
         self.get_logger().info(f"Updated position for {robot_name} to {new_position}.")
 
+        # Remove robot from no_task_robots if it was there (robot is requesting a new task)
+        if robot_name in self.no_task_robots:
+            del self.no_task_robots[robot_name]
+            self.get_logger().info(f"Removed {robot_name} from no_task_robots (requesting new task)")
+
         # Check for high priority tasks first
         if self.high_priority_pending_tasks:
             assigned_high_priority = self._try_assign_high_priority_task(robot_name, robot_type, robot_index)
@@ -707,10 +921,17 @@ class TaskAssignNode(Node):
         if not unassigned_points:
             self.get_logger().info("No unassigned tasks left, publishing NoTask message.")
             
+            # Track this robot as no_task with its current position
+            self.no_task_robots[robot_name] = new_position
+            self.get_logger().info(f"Added {robot_name} to no_task_robots at position {new_position}")
+            
             no_task_msg = NoTask()
             no_task_msg.robot_id = robot_name
             self.no_task_pubs[robot_name].publish(no_task_msg)
             self.get_logger().info(f"Published NoTask message to {robot_name}")
+            
+            # Check if all robots are now in no_task state
+            self.check_all_robots_finished()
             return
         
         # Initialize robot_cluster_indices if it does not exist.
