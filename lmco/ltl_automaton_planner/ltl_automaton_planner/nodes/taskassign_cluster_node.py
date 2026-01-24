@@ -162,6 +162,7 @@ class TaskAssignNode(Node):
         self.broke_agents = []
         
         self.task_priorities = {}  # task_label -> 'high'/'low'/'normal'
+        self.high_priority_pending_tasks = set()  # Tasks with high priority waiting to be assigned
 
         # ----- Load wall and task info -----
         package_share = get_package_share_directory('ltl_automaton_planner')
@@ -332,8 +333,13 @@ class TaskAssignNode(Node):
         self.get_logger().info(f"Current task priorities: {self.task_priorities}")
         
         if priority == 'high':
-            self.handle_high_priority_task(task_label)
+            # Add to high priority pending set - will be assigned to next requesting robot
+            self.high_priority_pending_tasks.add(task_label)
+            self.get_logger().info(f"Task '{task_label}' added to high priority pending queue. Will be assigned to next compatible robot.")
+            self.get_logger().info(f"Current high priority pending tasks: {self.high_priority_pending_tasks}")
         else:
+            # Remove from high priority pending if it was there
+            self.high_priority_pending_tasks.discard(task_label)
             self.handle_priority_change_reassignment(task_label, priority)
 
     def handle_priority_change_reassignment(self, task_label, priority):
@@ -480,6 +486,83 @@ class TaskAssignNode(Node):
         
         self.get_logger().info(f"High priority task {task_label} successfully assigned to {available_robot}")
 
+    def _try_assign_high_priority_task(self, robot_name, robot_type, robot_index):
+        """
+        Try to assign a high priority task to the requesting robot.
+        Returns True if a task was assigned, False otherwise.
+        """
+        self.get_logger().info(f"\n=== CHECKING HIGH PRIORITY TASKS FOR {robot_name} (type: {robot_type}) ===")
+        self.get_logger().info(f"High priority pending tasks: {self.high_priority_pending_tasks}")
+        
+        # Find a matching high priority task
+        for task_label in list(self.high_priority_pending_tasks):
+            # Check if task is special and robot can handle it
+            is_special_task = task_label in self.special_labels
+            
+            if is_special_task and robot_type == 'normal':
+                self.get_logger().info(f"Task '{task_label}' is special but robot '{robot_name}' is normal, skipping...")
+                continue
+            
+            # Find task coordinates
+            task_coord = None
+            for coord, label in self.points_with_label.items():
+                if label == task_label:
+                    task_coord = coord
+                    break
+            
+            if not task_coord:
+                self.get_logger().error(f"Could not find coordinates for high priority task '{task_label}'")
+                self.high_priority_pending_tasks.discard(task_label)
+                continue
+            
+            # Check if task is already assigned
+            if task_coord in self.assigned_points_global:
+                self.get_logger().info(f"High priority task '{task_label}' is already assigned, removing from pending...")
+                self.high_priority_pending_tasks.discard(task_label)
+                continue
+            
+            # Found a matching task - assign it directly
+            self.get_logger().info(f"=== DIRECTLY ASSIGNING HIGH PRIORITY TASK '{task_label}' TO {robot_name} ===")
+            
+            # Remove from pending set
+            self.high_priority_pending_tasks.discard(task_label)
+            
+            # Create a single-task cluster for this high priority task
+            single_task_cluster = [task_coord]
+            
+            if not hasattr(self, 'robot_cluster_map'):
+                self.robot_cluster_map = {}
+            if not hasattr(self, 'robot_cluster_indices'):
+                self.robot_cluster_indices = {}
+            
+            self.robot_cluster_map[robot_name] = single_task_cluster
+            
+            # Use a high index to distinguish high priority clusters
+            high_priority_cluster_idx = len(getattr(self, 'cluster_centers', [])) + 1000 + len(self.assigned_points_global)
+            self.robot_cluster_indices[robot_name] = high_priority_cluster_idx
+            
+            if not hasattr(self, 'cluster_task_labels'):
+                self.cluster_task_labels = {}
+            if not hasattr(self, 'cluster_delivery_labels'):
+                self.cluster_delivery_labels = {}
+            
+            self.cluster_task_labels[high_priority_cluster_idx] = [task_label]
+            delivery_label = self.task_to_delivery.get(task_label, None)
+            self.cluster_delivery_labels[high_priority_cluster_idx] = [delivery_label] if delivery_label else [None]
+            
+            self.last_assigned_robot = robot_name
+            
+            # Generate task sequence and publish
+            self.generate_task_sequences(robot_names=[robot_name])
+            self.publish_task_reassignments()
+            self.update_clusters_after_assignment()
+            
+            self.get_logger().info(f"Successfully assigned high priority task '{task_label}' to {robot_name}")
+            return True
+        
+        self.get_logger().info(f"No compatible high priority task found for {robot_name}")
+        return False
+
     def apply_priority_adjustment(self, base_score, cluster_index):
         if base_score <= 0:
             return base_score
@@ -603,33 +686,36 @@ class TaskAssignNode(Node):
     def assign_new_cluster(self, msg):
         self.get_logger().info(f"Received new cluster assign request from Robot{msg.robot_id}.")
 
+        robot_id = msg.robot_id  # robot_id is an integer (1,2,3,4)
+        robot_index = robot_id - 1
+        robot_name = self.robot_names[robot_index]
+        robot_type = self.robot_types[robot_index]
+
+        # Update the robot's position using the position information from the message.
+        new_position = tuple(msg.position)
+        self.robot_poses[robot_index] = new_position
+        self.get_logger().info(f"Updated position for {robot_name} to {new_position}.")
+
+        # Check for high priority tasks first
+        if self.high_priority_pending_tasks:
+            assigned_high_priority = self._try_assign_high_priority_task(robot_name, robot_type, robot_index)
+            if assigned_high_priority:
+                return
+
         all_points = list(self.points_with_label.keys())
         unassigned_points = [pt for pt in all_points if pt not in self.assigned_points_global]
         if not unassigned_points:
             self.get_logger().info("No unassigned tasks left, publishing NoTask message.")
-
-            robot_id = msg.robot_id  # robot_id is an integer (1,2,3,4)
-            robot_index = robot_id - 1
-            robot_name = self.robot_names[robot_index]
             
             no_task_msg = NoTask()
             no_task_msg.robot_id = robot_name
             self.no_task_pubs[robot_name].publish(no_task_msg)
             self.get_logger().info(f"Published NoTask message to {robot_name}")
             return
-        robot_id = msg.robot_id  # robot_id is an integer (1,2,3,4)
-        robot_index = robot_id - 1
-        robot_name = self.robot_names[robot_index]
         
         # Initialize robot_cluster_indices if it does not exist.
         if not hasattr(self, 'robot_cluster_indices'):
             self.robot_cluster_indices = {}
-
-        # Update the robot's position using the position information from the message.
-        # msg.position is already in float64[] format.
-        new_position = tuple(msg.position)
-        self.robot_poses[robot_index] = new_position
-        self.get_logger().info(f"Updated position for {robot_name} to {new_position}.")
 
         # Prepare clustering information.
         all_clusters = self.cluster_points

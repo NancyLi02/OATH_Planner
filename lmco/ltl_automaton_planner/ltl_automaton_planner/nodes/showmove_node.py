@@ -18,7 +18,7 @@ from ltl_automaton_planner.ltl_automaton_utilities import (
 )
 import sys
 import cv2
-from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks, TaskFail, AddTask, ObstacleUpdate
+from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks, TaskFail, AddTask, ObstacleUpdate, ChangeTaskPriority
 from enum import Enum
 import threading
 import yaml
@@ -171,6 +171,11 @@ class ShowMoveNode(Node):
         self.new_task_points = []
         self.map_needs_update = False
         self.processed_obstacles = set()
+        
+        # High priority task tracking for visual indication
+        self.high_priority_tasks = set()  # Set of task labels with high priority
+        self.blink_state = True  # Toggle state for blinking effect
+        self.blink_counter = 0  # Counter for controlling blink speed
 
         # Initialize subscriptions lists
         self.position_subscriptions = []
@@ -246,6 +251,14 @@ class ShowMoveNode(Node):
             ObstacleUpdate,
             '/obstacle_update',
             self.obstacle_update_callback,
+            10
+        )
+
+        # Subscribe to change_task_priority topic
+        self.change_task_priority_sub = self.create_subscription(
+            ChangeTaskPriority,
+            '/change_task_priority',
+            self.change_task_priority_callback,
             10
         )
 
@@ -347,6 +360,20 @@ class ShowMoveNode(Node):
         if label in self.finished_tasks:
             self.finished_tasks.discard(label)
             self.get_logger().info(f"Removed '{label}' from finished_tasks as it's a new task")
+
+    def change_task_priority_callback(self, msg):
+        """Handle task priority changes for visual indication"""
+        task_label = msg.task_label
+        priority = msg.priority
+        
+        self.get_logger().info(f"Received task priority change: '{task_label}' to '{priority}'")
+        
+        if priority == 'high':
+            self.high_priority_tasks.add(task_label)
+            self.get_logger().info(f"Task '{task_label}' marked as HIGH PRIORITY for visual indication")
+        else:
+            self.high_priority_tasks.discard(task_label)
+            self.get_logger().info(f"Task '{task_label}' removed from high priority visual indication")
         
 
     
@@ -365,6 +392,10 @@ class ShowMoveNode(Node):
         if label in self.failed_task_list:
             self.failed_task_list.remove(label)
         self.finished_tasks.add(label)
+        # Remove from high priority set when task is completed
+        if label in self.high_priority_tasks:
+            self.high_priority_tasks.discard(label)
+            self.get_logger().info(f"Task '{label}' completed, removed from high priority visual indication")
 
     def position_callback(self, msg):
         """
@@ -475,6 +506,12 @@ class ShowMoveNode(Node):
                 pygame.quit()
                 sys.exit()
         
+        # Update blink state for high priority task indication (toggle every 5 frames)
+        self.blink_counter += 1
+        if self.blink_counter >= 5:
+            self.blink_counter = 0
+            self.blink_state = not self.blink_state
+        
         # Check if map needs update due to a new wall
         if self.map_needs_update and hasattr(self, 'last_added_obstacle'):
             self.get_logger().info("Locally updating map visualization due to new wall...")
@@ -522,6 +559,9 @@ class ShowMoveNode(Node):
         for pt, label in points.items():
             pixel_pos = self.transform_coords(pt)
             side = self.world.cell_size // 2
+            
+            # Check if this is a high priority task
+            is_high_priority = label in self.high_priority_tasks
 
             if pt in unloaded_points:
                 color = GREEN
@@ -542,6 +582,13 @@ class ShowMoveNode(Node):
             else:
                 rect = pygame.Rect(pixel_pos[0] - side // 2, pixel_pos[1] - side // 2, side, side)
                 pygame.draw.rect(self.world.screen, color, rect)
+
+            # Draw high priority task visual indication (blinking red circle)
+            if is_high_priority and label not in self.finished_tasks:
+                if self.blink_state:
+                    # Draw bright red circle when blink_state is True
+                    pygame.draw.circle(self.world.screen, (255, 0, 0), pixel_pos, side + 6, 3)
+                # When blink_state is False, don't draw - creates blinking effect
 
             # Draw red circle around failed loading tasks
             if pt not in unloaded_points:
