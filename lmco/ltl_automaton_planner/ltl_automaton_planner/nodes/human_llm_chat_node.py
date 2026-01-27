@@ -70,6 +70,18 @@ class HumanLLMChatNode(Node):
 
     def start_gui(self):
         self.root = tk.Tk()
+        
+        # Fix DPI scaling issues on high-resolution displays
+        try:
+            # For Linux: adjust scaling factor
+            # Get current scaling and reduce if too high
+            current_scaling = self.root.tk.call('tk', 'scaling')
+            if current_scaling > 1.5:
+                # Reduce scaling for better fit on high-DPI screens
+                self.root.tk.call('tk', 'scaling', 1.25)
+        except Exception:
+            pass
+        
         self.root.title("Human-LLM Command Interface")
         self.root.geometry("800x700")
         self.root.configure(bg='#1e1e2e')
