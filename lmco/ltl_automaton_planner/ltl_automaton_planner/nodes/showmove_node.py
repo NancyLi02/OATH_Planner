@@ -19,6 +19,7 @@ from ltl_automaton_planner.ltl_automaton_utilities import (
 import sys
 import cv2
 from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks, TaskFail, AddTask, ObstacleUpdate
+from std_msgs.msg import String
 from enum import Enum
 import threading
 import yaml
@@ -26,6 +27,7 @@ from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 import re
 from ament_index_python.packages import get_package_share_directory
 import time
+import json
 
 #=======================================================================
 #  Interfaces between ShowMoveNode and other nodes
@@ -42,12 +44,11 @@ WHITE  = (255, 255, 255)
 BLACK  = (0, 0, 0)
 GREY   = (190, 190, 190)
 RED    = (255, 0, 0)
-YELLOW = (152, 251, 152)
+SKY_BLUE = (173, 216, 230)
 BLUE   = (0, 0, 128)
 
 # Additional colors for tasks (loaded/unloaded)
 GREEN    = (107, 142, 35)      # For unload task points
-SKY_BLUE = (135, 206, 235)     # For unfinished load task points
 CYAN = (0, 255, 255)
 MAGENTA = (255, 0, 255)         # For newly added walls
 # notask_color already defined as grey, used to indicate finished (or no task) task points
@@ -111,10 +112,18 @@ class ShowMoveNode(Node):
             BLOCK_POLYGONS.append(poly)
 
         # Dictionary to store all robot states in the format:
-        # {'robot_id': {'pose': (x, y), 'mode': (R, G, B)}}
+        # {'robot_id': {'pose': (x, y), 'mode': (R, G, B), 'target_pose': (x, y), 'display_pose': (x, y)}}
         self.robot_positions = {}
         # Create a lock for thread-safe access to shared resources
         self.lock = threading.Lock()
+        
+        # Movement animation parameters
+        self.movement_speed = 0.2  # How much of the distance to move each frame (0.05 = 5% per frame, slower movement)
+        # 可调整的参数：
+        # 0.01 = 很慢的平滑移动
+        # 0.05 = 中等速度平滑移动  
+        # 0.1  = 较快的平滑移动
+        # 0.2  = 快速平滑移动
 
         package_share = get_package_share_directory('ltl_automaton_planner')
         task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
@@ -146,6 +155,8 @@ class ShowMoveNode(Node):
         self.special_robot_ids = yaml_data.get('special_robot', [])
         # special labels
         self.special_labels = set(yaml_data.get('special_labels', []))
+        # empty labels that should not be displayed
+        self.empty_labels = set(yaml_data.get('empty_labels', []))
 
         self.robot_ids = list(yaml_data.get('robot_positions', {}).keys())
 
@@ -180,6 +191,10 @@ class ShowMoveNode(Node):
         # Initialize finished tasks set to store completed task indices
         self.finished_tasks = set()
 
+        # Initialize package tracking
+        self.task_to_delivery = yaml_data.get('task_to_delivery', {})
+        self.packages = {}  # package_id -> package_info dict
+        self._initialize_packages()
 
         self.start_time = time.time()  
         self.end_time = None  
@@ -241,8 +256,80 @@ class ShowMoveNode(Node):
             10
         )
 
+        # Create publisher for package data
+        self.package_json_pub = self.create_publisher(String, '/packages_json', 10)
+
         # Create a timer for periodic simulation updates (e.g., every 0.1 seconds)
         self.timer = self.create_timer(0.1, self.simulate)
+
+    def _initialize_packages(self):
+        """Initialize package tracking based on task points"""
+        for pt, label in self.points.items():
+            # Skip delivery points and empty labels
+            if pt in self.unloaded_points or label in self.empty_labels:
+                continue
+                
+            self.packages[label] = {
+                "id": label,
+                "x": pt[0],
+                "y": pt[1],
+                "initial_pos": pt,
+                "carried_by": None,
+                "state": "On Ground"
+            }
+
+    def _update_package_tracking(self, robot_id, pos, mode):
+        """Update package tracking based on robot position and mode"""
+        robot_pos = tuple(pos)
+        
+        for package_id, package_info in self.packages.items():
+            # Check if robot is at package's initial position and can pick it up
+            if (package_info["state"] == "On Ground" and 
+                package_info["carried_by"] is None and
+                self._is_close_to_position(robot_pos, package_info["initial_pos"]) and
+                mode == "loaded"):
+                
+                package_info["carried_by"] = robot_id
+                package_info["state"] = "In Transit"
+                package_info["x"] = pos[0]
+                package_info["y"] = pos[1]
+                
+            # Update position if package is being carried
+            elif (package_info["carried_by"] == robot_id and 
+                  package_info["state"] == "In Transit"):
+                package_info["x"] = pos[0]
+                package_info["y"] = pos[1]
+                
+                # Check if robot reached delivery point
+                delivery_type = self._get_delivery_type_for_package(package_id)
+                if delivery_type:
+                    delivery_pos = self._get_delivery_position(delivery_type)
+                    if (delivery_pos and 
+                        self._is_close_to_position(robot_pos, delivery_pos) and
+                        mode == "unloaded"):
+                        
+                        package_info["carried_by"] = None
+                        package_info["state"] = "Delivered"
+                        package_info["x"] = delivery_pos[0]
+                        package_info["y"] = delivery_pos[1]
+
+    def _is_close_to_position(self, pos1, pos2, threshold=0.5):
+        """Check if two positions are close enough"""
+        return abs(pos1[0] - pos2[0]) < threshold and abs(pos1[1] - pos2[1]) < threshold
+
+    def _get_delivery_type_for_package(self, package_id):
+        """Get delivery type for a package based on task_to_delivery mapping"""
+        for delivery_type, packages in self.task_to_delivery.items():
+            if package_id in packages:
+                return delivery_type
+        return None
+
+    def _get_delivery_position(self, delivery_type):
+        """Get delivery position for a delivery type"""
+        for pos, label in self.points.items():
+            if pos in self.unloaded_points and label == delivery_type:
+                return pos
+        return None
 
     def _action_nodes_exist(self, action):
         try:
@@ -330,9 +417,31 @@ class ShowMoveNode(Node):
     
         if msg.task_type == "special":
             self.special_labels.add(label)
-        
 
-    
+
+    def _build_package_dict(self):
+        """Build package dictionary for JSON export"""
+        packages_list = []
+        for package_id, package_info in self.packages.items():
+            package_dict = {
+                "id": package_info["id"],
+                "x": package_info["x"],
+                "y": package_info["y"],
+                "carried_by": package_info["carried_by"] if package_info["carried_by"] else "Null",
+                "state": package_info["state"]
+            }
+            packages_list.append(package_dict)
+        return packages_list
+
+    def _publish_package_data(self):
+        """Publish package data as JSON similar to benchmark node"""
+        package_data = {
+            "packages": self._build_package_dict()
+        }
+        
+        json_payload = json.dumps(package_data, indent=4)
+        self.package_json_pub.publish(String(data=json_payload))
+
     def task_fail_callback(self, msg):
         try:
             label = msg.task_label
@@ -355,12 +464,27 @@ class ShowMoveNode(Node):
         This function only updates the state; the simulate() function is called periodically by the timer.
         """
         # Directly use msg.pose to get the position (expected as [x, y])
-        pos = msg.pose
+        pos = tuple(msg.pose)  # Convert to tuple for consistency
         # Get the corresponding color based on robot ID and mode
         color = self.get_color(robot_id=msg.robot_id, mode=msg.mode)
         # Use lock to ensure thread-safe update of shared data
         with self.lock:
-            self.robot_positions[msg.robot_id] = {'pose': pos, 'mode': color}
+            if msg.robot_id not in self.robot_positions:
+                # Initialize robot with both display and target positions at the same location
+                self.robot_positions[msg.robot_id] = {
+                    'pose': pos, 
+                    'mode': color,
+                    'target_pose': pos,
+                    'display_pose': pos
+                }
+            else:
+                # Update target position and mode, but keep current display position for smooth animation
+                self.robot_positions[msg.robot_id]['pose'] = pos
+                self.robot_positions[msg.robot_id]['target_pose'] = pos
+                self.robot_positions[msg.robot_id]['mode'] = color
+            
+            # Update package tracking based on robot position and mode
+            self._update_package_tracking(msg.robot_id, pos, msg.mode)
             self.check_all_robots_notask()
         # self.get_logger().info(f"Received {msg.robot_id}: position {pos}, mode {msg.mode}")
 
@@ -440,6 +564,10 @@ class ShowMoveNode(Node):
 
         # Iterate through all points, choose color based on status:
         for pt, label in points.items():
+            # Skip drawing if the label is in empty_labels
+            if label in self.empty_labels:
+                continue
+                
             pixel_pos = self.transform_coords(pt)
             side = self.world.cell_size // 2
 
@@ -478,7 +606,7 @@ class ShowMoveNode(Node):
         for bump in bumps:
             if bump.geom_type == "Polygon":
                 bump_coords = [self.transform_coords(pt) for pt in bump.exterior.coords]
-                pygame.draw.polygon(self.world.screen, YELLOW, bump_coords, 0)
+                pygame.draw.polygon(self.world.screen, SKY_BLUE, bump_coords, 0)
         
         for action in self.actions:
             pose_ab = extract_numbers(str(action))
@@ -539,7 +667,7 @@ class ShowMoveNode(Node):
                 int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
             )
 
-            pygame.draw.line(self.world.screen, YELLOW, start_pos, end_pos, 3)
+            pygame.draw.line(self.world.screen, SKY_BLUE, start_pos, end_pos, 3)
             
         # Draw nodes
         for node in self.nodes:
@@ -550,12 +678,33 @@ class ShowMoveNode(Node):
                 3
             )
     
-        # Draw all robot positions (reading shared data under lock)
+        # Update robot positions for smooth movement and draw them
         with self.lock:
             for robot_id, info in self.robot_positions.items():
-                pos = info['pose']
+                # Update display position to move towards target position
+                current_display = info['display_pose']
+                target = info['target_pose']
+                
+                # Calculate smooth movement
+                if current_display != target:
+                    dx = target[0] - current_display[0]
+                    dy = target[1] - current_display[1]
+                    
+                    # Move a fraction of the distance each frame
+                    new_x = current_display[0] + dx * self.movement_speed
+                    new_y = current_display[1] + dy * self.movement_speed
+                    
+                    # If very close to target, snap to target to avoid floating point issues
+                    if abs(dx) < 0.01 and abs(dy) < 0.01:
+                        info['display_pose'] = target
+                    else:
+                        info['display_pose'] = (new_x, new_y)
+                
+                # Use display position for rendering
+                display_pos = info['display_pose']
                 color = info['mode']
-                pixel_pos = ((pos[0] * self.world.cell_size), (self.world.height - pos[1] * self.world.cell_size))
+                pixel_pos = ((display_pos[0] * self.world.cell_size), (self.world.height - display_pos[1] * self.world.cell_size))
+                
                 # Larger circle for special robots
                 radius = self.world.cell_size // 3
                 if robot_id in self.special_robot_ids:
@@ -564,6 +713,9 @@ class ShowMoveNode(Node):
                 font = pygame.font.SysFont("Arial", 16)
                 text_surface = font.render(robot_id, True, BLACK)
                 self.world.screen.blit(text_surface, (pixel_pos[0] + 5, pixel_pos[1] + 5))
+
+        # Publish package data as JSON
+        self._publish_package_data()
 
         pygame.display.flip()
         self.world.clock.tick(30)

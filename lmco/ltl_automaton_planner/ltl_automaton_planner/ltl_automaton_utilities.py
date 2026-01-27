@@ -265,8 +265,8 @@ def check_in_block(action, nodes):
         
 def check_in_bump(action, nodes, agent_name):
     # Only 'robot2' and 'robot3' can possibly trigger a bump check; others always return False.
-    if agent_name not in ['robot2', 'robot3']:
-        return False
+    # if agent_name not in ['robot2', 'robot3']:
+    #     return False
 
     to_pose_index = extract_numbers(str(action))[1]
     to_pose = nodes[f'{to_pose_index}']['attr']['pose']
@@ -367,6 +367,16 @@ def extract_numbers(input_string):
         return (first_number, second_number)
     else:
         # Handle the case where there are not enough numbers
+        return None
+
+
+def extract_all_numbers(input_string):
+    """Extracts all numbers from a string and returns them as a tuple of ints."""
+    pattern = re.compile(r'\d+')
+    matches = pattern.findall(input_string)
+    if matches:
+        return tuple(int(m) for m in matches)
+    else:
         return None
 
 

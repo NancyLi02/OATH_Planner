@@ -141,24 +141,10 @@ class MainPlanner(Node):
             self.get_logger().warn("Empty route_labels received")
             return ""
         
-        pickup_labels = []
-        delivery_labels = []
+        self.get_logger().info(f"Generating LTL formula for route: {route_labels}")
         
-        for label in route_labels:
-            if len(label) == 2:
-                pickup_labels.append(label)
-            elif len(label) == 1:
-                delivery_labels.append(label)
-        
-
-        pickup_labels = list(set(pickup_labels))
-        delivery_labels = list(set(delivery_labels))
-        
-        self.get_logger().info(f"Inferred pickup labels: {pickup_labels}")
-        self.get_logger().info(f"Inferred delivery labels: {delivery_labels}")
-    
-        
-        ltl_formula = generate_ltl_formula(route_labels, pickup_labels, delivery_labels)
+        # 直接使用新的generate_ltl_formula函数，它接受包含load/unload的route
+        ltl_formula = generate_ltl_formula(route_labels)
         
         self.get_logger().info(f"Generated LTL formula: {ltl_formula}")
         
@@ -273,7 +259,11 @@ class MainPlanner(Node):
     def no_task_callback(self, msg):
         """Handle NoTask message from task assignment node"""
         self.get_logger().info(f"Received NoTask message: {msg.robot_id}")
-        if msg.robot_id == self.agent_name:
+        # 提取robot_id中的数字部分进行比较
+        robot_id_from_msg = msg.robot_id
+        robot_id_from_agent = re.findall(r'\d+', self.agent_name)[0]
+        
+        if robot_id_from_msg == robot_id_from_agent:
             self.no_more_tasks = True
             self.get_logger().info(f"No more tasks available for {self.agent_name}, stopping task requests.")
 

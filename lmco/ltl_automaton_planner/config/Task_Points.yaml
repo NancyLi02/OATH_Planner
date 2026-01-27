@@ -1,6 +1,5 @@
 task_points:
 
-#11111111111111111111111111111111111111111111
   "1,4": 'bb'
   "6,6": 'cb'
   "1,6.5": 'db'
@@ -43,6 +42,8 @@ task_to_delivery:
 
 special_labels: ['db', 'eb', 'bb', 'cd', 'fd', 'df', 'ef', 'bf', 'ci', 'fi']
 
+empty_labels: []
+
 delivery_points:
   "6,3": 'b'
   "5,16": 'c'
@@ -51,10 +52,10 @@ delivery_points:
 
 
 robot_positions:
-  "robot1": "1,19"
+  "robot1": "5,16"
   "robot2": "11,19"
-  "robot3": "9,11"
-  "robot4": "11,9"
+  "robot3": "6,3"
+  "robot4": "16,5.5"
 
 
 special_robot: ['robot2', 'robot3']

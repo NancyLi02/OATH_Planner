@@ -95,10 +95,10 @@ def generate_launch_description():
     
     taskassign_node = Node(
         package='ltl_automaton_planner',
-        # executable='taskassign_node',
-        # name='taskassign_node',
-        executable='taskassign_cluster_node',
-        name='taskassign_cluster_node',
+        executable='taskassign_node',
+        name='taskassign_node',
+        # executable='taskassign_cluster_node',
+        # name='taskassign_cluster_node',
         output='screen',
         parameters=[
             {'score_scheme': 'dstar'}
@@ -119,15 +119,15 @@ def generate_launch_description():
                 ]
             )
 
-    llm_command_parser_node = Node(
-        package='ltl_automaton_planner',
-        executable='llm_command_parser_node',
-        name='llm_command_parser_node',
-        output='screen',
-    )
+    # llm_command_parser_node = Node(
+    #     package='ltl_automaton_planner',
+    #     executable='llm_command_parser_node',
+    #     name='llm_command_parser_node',
+    #     output='screen',
+    # )
 
     
     ld.add_action(taskassign_node)
     ld.add_action(showmove_node)
-    ld.add_action(llm_command_parser_node)
+    # ld.add_action(llm_command_parser_node)
     return ld

@@ -10,7 +10,7 @@ from copy import deepcopy
 from ltl_automaton_msgs.msg import TaskFail, AgentFail, AgentFailTask, NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition, AddTask, ObstacleUpdate
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
-from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump, add_block_polygon, add_bump_polygon, update_graph_with_obstacle
+from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, extract_all_numbers, build_graph_halton, check_in_block, check_in_bump, add_block_polygon, add_bump_polygon, update_graph_with_obstacle, BUMP_POLYGONS
 # Import modules for commanding the a1
 
 from geometry_msgs.msg import PoseStamped
@@ -27,6 +27,7 @@ import re
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 from interfaces_hmm_sim.msg import Status, ReplanStatus, AgentGoTo
 from ament_index_python.packages import get_package_share_directory
+import json
 
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
@@ -37,7 +38,7 @@ from ament_index_python.packages import get_package_share_directory
 # action attributes defined in the TS config file
 #=================================================================
 
-USE_ISAAC = False
+USE_ISAAC = True
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -46,6 +47,7 @@ YELLOW = (255, 255, 0)
 GREEN = (0, 255, 255)
 ORANGE = (255, 100, 0)
 BLUE = (0, 0, 128)
+
 
 class EquipmentMode(Enum):
     UNLOADED = (0, 255, 0)
@@ -110,6 +112,14 @@ class LTLControllerDrone(Node):
         
         self.prefix_action_list = []
         self.suffix_action_list = []
+
+        self.replan_requested = False
+        self.replan_count = 0
+
+        self.robot_json_pub = self.create_publisher(String, 'robot_json', 10)
+
+
+
         self.drone_prefix_sub = self.create_subscription(
             LTLPlan,
             'prefix_plan',
@@ -237,6 +247,9 @@ class LTLControllerDrone(Node):
         with open(task_points_yaml, 'r') as f:
             yaml_data = yaml.safe_load(f)
             
+        # 读取empty_labels列表
+        self.empty_labels = set(yaml_data.get('empty_labels', []))
+        self.get_logger().info(f"Empty labels loaded: {self.empty_labels}")
         robot_positions = yaml_data.get('robot_positions', {})
         if self.agent_name in robot_positions:
             robot_pos_str = robot_positions[self.agent_name]
@@ -260,7 +273,7 @@ class LTLControllerDrone(Node):
         self.total_plan_index = 0
         self.next_interval = 10
 
-        self.create_timer(1.0/10, self.simulate)
+        self.create_timer(1.0/10, self.simulate)  # 可以改为 1.0/5 让更新更慢
 
         self.status_sub = self.create_subscription(
             Status,
@@ -277,6 +290,7 @@ class LTLControllerDrone(Node):
         self.sim_arrived = True
         self.sim_received = True
         self.sim_start = True
+
 
         self.new_task_points = []
         self.processed_obstacles = set()
@@ -450,7 +464,7 @@ class LTLControllerDrone(Node):
         self.plan_index = 0
         self.cur_task_list = msg.route_labels
         self.i = 0
-        self.cur_task = self.cur_task_list[self.i]
+        # self.cur_task = self.cur_task_list[self.i]
         self.world.block.clear()
         self.world.bump.clear()
         if self.final_on_hold == False:
@@ -483,6 +497,7 @@ class LTLControllerDrone(Node):
         # self.get_logger().info("receive relay sub")
         self.pose = self.previous_pose
         if msg.success:
+            self.replan_count += 1
             self.prefix_action_list = msg.new_plan_prefix.action_sequence
             self.prefix_state_sequence = msg.new_plan_prefix.ts_state_sequence
             self.suffix_action_list = msg.new_plan_suffix.action_sequence
@@ -499,6 +514,7 @@ class LTLControllerDrone(Node):
             self.get_logger().info("sim replan received")
         # elif (self.sim_start):
         #     self.get_logger().info("sim started")
+
 
     def next_move(self):
         # if self.plan_index > 20 and self.pose == (grid_size/2-1, grid_size/2-1): #self.len(self.prefix_action_list) + len(self.suffix_action_list):
@@ -529,13 +545,22 @@ class LTLControllerDrone(Node):
                             self.act = 'g'
                             for pt, label in self.task_points.items():
                                 if abs(self.pose[0] - pt[0]) < 1e-6 and abs(self.pose[1] - pt[1]) < 1e-6:
-                                    self.mode = EquipmentMode.LOADED
-                                    msg = UpdateValidTasks()
-                                    msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
-                                    msg.loaded_task = label
-                                    self.update_valid_tasks_pub.publish(msg)
-                                    self.act = 'l'
-                                    # self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
+                                    self.get_logger().info(f"Current label: '{label}', type: {type(label)}")
+                                    self.get_logger().info(f"Empty labels: {self.empty_labels}")
+                                    self.get_logger().info(f"Is label in empty_labels? {label in self.empty_labels}")
+                                    if label in self.empty_labels:
+                                        self.get_logger().info(f"Label {label} is in empty_labels")
+                                        self.mode = EquipmentMode.UNLOADED
+                                        break
+                                    # 如果是empty_label，不改变mode
+                                    if label not in self.empty_labels:
+                                        self.mode = EquipmentMode.LOADED
+                                        msg = UpdateValidTasks()
+                                        msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
+                                        msg.loaded_task = label
+                                        self.update_valid_tasks_pub.publish(msg)
+                                        self.act = 'l'
+                                        # self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
                                     break
                             # self.get_logger().info(f"previous pose: {self.previous_pose}")
                             # self.get_logger().info(f"pose: {self.pose}")
@@ -556,6 +581,7 @@ class LTLControllerDrone(Node):
                                     publish_msg.cost = 0.0
                                     # self.get_logger().info("checkpoint3")
                                     self.relay_pub.publish(publish_msg)
+                                    self.replan_requested = True
                                     self.on_hold = True
                                     self.pose = self.previous_pose
                                     self.pose_index = self.previous_pose_index
@@ -575,8 +601,9 @@ class LTLControllerDrone(Node):
                                     publish_msg.from_pose.extend(list(self.previous_pose))
                                     publish_msg.to_pose.extend(list(self.pose))
                                     publish_msg.exec_index = self.plan_index
-                                    publish_msg.cost = self.actions[act]['weight']*5
+                                    publish_msg.cost = self.actions[act]['weight']*50
                                     self.relay_pub.publish(publish_msg)
+                                    self.replan_requested = True
                                     self.on_hold = True
                                     self.pose = self.previous_pose
                                     return
@@ -589,7 +616,7 @@ class LTLControllerDrone(Node):
                             self.mode = EquipmentMode.UNLOADED
                             self.act = 'u'
                         elif str(act) == "load":
-                            self.mode = EquipmentMode.LOADED
+                            # self.mode = EquipmentMode.LOADED
                             self.act = 'l'
                             # 只有到达任务点时才发布UpdateValidTasks
                         elif str(act) == "goto_rescue":
@@ -601,7 +628,7 @@ class LTLControllerDrone(Node):
                         # self.get_logger().info(f"plan index: {self.plan_index}")
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
-                        self.next_interval = action_dict['weight']*5 # +1
+                        self.next_interval = action_dict['weight']*10  # 增加到10让移动更慢，原来是5
                         # self.get_logger().info("beanchmark fix 0.6")
                         
                         ##### Logging
@@ -643,7 +670,7 @@ class LTLControllerDrone(Node):
                         if str(act)[:4] == "goto":
                             self.previous_pose = self.pose
                             self.previous_pose_index = self.pose_index
-                            self.pose_index = extract_numbers(str(act))[1]
+                            self.pose_index = extract_all_numbers(str(act))[0]
                             self.pose = self.nodes[f'{self.pose_index}']['attr']['pose']
                             self.act = 'g'
                             if check_in_block(act, self.nodes) and str(act) not in self.world.block:
@@ -661,6 +688,7 @@ class LTLControllerDrone(Node):
                                     publish_msg.exec_index = self.plan_index
                                     publish_msg.cost = 0.0
                                     self.relay_pub.publish(publish_msg)
+                                    self.replan_requested = True
                                     self.on_hold = True
                                     self.pose = self.previous_pose
                                     self.pose_index = self.previous_pose_index
@@ -680,8 +708,9 @@ class LTLControllerDrone(Node):
                                     publish_msg.from_pose.extend(list(self.previous_pose))
                                     publish_msg.to_pose.extend(list(self.pose))
                                     publish_msg.exec_index = self.plan_index
-                                    publish_msg.cost = self.actions[act]['weight']*5
+                                    publish_msg.cost = self.actions[act]['weight']*50
                                     self.relay_pub.publish(publish_msg)
+                                    self.replan_requested = True
                                     self.on_hold = True
                                     self.pose = self.previous_pose
                                     return
@@ -694,13 +723,15 @@ class LTLControllerDrone(Node):
                         elif str(act) == "load":
                             for pt, label in self.task_points.items():
                                 if abs(self.pose[0] - pt[0]) < 1e-6 and abs(self.pose[1] - pt[1]) < 1e-6:
-                                    self.mode = EquipmentMode.LOADED
-                                    msg = UpdateValidTasks()
-                                    msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
-                                    msg.loaded_task = label
-                                    self.update_valid_tasks_pub.publish(msg)
-                                    self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
-                                    self.act = 'l'
+                                    # 如果是empty_label，不改变mode
+                                    if label not in self.empty_labels:
+                                        self.mode = EquipmentMode.LOADED
+                                        msg = UpdateValidTasks()
+                                        msg.robot_id = int(re.findall(r'\d+', self.agent_name)[0])
+                                        msg.loaded_task = label
+                                        self.update_valid_tasks_pub.publish(msg)
+                                        self.get_logger().info(f'Published UpdateValidTasks: robot_id={self.agent_name}, loaded_task={msg.loaded_task}')
+                                        self.act = 'l'
                                     break
                             self.previous_pose = self.pose
                             self.previous_pose_index = self.pose_index
@@ -712,7 +743,7 @@ class LTLControllerDrone(Node):
                         self.total_plan_index += 1
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
-                        self.next_interval = action_dict['weight']*5 # +1
+                        self.next_interval = action_dict['weight']*10  # 增加到10让移动更慢，原来是5
                         
                         ########Logging
                         last_round_time = 50 if (self.previous_pose, self.pose) in self.world.bump else 10
@@ -773,12 +804,123 @@ class LTLControllerDrone(Node):
         x, y = coord
         return int(x * self.world.cell_size ), int(-y * self.world.cell_size + self.world.height)  # Flip y-axis for pygame
 
-    
+    def _action_target_pose(self, action_str: str):
+        nums = extract_all_numbers(str(action_str))
+        if not nums:
+            return None
+        
+        target_idx = -1
+        # For actions like "from_1_to_2", the target is the second number
+        if len(nums) > 1:
+            target_idx = nums[1]
+        # For actions like "goto_1", the target is the first (and only) number
+        elif len(nums) == 1:
+            target_idx = nums[0]
+
+        if target_idx != -1:
+            key = f"{target_idx}"
+            if key in self.nodes and 'attr' in self.nodes[key] and 'pose' in self.nodes[key]['attr']:
+                return tuple(self.nodes[key]['attr']['pose'])
+        return None
+
+    def _check_current_weather(self):
+        """Check if robot is in bad weather (inside any bump polygon)"""
+        from shapely.geometry import Point
+        current_point = Point(self.pose)
+        
+        # Check if current position is inside any bump polygon
+        for bump_polygon in BUMP_POLYGONS:
+            if bump_polygon.contains(current_point):
+                return "0"  # Bad weather
+        
+        return "1"  # Good weather
+
+    def _build_robot_dict(self):
+        # plan：直接拼接 prefix + suffix 的字符串动作序列
+        plan_seq = list(self.prefix_action_list) + list(self.suffix_action_list)
+        
+        # Convert plan from action strings to coordinate list
+        plan_coords = []
+        node_indices = []
+        
+        is_first_move = True
+        for action_str in plan_seq:
+            nums = extract_all_numbers(action_str)
+            if not nums:
+                continue
+
+            if "from_" in action_str:
+                from_idx, to_idx = nums
+                if is_first_move:
+                    node_indices.append(from_idx)
+                    is_first_move = False
+                # Basic continuity check
+                if not node_indices or node_indices[-1] == from_idx:
+                    node_indices.append(to_idx)
+                else: # Discontinuity
+                    node_indices.append(from_idx)
+                    node_indices.append(to_idx)
+
+            elif "goto_" in action_str:
+                to_idx = nums[0]
+                if is_first_move:
+                    node_indices.append(self.pose_index)
+                    is_first_move = False
+                node_indices.append(to_idx)
+        
+        # De-duplicate consecutive identical points
+        if node_indices:
+            unique_indices = [node_indices[0]]
+            for i in range(1, len(node_indices)):
+                if node_indices[i] != node_indices[i-1]:
+                    unique_indices.append(node_indices[i])
+            node_indices = unique_indices
+
+        for idx in node_indices:
+            node_key = str(idx)
+            if node_key in self.nodes:
+                pose = self.nodes[node_key]['attr']['pose']
+                plan_coords.append(list(pose))
+
+        # immediate_goal：下一步动作的目标位姿
+        immediate_goal = None
+        if self.plan_index < len(self.prefix_action_list):
+            immediate_goal = self._action_target_pose(self.prefix_action_list[self.plan_index])
+        elif len(self.suffix_action_list) > 0:
+            suf_idx = (self.plan_index - len(self.prefix_action_list)) % len(self.suffix_action_list)
+            immediate_goal = self._action_target_pose(self.suffix_action_list[suf_idx])
+
+        # mission_time：剩余步数, 使用用户提供的公式
+        mission_time = max(0, len(plan_seq) - self.plan_index - 1 - self.replan_count)
+
+        robot_data = {
+            self.agent_name: {
+                "plan": plan_coords,
+                "plan_index": int(self.plan_index),
+                "immediate_goal": list(immediate_goal) if immediate_goal is not None else None,
+                "x": float(self.pose[0]),
+                "y": float(self.pose[1]),
+                "mission_time": mission_time,
+                "replan_flag": self.replan_requested,
+                "replan_count": self.replan_count,
+                "Current_weather": self._check_current_weather(), # 0 = bad (in bump), 1 = good (not in bump)
+                "Battery_status": "1", # 0 = <40%, 1 = >40%, 2 = dead 
+                "Momentarily_offline": "0", # 0 = online, 1 = offline 
+            }
+        }
+        
+        # Reset the one-shot flag after using it
+        if self.replan_requested:
+            self.replan_requested = False
+            
+        return robot_data
+
+
     def simulate(self):
         #rate = self.create_rate(10)
         
         try:    
-            if (self.get_clock().now().nanoseconds - self.t_sim.nanoseconds) / 1e9 >= self.next_interval/20:      
+            if (self.get_clock().now().nanoseconds - self.t_sim.nanoseconds) / 1e9 >= self.next_interval/10:  # 改为除以10，让移动更慢，原来是20      
                 # self.get_logger().info(f"self.on_hold: {self.on_hold}")
                 if self.on_hold == False and self.final_on_hold == False:
                     if USE_ISAAC:
@@ -823,6 +965,11 @@ class LTLControllerDrone(Node):
             # # self.world.screen.blit(text, text_)
             # =================================================================
 
+            # Publish robot json data
+            robot_data_dict = self._build_robot_dict()
+            json_payload = json.dumps(robot_data_dict, indent=4)
+            self.robot_json_pub.publish(String(data=json_payload))
+
             if self.mode == EquipmentMode.UNLOADED:
                 mode = 'unloaded'
             elif self.mode == EquipmentMode.LOADED:
@@ -841,6 +988,7 @@ class LTLControllerDrone(Node):
             msg.pose = [float(x) for x in self.pose]  # Convert tuple (1, 19) to list [1, 19] to match int32[] type
             msg.mode = mode
             self.position_pub.publish(msg)
+  
 
 
 
