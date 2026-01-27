@@ -98,33 +98,11 @@ class HumanLLMChatNode(Node):
             fg='#89b4fa',
             bg='#1e1e2e'
         )
-        title_label.pack(pady=(0, 10))
+        title_label.pack(side=tk.TOP, pady=(0, 10))
         
-        # Chat display area
-        self.chat_display = scrolledtext.ScrolledText(
-            main_frame,
-            wrap=tk.WORD,
-            font=('Consolas', 14),
-            bg='#313244',
-            fg='#cdd6f4',
-            insertbackground='#f5e0dc',
-            relief=tk.FLAT,
-            padx=10,
-            pady=10
-        )
-        self.chat_display.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
-        self.chat_display.config(state=tk.DISABLED)
-        
-        # Configure tags for different message types
-        self.chat_display.tag_config('system', foreground='#a6e3a1')
-        self.chat_display.tag_config('user', foreground='#89b4fa')
-        self.chat_display.tag_config('assistant', foreground='#f9e2af')
-        self.chat_display.tag_config('error', foreground='#f38ba8')
-        self.chat_display.tag_config('success', foreground='#94e2d5')
-        
-        # Input frame
+        # Input frame - PACK FIRST to bottom, so it's always visible
         input_frame = tk.Frame(main_frame, bg='#1e1e2e')
-        input_frame.pack(fill=tk.X)
+        input_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
         
         # Input entry
         self.input_entry = tk.Entry(
@@ -168,6 +146,28 @@ class HumanLLMChatNode(Node):
             command=self.reset_conversation
         )
         self.reset_btn.pack(side=tk.RIGHT, ipadx=12, ipady=8, padx=(0, 10))
+        
+        # Chat display area - PACK AFTER input frame, fills remaining space
+        self.chat_display = scrolledtext.ScrolledText(
+            main_frame,
+            wrap=tk.WORD,
+            font=('Consolas', 14),
+            bg='#313244',
+            fg='#cdd6f4',
+            insertbackground='#f5e0dc',
+            relief=tk.FLAT,
+            padx=10,
+            pady=10
+        )
+        self.chat_display.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.chat_display.config(state=tk.DISABLED)
+        
+        # Configure tags for different message types
+        self.chat_display.tag_config('system', foreground='#a6e3a1')
+        self.chat_display.tag_config('user', foreground='#89b4fa')
+        self.chat_display.tag_config('assistant', foreground='#f9e2af')
+        self.chat_display.tag_config('error', foreground='#f38ba8')
+        self.chat_display.tag_config('success', foreground='#94e2d5')
         
         # Display welcome message
         welcome_msg = """Welcome! I'm your robot command assistant.
