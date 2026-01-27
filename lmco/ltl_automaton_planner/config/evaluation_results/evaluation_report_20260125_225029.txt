@@ -1,0 +1,64 @@
+======================================================================
+LLM INSTRUCTION PARSING EVALUATION REPORT
+Generated: 2026-01-25 22:51:49
+======================================================================
+
+OVERALL METRICS
+----------------------------------------
+Total Instructions: 60
+Overall Accuracy: 95.00%
+Macro Precision: 95.22%
+Macro Recall: 95.00%
+Macro F1 Score: 94.99%
+
+PER-CLASS METRICS
+----------------------------------------
+
+add_task:
+  Precision: 94.74%
+  Recall: 90.00%
+  F1 Score: 92.31%
+  Support: 20
+
+obstacle_update:
+  Precision: 90.91%
+  Recall: 100.00%
+  F1 Score: 95.24%
+  Support: 20
+
+change_task_priority:
+  Precision: 100.00%
+  Recall: 95.00%
+  F1 Score: 97.44%
+  Support: 20
+
+
+ACCURACY BY INSTRUCTION CLARITY
+----------------------------------------
+Clear Instructions (n=30): 100.00%
+Ambiguous Instructions (n=30): 90.00%
+
+
+MISCLASSIFIED EXAMPLES
+----------------------------------------
+
+ID 15 (ambiguous):
+  Instruction: Something new appeared on the map near point D.
+  True Intent: add_task
+  Predicted: obstacle_update (conf: 0.70)
+  Reasoning: The phrase 'something new appeared on the map' suggests a change in the environment, which could imply an obstacle or blockage. The mention of a specific location 'near point D' supports this interpretation.
+
+ID 17 (ambiguous):
+  Instruction: There is a new situation near (7, 15) that needs attention.
+  True Intent: add_task
+  Predicted: obstacle_update (conf: 0.60)
+  Reasoning: The phrase 'new situation' near specific coordinates suggests a potential issue or change in the environment, which could imply an obstacle or blockage. However, the instruction is vague, so the confidence is moderate.
+
+ID 53 (ambiguous):
+  Instruction: Finish task near room C
+  True Intent: change_task_priority
+  Predicted: add_task (conf: 0.60)
+  Reasoning: The instruction mentions 'finish task near room C', which suggests completing or adding a task related to a specific location. However, it is somewhat ambiguous as it could imply either completing an existing task or adding a new task. Given the context of location, 'add_task' is chosen with moderate confidence.
+
+======================================================================
+END OF REPORT

@@ -1,0 +1,204 @@
+{
+  "solve_time": 601.391836643219,
+  "status": 9,
+  "timeout": true,
+  "total_distance": 155.57236684951982,
+  "total_steps": 354,
+  "robot_assignments": {
+    "robot1": {
+      "tasks": [
+        "bc",
+        "dc",
+        "fc",
+        "cc",
+        "ec"
+      ],
+      "trips": [
+        {
+          "tasks": [
+            "dc",
+            "bc"
+          ],
+          "deliveries": [
+            "c"
+          ]
+        },
+        {
+          "tasks": [
+            "fc"
+          ],
+          "deliveries": [
+            "c"
+          ]
+        },
+        {
+          "tasks": [
+            "ec",
+            "cc"
+          ],
+          "deliveries": [
+            "c"
+          ]
+        }
+      ],
+      "full_route": [
+        "dc",
+        "bc",
+        "c",
+        "fc",
+        "c",
+        "ec",
+        "cc",
+        "c"
+      ],
+      "steps": 80
+    },
+    "robot2": {
+      "tasks": [
+        "bd",
+        "cd",
+        "ed",
+        "fd",
+        "dd"
+      ],
+      "trips": [
+        {
+          "tasks": [
+            "cd",
+            "bd"
+          ],
+          "deliveries": [
+            "d"
+          ]
+        },
+        {
+          "tasks": [
+            "ed",
+            "fd"
+          ],
+          "deliveries": [
+            "d"
+          ]
+        },
+        {
+          "tasks": [
+            "dd"
+          ],
+          "deliveries": [
+            "d"
+          ]
+        }
+      ],
+      "full_route": [
+        "cd",
+        "bd",
+        "d",
+        "ed",
+        "fd",
+        "d",
+        "dd",
+        "d"
+      ],
+      "steps": 89
+    },
+    "robot3": {
+      "tasks": [
+        "db",
+        "eb",
+        "bb",
+        "gb"
+      ],
+      "trips": [
+        {
+          "tasks": [
+            "eb",
+            "db"
+          ],
+          "deliveries": [
+            "b"
+          ]
+        },
+        {
+          "tasks": [
+            "bb",
+            "gb"
+          ],
+          "deliveries": [
+            "b"
+          ]
+        }
+      ],
+      "full_route": [
+        "eb",
+        "db",
+        "b",
+        "bb",
+        "gb",
+        "b"
+      ],
+      "steps": 70
+    },
+    "robot4": {
+      "tasks": [
+        "cb",
+        "fb",
+        "be",
+        "fe",
+        "de",
+        "ce",
+        "ee"
+      ],
+      "trips": [
+        {
+          "tasks": [
+            "fb",
+            "cb"
+          ],
+          "deliveries": [
+            "b"
+          ]
+        },
+        {
+          "tasks": [
+            "fe",
+            "be"
+          ],
+          "deliveries": [
+            "e"
+          ]
+        },
+        {
+          "tasks": [
+            "de"
+          ],
+          "deliveries": [
+            "e"
+          ]
+        },
+        {
+          "tasks": [
+            "ce",
+            "ee"
+          ],
+          "deliveries": [
+            "e"
+          ]
+        }
+      ],
+      "full_route": [
+        "fb",
+        "cb",
+        "b",
+        "fe",
+        "be",
+        "e",
+        "de",
+        "e",
+        "ce",
+        "ee",
+        "e"
+      ],
+      "steps": 115
+    }
+  }
+}

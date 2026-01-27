@@ -1,0 +1,88 @@
+======================================================================
+LLM INSTRUCTION PARSING EVALUATION REPORT
+Generated: 2026-01-25 22:55:28
+======================================================================
+
+OVERALL METRICS
+----------------------------------------
+Total Instructions: 90
+Overall Accuracy: 92.22%
+Macro Precision: 92.79%
+Macro Recall: 92.22%
+Macro F1 Score: 92.08%
+
+PER-CLASS METRICS
+----------------------------------------
+
+add_task:
+  Precision: 96.00%
+  Recall: 80.00%
+  F1 Score: 87.27%
+  Support: 30
+
+obstacle_update:
+  Precision: 85.71%
+  Recall: 100.00%
+  F1 Score: 92.31%
+  Support: 30
+
+change_task_priority:
+  Precision: 96.67%
+  Recall: 96.67%
+  F1 Score: 96.67%
+  Support: 30
+
+
+ACCURACY BY INSTRUCTION CLARITY
+----------------------------------------
+Clear Instructions (n=30): 100.00%
+Ambiguous Instructions (n=60): 88.33%
+
+
+MISCLASSIFIED EXAMPLES
+----------------------------------------
+
+ID 15 (ambiguous):
+  Instruction: Something new appeared on the map near point D.
+  True Intent: add_task
+  Predicted: obstacle_update (conf: 0.70)
+  Reasoning: The phrase 'something new appeared on the map' suggests a change in the environment, which could indicate an obstacle or blockage. The mention of a specific location 'near point D' supports this interpretation.
+
+ID 17 (ambiguous):
+  Instruction: There is a new situation near (7, 15) that needs attention.
+  True Intent: add_task
+  Predicted: obstacle_update (conf: 0.60)
+  Reasoning: The phrase 'new situation' is vague, but the mention of specific coordinates suggests a location-based issue. Without explicit keywords for adding a task or changing priority, it is more likely related to an obstacle or blockage that needs attention.
+
+ID 53 (ambiguous):
+  Instruction: Finish task near room C
+  True Intent: change_task_priority
+  Predicted: add_task (conf: 0.60)
+  Reasoning: The instruction mentions 'finish task near room C', which suggests adding a task related to a specific location. However, it could also imply changing the priority of an existing task. Given the lack of explicit priority-related keywords, 'add_task' is chosen with moderate confidence.
+
+ID 63 (ambiguous):
+  Instruction: There might be a new thing showing on the map.
+  True Intent: add_task
+  Predicted: obstacle_update (conf: 0.60)
+  Reasoning: The phrase 'new thing showing on the map' suggests a change in the environment, which could imply an obstacle or blockage. However, the instruction is vague, so the confidence is moderate.
+
+ID 65 (ambiguous):
+  Instruction: Something else probably needs to be handled now.
+  True Intent: add_task
+  Predicted: change_task_priority (conf: 0.60)
+  Reasoning: The phrase 'needs to be handled now' suggests a change in urgency or priority, indicating a potential change in task priority.
+
+ID 67 (ambiguous):
+  Instruction: Another one just appeared, not sure where exactly.
+  True Intent: add_task
+  Predicted: obstacle_update (conf: 0.60)
+  Reasoning: The phrase 'another one just appeared' suggests the emergence of something unexpected, which is often associated with obstacles or blockages. The lack of specific location details adds ambiguity, but the context leans towards reporting an obstacle.
+
+ID 68 (ambiguous):
+  Instruction: There is one more thing that was not there before.
+  True Intent: add_task
+  Predicted: obstacle_update (conf: 0.60)
+  Reasoning: The phrase 'one more thing that was not there before' suggests a new presence, which could imply an obstacle or blockage. However, the statement is vague, so the confidence is moderate.
+
+======================================================================
+END OF REPORT

@@ -179,6 +179,10 @@ class TaskAssignNode(Node):
         # Publisher for global completion (all robots finished)
         self.all_robots_finished_pub = self.create_publisher(String, '/all_robots_finished', 10)
         self.all_finished_published = False  # Flag to avoid duplicate publishing
+        
+        # Task assignment timing tracking
+        self.total_task_assignment_time = 0.0  # Cumulative time spent on task assignment
+        self.task_assignment_count = 0  # Number of task assignment operations
 
         # ----- Load wall and task info -----
         package_share = get_package_share_directory('ltl_automaton_planner')
@@ -382,6 +386,19 @@ class TaskAssignNode(Node):
             self.get_logger().info(f"No task robots: {list(self.no_task_robots.keys())}")
             self.get_logger().info("="*60)
             
+            # Output total task assignment time statistics
+            self.get_logger().info("")
+            self.get_logger().info("="*60)
+            self.get_logger().info("TASK ASSIGNMENT TIME STATISTICS")
+            self.get_logger().info("="*60)
+            self.get_logger().info(f"Total task assignment operations: {self.task_assignment_count}")
+            self.get_logger().info(f"Total time spent on task assignment: {self.total_task_assignment_time:.4f} seconds")
+            if self.task_assignment_count > 0:
+                avg_time = self.total_task_assignment_time / self.task_assignment_count
+                self.get_logger().info(f"Average time per assignment: {avg_time:.4f} seconds")
+            self.get_logger().info("="*60)
+            self.get_logger().info("")
+            
             # Publish global completion message
             completion_msg = String()
             completion_msg.data = json.dumps({
@@ -398,6 +415,8 @@ class TaskAssignNode(Node):
                 'type': 'global_completion',
                 'all_robots_finished': True,
                 'robot_count': len(active_robots),
+                'total_task_assignment_time': self.total_task_assignment_time,
+                'task_assignment_count': self.task_assignment_count,
                 'timestamp': time.time()
             })
             self.timing_pub.publish(timing_msg)
@@ -410,6 +429,9 @@ class TaskAssignNode(Node):
         Auction a new task to idle (no_task) robots based on distance.
         The closest robot that can complete the task wins.
         """
+        # Start timing for task assignment
+        assignment_start_time = time.monotonic()
+        
         self.get_logger().info(f"\n=== AUCTIONING NEW TASK '{task_label}' TO IDLE ROBOTS ===")
         self.get_logger().info(f"Task location: {task_location}, Task type: {task_type}")
         self.get_logger().info(f"Available no_task robots: {list(self.no_task_robots.keys())}")
@@ -439,6 +461,11 @@ class TaskAssignNode(Node):
         
         if not candidates:
             self.get_logger().warn("No eligible robots found for new task auction")
+            # Record task assignment time even for failed auction
+            assignment_duration = time.monotonic() - assignment_start_time
+            self.total_task_assignment_time += assignment_duration
+            self.task_assignment_count += 1
+            self.get_logger().info(f"[TIMING] Failed auction completed in {assignment_duration:.4f}s (Total: {self.total_task_assignment_time:.4f}s)")
             return
         
         # Sort by distance (closest first)
@@ -489,6 +516,12 @@ class TaskAssignNode(Node):
         
         # Reset all_finished state since a robot is now active again
         self.check_all_robots_finished()
+        
+        # Record task assignment time
+        assignment_duration = time.monotonic() - assignment_start_time
+        self.total_task_assignment_time += assignment_duration
+        self.task_assignment_count += 1
+        self.get_logger().info(f"[TIMING] New task auction for {winner_name} completed in {assignment_duration:.4f}s (Total: {self.total_task_assignment_time:.4f}s)")
         
         self.get_logger().info(f"Successfully assigned new task '{task_label}' to {winner_name}")
 
@@ -894,6 +927,9 @@ class TaskAssignNode(Node):
 
     def assign_new_cluster(self, msg):
         self.get_logger().info(f"Received new cluster assign request from Robot{msg.robot_id}.")
+        
+        # Start timing for task assignment
+        assignment_start_time = time.monotonic()
 
         robot_id = msg.robot_id  # robot_id is an integer (1,2,3,4)
         robot_index = robot_id - 1
@@ -914,6 +950,11 @@ class TaskAssignNode(Node):
         if self.high_priority_pending_tasks:
             assigned_high_priority = self._try_assign_high_priority_task(robot_name, robot_type, robot_index)
             if assigned_high_priority:
+                # Record task assignment time for high priority task
+                assignment_duration = time.monotonic() - assignment_start_time
+                self.total_task_assignment_time += assignment_duration
+                self.task_assignment_count += 1
+                self.get_logger().info(f"[TIMING] High priority task assignment for {robot_name} completed in {assignment_duration:.4f}s (Total: {self.total_task_assignment_time:.4f}s)")
                 return
 
         all_points = list(self.points_with_label.keys())
@@ -929,6 +970,12 @@ class TaskAssignNode(Node):
             no_task_msg.robot_id = robot_name
             self.no_task_pubs[robot_name].publish(no_task_msg)
             self.get_logger().info(f"Published NoTask message to {robot_name}")
+            
+            # Record task assignment time (even for no-task case)
+            assignment_duration = time.monotonic() - assignment_start_time
+            self.total_task_assignment_time += assignment_duration
+            self.task_assignment_count += 1
+            self.get_logger().info(f"[TIMING] No-task check for {robot_name} completed in {assignment_duration:.4f}s (Total: {self.total_task_assignment_time:.4f}s)")
             
             # Check if all robots are now in no_task state
             self.check_all_robots_finished()
@@ -988,9 +1035,27 @@ class TaskAssignNode(Node):
                 best_index = j
 
         if best_index == -1 or best_score == float('inf'):
-            self.robot_cluster_map[robot_name] = []
-            self.robot_cluster_indices[robot_name] = -1
-            self.get_logger().info(f"No valid cluster found for {robot_name}. Assignment is empty.")
+            # No valid cluster found - publish NoTask message instead of empty task list
+            self.get_logger().info(f"No valid cluster found for {robot_name}. Publishing NoTask message.")
+            
+            # Track this robot as no_task with its current position
+            self.no_task_robots[robot_name] = new_position
+            self.get_logger().info(f"Added {robot_name} to no_task_robots at position {new_position}")
+            
+            no_task_msg = NoTask()
+            no_task_msg.robot_id = robot_name
+            self.no_task_pubs[robot_name].publish(no_task_msg)
+            self.get_logger().info(f"Published NoTask message to {robot_name}")
+            
+            # Record task assignment time (even for no valid cluster case)
+            assignment_duration = time.monotonic() - assignment_start_time
+            self.total_task_assignment_time += assignment_duration
+            self.task_assignment_count += 1
+            self.get_logger().info(f"[TIMING] No valid cluster check for {robot_name} completed in {assignment_duration:.4f}s (Total: {self.total_task_assignment_time:.4f}s)")
+            
+            # Check if all robots are now in no_task state
+            self.check_all_robots_finished()
+            return
         else:
             self.robot_cluster_map[robot_name] = all_clusters[best_index]
             self.robot_cluster_indices[robot_name] = best_index
@@ -1021,6 +1086,12 @@ class TaskAssignNode(Node):
         self.generate_task_sequences(robot_names=[robot_name])
         self.publish_task_reassignments()
         self.update_clusters_after_assignment()
+        
+        # Record task assignment time
+        assignment_duration = time.monotonic() - assignment_start_time
+        self.total_task_assignment_time += assignment_duration
+        self.task_assignment_count += 1
+        self.get_logger().info(f"[TIMING] Cluster reassignment for {robot_name} completed in {assignment_duration:.4f}s (Total: {self.total_task_assignment_time:.4f}s)")
 
         
 
@@ -1030,9 +1101,19 @@ class TaskAssignNode(Node):
         # # When all robots have finished building, start task assignment.
         # if all(name in self.finished_robots for name in self.robot_names):
         self.get_logger().info("Starting task assignment...")
+        
+        # Start timing for initial task assignment
+        assignment_start_time = time.monotonic()
+        
         self.init_cluster_assign()
         self.generate_task_sequences()
         self.publish_task_assignments()
+        
+        # Record task assignment time
+        assignment_duration = time.monotonic() - assignment_start_time
+        self.total_task_assignment_time += assignment_duration
+        self.task_assignment_count += 1
+        self.get_logger().info(f"[TIMING] Initial task assignment completed in {assignment_duration:.4f}s (Total: {self.total_task_assignment_time:.4f}s)")
 
     def init_cluster_assign(self):
         """Step 1: Perform cluster-based auction assignment"""
@@ -1136,6 +1217,7 @@ class TaskAssignNode(Node):
             task_points = self.robot_cluster_map.get(robot_name, [])
             if not task_points:
                 self.robot_task_sequence[robot_name] = []
+                self.robot_route_labels[robot_name] = []  # IMPORTANT: Also clear route_labels!
                 continue
             
             # Get robot information
@@ -1146,6 +1228,7 @@ class TaskAssignNode(Node):
             cluster_index = self.robot_cluster_indices.get(robot_name, -1)
             if cluster_index == -1:
                 self.robot_task_sequence[robot_name] = []
+                self.robot_route_labels[robot_name] = []  # IMPORTANT: Also clear route_labels!
                 continue
             
             # Get task labels and delivery labels for this cluster

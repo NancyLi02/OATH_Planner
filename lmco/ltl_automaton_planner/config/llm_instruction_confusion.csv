@@ -36,7 +36,7 @@ id,instruction,gt_intent,clarity
 35,"Movement near the west side might be restricted.",obstacle_update,ambiguous
 36,"The robots should avoid the narrow passage near room D.",obstacle_update,ambiguous
 37,"The path we used before is no longer clear.",obstacle_update,ambiguous
-38,"There might be an obstruction close to the storage area.",obstacle_update,ambiguous
+38,"Be careful, when you finish task bb.",obstacle_update,ambiguous
 39,"That route near point C is not available anymore.",obstacle_update,ambiguous
 40,"The corridor close to the entrance should be avoided.",obstacle_update,ambiguous
 41,"Please make task \"bd\" the highest priority.",change_task_priority,clear
@@ -49,9 +49,9 @@ id,instruction,gt_intent,clarity
 48,"Task \"de\" is urgent and should be done earlier.",change_task_priority,clear
 49,"Please mark task \"cf\" as high priority.",change_task_priority,clear
 50,"Reorder the tasks so that \"ab\" is executed first.",change_task_priority,clear
-51,"Please do task \"cd\" first.",change_task_priority,ambiguous
+51,"Finish cc first.",change_task_priority,ambiguous
 52,"Focus on \"bd\" before anything else.",change_task_priority,ambiguous
-53,"That task near room C should be handled earlier.",change_task_priority,ambiguous
+53,"Finish task near room C",change_task_priority,ambiguous
 54,"Make sure the task at point B is done first.",change_task_priority,ambiguous
 55,"The delivery to room D is more important now.",change_task_priority,ambiguous
 56,"Finish the inspection near room A as soon as possible.",change_task_priority,ambiguous
@@ -59,3 +59,37 @@ id,instruction,gt_intent,clarity
 58,"Handle the task near (6, 10) before the others.",change_task_priority,ambiguous
 59,"That one near room E is urgent.",change_task_priority,ambiguous
 60,"Please take care of the task near room B first.",change_task_priority,ambiguous
+
+61,"Looks like there is something else we need to do.",add_task,ambiguous
+62,"I think another job just came up.",add_task,ambiguous
+63,"There might be a new thing showing on the map.",add_task,ambiguous
+64,"Did you see that new request that just appeared?",add_task,ambiguous
+65,"Something else probably needs to be handled now.",add_task,ambiguous
+66,"We may need to add whatever just showed up.",add_task,ambiguous
+67,"Another one just appeared, not sure where exactly.",add_task,ambiguous
+68,"There is one more thing that was not there before.",add_task,ambiguous
+69,"It seems like a new task just came in.",add_task,ambiguous
+70,"We should probably deal with that new thing.",add_task,ambiguous
+
+71,"I do not think the map is correct anymore.",obstacle_update,ambiguous
+72,"Something changed in the environment.",obstacle_update,ambiguous
+73,"The robots probably cannot go the same way now.",obstacle_update,ambiguous
+74,"That area might not be usable anymore.",obstacle_update,ambiguous
+75,"I think one of the routes is blocked now.",obstacle_update,ambiguous
+76,"The path we planned before might not work.",obstacle_update,ambiguous
+77,"There seems to be a problem with the layout.",obstacle_update,ambiguous
+78,"Movement around there feels risky.",obstacle_update,ambiguous
+79,"One section of the map does not look right.",obstacle_update,ambiguous
+80,"We may need to update the environment model.",obstacle_update,ambiguous
+
+81,"That task should probably go first.",change_task_priority,ambiguous
+82,"I want this one handled earlier.",change_task_priority,ambiguous
+83,"Can we do this one before the others?",change_task_priority,ambiguous
+84,"This task feels more important now.",change_task_priority,ambiguous
+85,"I would rather finish this one first.",change_task_priority,ambiguous
+86,"This one should not be delayed.",change_task_priority,ambiguous
+87,"Make sure this task is not left behind.",change_task_priority,ambiguous
+88,"We should prioritize this instead.",change_task_priority,ambiguous
+89,"That one deserves more attention.",change_task_priority,ambiguous
+90,"Please move this task earlier.",change_task_priority,ambiguous
+

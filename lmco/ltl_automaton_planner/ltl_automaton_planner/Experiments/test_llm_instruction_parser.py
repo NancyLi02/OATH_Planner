@@ -402,8 +402,8 @@ def main():
     
     # File paths
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Go up one level from ltl_automaton_planner/ltl_automaton_planner/ to ltl_automaton_planner/
-    config_dir = os.path.normpath(os.path.join(script_dir, '..', 'config'))
+    # Go up two levels from Experiments/ to ltl_automaton_planner/, then into config/
+    config_dir = os.path.normpath(os.path.join(script_dir, '..', '..', 'config'))
     
     # Output paths
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

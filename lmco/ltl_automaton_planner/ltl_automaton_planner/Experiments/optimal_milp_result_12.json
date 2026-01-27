@@ -1,0 +1,145 @@
+{
+  "solve_time": 32.94470477104187,
+  "status": 2,
+  "timeout": false,
+  "total_distance": 85.38053511882188,
+  "total_steps": 198,
+  "robot_assignments": {
+    "robot1": {
+      "tasks": [
+        "bc",
+        "dc",
+        "cc"
+      ],
+      "trips": [
+        {
+          "tasks": [
+            "dc",
+            "bc"
+          ],
+          "deliveries": [
+            "c"
+          ]
+        },
+        {
+          "tasks": [
+            "cc"
+          ],
+          "deliveries": [
+            "c"
+          ]
+        }
+      ],
+      "full_route": [
+        "dc",
+        "bc",
+        "c",
+        "cc",
+        "c"
+      ],
+      "steps": 49
+    },
+    "robot2": {
+      "tasks": [
+        "bd",
+        "cd",
+        "dd"
+      ],
+      "trips": [
+        {
+          "tasks": [
+            "cd",
+            "bd"
+          ],
+          "deliveries": [
+            "d"
+          ]
+        },
+        {
+          "tasks": [
+            "dd"
+          ],
+          "deliveries": [
+            "d"
+          ]
+        }
+      ],
+      "full_route": [
+        "cd",
+        "bd",
+        "d",
+        "dd",
+        "d"
+      ],
+      "steps": 51
+    },
+    "robot3": {
+      "tasks": [
+        "cb",
+        "bb",
+        "db"
+      ],
+      "trips": [
+        {
+          "tasks": [
+            "cb"
+          ],
+          "deliveries": [
+            "b"
+          ]
+        },
+        {
+          "tasks": [
+            "bb",
+            "db"
+          ],
+          "deliveries": [
+            "b"
+          ]
+        }
+      ],
+      "full_route": [
+        "cb",
+        "b",
+        "bb",
+        "db",
+        "b"
+      ],
+      "steps": 44
+    },
+    "robot4": {
+      "tasks": [
+        "be",
+        "de",
+        "ce"
+      ],
+      "trips": [
+        {
+          "tasks": [
+            "be",
+            "de"
+          ],
+          "deliveries": [
+            "e"
+          ]
+        },
+        {
+          "tasks": [
+            "ce"
+          ],
+          "deliveries": [
+            "e"
+          ]
+        }
+      ],
+      "full_route": [
+        "be",
+        "de",
+        "e",
+        "ce",
+        "e"
+      ],
+      "steps": 54
+    }
+  }
+}
