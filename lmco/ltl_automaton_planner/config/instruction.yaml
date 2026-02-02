@@ -1,0 +1,13 @@
+Add new task:
+"1. New normal (special) task appear at (1, 1), the label is gb, deliver it to b."
+"2. New normal task appear at (5, 19.5), the label is gc, deliver it to c."
+"3. New task appear at (19, 11), the label is gd, deliver it to d."
+
+New Obstacles detected:
+"1. new wall apears at (7,5), (8,5)"
+"2. (2, 15), (4, 15)"
+"3. (17, 7), (18, 7)"
+"4. (17, 5), (18, 5)"
+
+Change task priority:
+"dd, bd, bb"
