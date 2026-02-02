@@ -19,7 +19,7 @@ def generate_launch_description():
     
     declare_robot_count_cmd = DeclareLaunchArgument(
         'robot_count',
-        default_value='4',
+        default_value='2',
         description='Number of robots to launch'
     )
     declare_task_count_cmd = DeclareLaunchArgument(
@@ -39,7 +39,7 @@ def generate_launch_description():
     ld.add_action(declare_task_count_cmd)
     ld.add_action(declare_argo_type_cmd)
     
-    for i in range(1, 5):  # 4 robots
+    for i in range(1, 3):  # 2 robots
         robot_namespace = f'robot{i}'
         agent_name = f'robot{i}'
         init_state_arg = f'robot{i}_init_state'
@@ -51,7 +51,7 @@ def generate_launch_description():
         )
         declare_init_state_cmd = DeclareLaunchArgument(
             init_state_arg,
-            default_value=str(999 + i),
+            default_value=str(99 + i),
             description=f'Initial state for robot {i}'
         )
         
@@ -104,7 +104,7 @@ def generate_launch_description():
             {'score_scheme': 'dstar'}
         ] + [
             {f'robot{i}_init_pose': LaunchConfiguration(f'robot{i}_init_state')}
-            for i in range(1, 5)
+            for i in range(1, 3)
         ]
     )
 
@@ -115,7 +115,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
                     {'transition_system_textfile': transition_system_file},
-                    {'N': 20}
+                    {'N': 18}
                 ]
             )
 
@@ -137,5 +137,5 @@ def generate_launch_description():
     ld.add_action(taskassign_node)
     ld.add_action(showmove_node)
     ld.add_action(llm_command_parser_node)
-    ld.add_action(human_llm_chat_node)
+    # ld.add_action(human_llm_chat_node)
     return ld

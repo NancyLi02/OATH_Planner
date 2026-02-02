@@ -9,14 +9,14 @@ import numpy as np
 
 # Global lists for dynamic obstacles
 BLOCK_POLYGONS = [
-    Polygon([(5, 3.9), (6, 3.9), (6, 4.1), (5, 4.1)]),  
-    Polygon([(4, 14.9), (5, 14.9), (5, 15.1), (4, 15.1)])  
+    # Polygon([(5, 3.9), (6, 3.9), (6, 4.1), (5, 4.1)]),  
+    # Polygon([(4, 14.9), (5, 14.9), (5, 15.1), (4, 15.1)])  
 ]
 
 BUMP_POLYGONS = [
-    Polygon([(4.1, 1.1), (4.1, 2.0), (2.5, 2.0), (2.5, 1.1)]),
-    Polygon([(17.5, 15), (20, 15), (20, 13), (17.5, 13)]),
-    Polygon([(17.5, 5), (20, 5), (20, 3), (17.5, 3)])
+    # Polygon([(4.1, 1.1), (4.1, 2.0), (2.5, 2.0), (2.5, 1.1)]),
+    # Polygon([(17.5, 15), (20, 15), (20, 13), (17.5, 13)]),
+    # Polygon([(17.5, 5), (20, 5), (20, 3), (17.5, 3)])
 ]
 
 def add_block_polygon(coords):
@@ -150,7 +150,7 @@ def density_probability(d, d_min, d_opt, sigma, floor):
     return floor + (1 - floor) * np.exp(-((d - d_opt) ** 2) / (2 * sigma ** 2))
 
 # Rejection sampling algorithm
-def rejection_sampling(n_samples, lines, area_size, d_min=0.3, d_opt=0.4, sigma=0.5, floor=0.2):
+def rejection_sampling(n_samples, lines, area_size, d_min=0.8, d_opt=2, sigma=0.5, floor=0.2):
     np.random.seed(42)
     random_value = np.random.rand()
     # print(f'random_value is {random_value}')
@@ -176,10 +176,12 @@ def rejection_sampling(n_samples, lines, area_size, d_min=0.3, d_opt=0.4, sigma=
 def build_graph_halton(x_length=20, y_length=20, n_points=700, new_task_points=None):
     points_with_label = load_points_with_label(new_task_points)
 
-    x_length = 20
-    n_points = 1000
-    x = halton_sequence(n_points, 2) * 20
-    y = halton_sequence(n_points, 3) * 20
+    x_length = 18
+    y_length = 18
+    # n_points = 1000
+    n_points = 100
+    x = halton_sequence(n_points, 2) * x_length
+    y = halton_sequence(n_points, 3) * y_length
     points = np.vstack((x, y)).T
 
     # Filter points (pseudo-code)

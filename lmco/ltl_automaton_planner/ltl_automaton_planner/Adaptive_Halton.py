@@ -8,8 +8,8 @@ import os
 import re
 
 # Global parameter definitions
-d_min = 0.3       # Minimum allowed distance to avoid points being too close to obstacles
-d_opt = 0.4       # Optimal distance (highest sampling probability)
+d_min = 0.8       # Minimum allowed distance to avoid points being too close to obstacles
+d_opt = 2       # Optimal distance (highest sampling probability)
 sigma = 0.5       # Controls the width of the probability distribution
 floor_prob = 0.2  # Minimum sampling probability in open areas
 wall_thick = 0.1  # Thickness of the walls
@@ -54,7 +54,8 @@ if 'delivery_points' in yaml_data:
             x, y = float(match.group(1)), float(match.group(2))
             points_with_label[(x, y)] = v
 
-x_length, y_length = 20, 20
+# x_length, y_length = 20, 20
+x_length, y_length = 18, 18
 
 # ---------- Walls ----------
 def load_lines_from_yaml(filepath):
@@ -106,7 +107,7 @@ def rejection_sampling(n_samples, lines, area_size, d_min, d_opt, sigma, floor):
     return samples[:n_samples]
 
 # Generate valid sampling points
-valid_points = rejection_sampling(1000, lines, x_length, d_min, d_opt, sigma, floor_prob)
+valid_points = rejection_sampling(100, lines, x_length, d_min, d_opt, sigma, floor_prob)
 
 # Add labeled points to the valid points
 for key in points_with_label.keys():

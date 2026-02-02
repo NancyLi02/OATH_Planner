@@ -10,12 +10,12 @@ from scipy.spatial import Delaunay
 
 
 # ------------------------ Parameters ------------------------
-d_min = 0.3
-d_opt = 0.4
+d_min = 0.8
+d_opt = 2
 sigma = 0.5
 floor_prob = 0.2
 wall_thick = 0.1
-x_length, y_length = 20, 20
+x_length, y_length = 18, 18
 
 # ------------------------ Wall Loading ------------------------
 current_dir = os.path.dirname(__file__)
@@ -28,27 +28,31 @@ obstacles = [line.buffer(wall_thick, cap_style=3) for line in lines]
 
 # ------------------------ Load Halton Points from CSV ------------------------
 def load_halton_points_from_csv(csv_path, task_points_yaml_path):
-    """Load Halton points from the pre-generated CSV file and filter only task_points"""
+    """Load Halton points from the pre-generated CSV file and filter task_points + delivery_points"""
     df = pd.read_csv(csv_path)
     points = []
     points_with_label = {}
     
-    # Load task_points from YAML to filter only task points
+    # Load task_points and delivery_points from YAML
     with open(task_points_yaml_path, 'r') as f:
         yaml_data = yaml.safe_load(f)
     
-    task_point_labels = set()
+    # Collect labels from both task_points and delivery_points
+    valid_labels = set()
     if 'task_points' in yaml_data:
         for coord_str, label in yaml_data['task_points'].items():
-            task_point_labels.add(label)
+            valid_labels.add(label)
+    if 'delivery_points' in yaml_data:
+        for coord_str, label in yaml_data['delivery_points'].items():
+            valid_labels.add(label)
     
     for _, row in df.iterrows():
         x, y, label = row['x'], row['y'], row['label']
         point = Point(x, y)
         points.append(point)
         
-        # Only store labels that are in task_points
-        if pd.notna(label) and str(label).strip() and str(label) in task_point_labels:
+        # Store labels that are in task_points or delivery_points
+        if pd.notna(label) and str(label).strip() and str(label) in valid_labels:
             points_with_label[(x, y)] = str(label)
     
     return points, points_with_label
@@ -61,7 +65,7 @@ task_points_yaml_path = os.path.abspath(task_points_yaml_path)
 valid_points, points_with_label = load_halton_points_from_csv(csv_path, task_points_yaml_path)
 
 print(f"Loaded {len(valid_points)} points from CSV")
-print(f"Found {len(points_with_label)} labeled task points (only from task_points section)")
+print(f"Found {len(points_with_label)} labeled points (task_points + delivery_points)")
 
 point_coords = [(p.x, p.y) for p in valid_points]
 point_index = {pt: i for i, pt in enumerate(point_coords)}
@@ -125,7 +129,7 @@ for u in graph:
         x2, y2 = point_coords[v]
         ax.plot([x1, x2], [y1, y2], color='lightgray', linewidth=0.4)
 
-# Draw all shortest paths between task points
+# Draw all shortest paths between labeled points (task_points + delivery_points)
 labels = list(label_indices.keys())
 for i in range(len(labels)):
     for j in range(i + 1, len(labels)):
@@ -141,7 +145,7 @@ for i in range(len(labels)):
         path_y = [y for x, y in path_coords]
         ax.plot(path_x, path_y, color='blue', linewidth=1.0, alpha=0.5)
 
-# Draw labeled task points
+# Draw labeled points (task_points + delivery_points)
 for (x, y), label in points_with_label.items():
     ax.plot(x, y, 'bo')
     # ax.text(x + 0.2, y + 0.2, label, fontsize=16)

@@ -2,6 +2,8 @@
 import os
 import rclpy
 from rclpy.node import Node
+from rclpy.action import ActionClient
+from rclpy.callback_groups import ReentrantCallbackGroup
 import sys
 import yaml
 import std_msgs
@@ -11,6 +13,8 @@ from ltl_automaton_msgs.msg import TaskFail, AgentFail, AgentFailTask, NoTask, T
 from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
 # Import transition system loader
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump, add_block_polygon, add_bump_polygon, update_graph_with_obstacle
+# Import coordinate transformer for hardware navigation
+from ltl_automaton_planner.coordinate_transform import CoordinateTransformer, create_transformer_from_params
 # Import modules for commanding the a1
 
 from geometry_msgs.msg import PoseStamped
@@ -30,6 +34,9 @@ from interfaces_hmm_sim.msg import Status, ReplanStatus, AgentGoTo
 from ament_index_python.packages import get_package_share_directory
 from std_msgs.msg import String
 
+# Import Nav2 action for hardware experiments with TurtleBot3
+from nav2_msgs.action import NavigateToPose
+
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
 #                       -----------------
@@ -40,6 +47,7 @@ from std_msgs.msg import String
 #=================================================================
 
 USE_ISAAC = False
+USE_HARDWARE = False  # Set to True for TurtleBot3 hardware experiments
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -224,7 +232,75 @@ class LTLControllerDrone(Node):
         self.declare_parameter('init_state', 0)
         self.init_pose = self.get_parameter('init_state').value
 
-        self.nodes, generated_actions = build_graph_halton(20, 20, 1000)
+        # ========== Hardware (TurtleBot3) Navigation Setup ==========
+        if USE_HARDWARE:
+            self.callback_group = ReentrantCallbackGroup()
+            # Create Nav2 NavigateToPose action client
+            # The action server is namespaced: /<robot_namespace>/navigate_to_pose
+            self.nav2_action_client = ActionClient(
+                self,
+                NavigateToPose,
+                'navigate_to_pose',  # Will be namespaced by the robot's namespace
+                callback_group=self.callback_group
+            )
+            self.get_logger().info(f'[{self.agent_name}] Waiting for Nav2 NavigateToPose action server...')
+            # Wait for the action server to be available (with timeout)
+            if not self.nav2_action_client.wait_for_server(timeout_sec=10.0):
+                self.get_logger().error(f'[{self.agent_name}] Nav2 action server not available!')
+            else:
+                self.get_logger().info(f'[{self.agent_name}] Nav2 action server connected!')
+            
+            # Hardware navigation state variables
+            self.hardware_goal_in_progress = False
+            self.hardware_goal_reached = False
+            self.hardware_goal_failed = False
+            self.hardware_navigation_start = True  # Flag to allow first movement
+            self.hardware_goal_pending = False  # Flag to track pending goal when Nav2 not ready
+            self.pending_goal_pose = None  # Store the pending goal position
+            self._goal_handle = None
+            
+            # ========== Coordinate Transformation Setup ==========
+            # Parameters for transforming pygame map coordinates to real-world meters
+            # Default: pygame map 18x18 units -> real map 9ft x 9ft
+            self.declare_parameter('pygame_map_width', 18.0)
+            self.declare_parameter('pygame_map_height', 18.0)
+            self.declare_parameter('real_map_width_ft', 9.0)
+            self.declare_parameter('real_map_height_ft', 9.0)
+            self.declare_parameter('pygame_origin_x', 0.0)
+            self.declare_parameter('pygame_origin_y', 0.0)
+            self.declare_parameter('real_origin_x', 0.0)  # Real world origin offset in meters
+            self.declare_parameter('real_origin_y', 0.0)  # Real world origin offset in meters
+            
+            # Get coordinate transformation parameters
+            pygame_map_width = self.get_parameter('pygame_map_width').get_parameter_value().double_value
+            pygame_map_height = self.get_parameter('pygame_map_height').get_parameter_value().double_value
+            real_map_width_ft = self.get_parameter('real_map_width_ft').get_parameter_value().double_value
+            real_map_height_ft = self.get_parameter('real_map_height_ft').get_parameter_value().double_value
+            pygame_origin_x = self.get_parameter('pygame_origin_x').get_parameter_value().double_value
+            pygame_origin_y = self.get_parameter('pygame_origin_y').get_parameter_value().double_value
+            real_origin_x = self.get_parameter('real_origin_x').get_parameter_value().double_value
+            real_origin_y = self.get_parameter('real_origin_y').get_parameter_value().double_value
+            
+            # Create coordinate transformer
+            self.coord_transformer = create_transformer_from_params(
+                pygame_width=pygame_map_width,
+                pygame_height=pygame_map_height,
+                real_width_ft=real_map_width_ft,
+                real_height_ft=real_map_height_ft,
+                pygame_origin_x=pygame_origin_x,
+                pygame_origin_y=pygame_origin_y,
+                real_origin_x=real_origin_x,
+                real_origin_y=real_origin_y
+            )
+            
+            self.get_logger().info(f'[{self.agent_name}] Coordinate transformer initialized:')
+            self.get_logger().info(f'  Pygame map size: {pygame_map_width} x {pygame_map_height} units')
+            self.get_logger().info(f'  Real map size: {real_map_width_ft} x {real_map_height_ft} ft = '
+                                   f'{self.coord_transformer.real_map_size_m[0]:.4f} x {self.coord_transformer.real_map_size_m[1]:.4f} m')
+            self.get_logger().info(f'  Scale factors: {self.coord_transformer.scale_x:.6f} m/unit (x), {self.coord_transformer.scale_y:.6f} m/unit (y)')
+            self.get_logger().info(f'  Real world origin offset: ({real_origin_x}, {real_origin_y}) m')
+
+        self.nodes, generated_actions = build_graph_halton(18, 18, 100)
         
         self.transition_system ['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system ['actions'].update(generated_actions)
@@ -606,6 +682,18 @@ class LTLControllerDrone(Node):
             self.no_task = False
             self.final_on_hold = False
 
+        # Reset hardware navigation state when receiving new task
+        if USE_HARDWARE:
+            self.hardware_goal_in_progress = False
+            self.hardware_goal_reached = False
+            self.hardware_goal_failed = False
+            self.hardware_navigation_start = True  # Allow first movement
+            self.hardware_goal_pending = False  # Clear any pending goals
+            self.pending_goal_pose = None
+            if self._goal_handle is not None:
+                self.cancel_nav2_goal()  # Cancel any ongoing navigation
+            self.get_logger().info(f"[{self.agent_name}] Hardware navigation state reset for new task.")
+
         self.plan_index = 0
         self.cur_task_list = msg.route_labels
         self.i = 0
@@ -640,6 +728,12 @@ class LTLControllerDrone(Node):
         self.get_logger().info(f"[{self.agent_name}] Received replanning response. Success: {msg.success}")
         self.pose = self.previous_pose
         self.pose_index = self.previous_pose_index
+        
+        # Cancel any ongoing Nav2 navigation when replanning
+        if USE_HARDWARE and self._goal_handle is not None:
+            self.cancel_nav2_goal()
+            self.hardware_goal_in_progress = False
+        
         if msg.success:
             self.prefix_action_list = msg.new_plan_prefix.action_sequence
             self.prefix_state_sequence = msg.new_plan_prefix.ts_state_sequence
@@ -648,6 +742,13 @@ class LTLControllerDrone(Node):
             # NOTE: Do NOT reset plan_index! The replanning returns a modified plan
             # where actions before plan_index stay the same, only future actions change.
             self.on_hold = False
+            
+            # Allow hardware navigation to continue after successful replan
+            if USE_HARDWARE:
+                self.hardware_navigation_start = True
+                self.hardware_goal_reached = False
+                self.hardware_goal_failed = False
+            
             self.get_logger().info(f"[{self.agent_name}] Local replanning succeeded. Resuming with new plan at index {self.plan_index}.")
         else:
             # Local replanning failed - no alternative path found
@@ -657,6 +758,145 @@ class LTLControllerDrone(Node):
             self.suffix_action_list = []
             self.on_hold = True
             self.publish_task_request()
+
+    # ========== Hardware (TurtleBot3) Navigation Methods ==========
+    def send_nav2_goal(self, target_x, target_y, target_yaw=0.0):
+        """
+        Send a navigation goal to Nav2 for TurtleBot3.
+        
+        The input coordinates are in pygame map units. They will be automatically
+        transformed to real-world meters using the coordinate transformer before
+        being sent to Nav2.
+        
+        Args:
+            target_x: Target x coordinate in pygame map units
+            target_y: Target y coordinate in pygame map units
+            target_yaw: Target orientation (yaw) in radians (default: 0.0)
+        """
+        if not USE_HARDWARE:
+            return
+        
+        # Transform pygame coordinates to real-world meters
+        pygame_coord = (target_x, target_y)
+        real_coord = self.coord_transformer.pygame_to_real(pygame_coord)
+        real_x, real_y = real_coord
+        
+        # Always log the goal point for debugging (even if Nav2 not available)
+        self.get_logger().info(f'[{self.agent_name}] [DEBUG] Pygame coord: ({target_x:.4f}, {target_y:.4f}) -> '
+                               f'Real coord: ({real_x:.4f}m, {real_y:.4f}m), yaw={target_yaw:.4f}')
+        
+        # Check if action server is available before sending
+        if not self.nav2_action_client.server_is_ready():
+            self.get_logger().warn(f'[{self.agent_name}] Nav2 action server not ready! Waiting for connection...')
+            self.get_logger().warn(f'[{self.agent_name}] Target goal (pygame): ({target_x:.4f}, {target_y:.4f})')
+            self.get_logger().warn(f'[{self.agent_name}] Target goal (real): ({real_x:.4f}m, {real_y:.4f}m)')
+            # Wait for Nav2 to be ready - mark goal as pending for retry
+            self.hardware_goal_in_progress = False
+            self.hardware_goal_reached = False  # Keep waiting, don't proceed
+            self.hardware_goal_failed = False
+            self.hardware_goal_pending = True  # Mark that we have a pending goal
+            self.pending_goal_pose = (target_x, target_y)  # Store the PYGAME goal for retry
+            return
+            
+        # Create the goal message with REAL-WORLD coordinates (in meters)
+        goal_msg = NavigateToPose.Goal()
+        goal_msg.pose = PoseStamped()
+        goal_msg.pose.header.frame_id = 'map'
+        goal_msg.pose.header.stamp = self.get_clock().now().to_msg()
+        goal_msg.pose.pose.position.x = float(real_x)
+        goal_msg.pose.pose.position.y = float(real_y)
+        goal_msg.pose.pose.position.z = 0.0
+        
+        # Convert yaw to quaternion (only rotation around z-axis)
+        import math
+        goal_msg.pose.pose.orientation.x = 0.0
+        goal_msg.pose.pose.orientation.y = 0.0
+        goal_msg.pose.pose.orientation.z = math.sin(target_yaw / 2.0)
+        goal_msg.pose.pose.orientation.w = math.cos(target_yaw / 2.0)
+        
+        self.hardware_goal_in_progress = True
+        self.hardware_goal_reached = False
+        self.hardware_goal_failed = False
+        self.hardware_goal_pending = False  # Clear pending flag - goal is being sent
+        self.pending_goal_pose = None
+        
+        self.get_logger().info(f'[{self.agent_name}] Sending Nav2 goal: pygame({target_x:.2f}, {target_y:.2f}) -> real({real_x:.4f}m, {real_y:.4f}m)')
+        
+        # Send the goal asynchronously
+        send_goal_future = self.nav2_action_client.send_goal_async(
+            goal_msg,
+            feedback_callback=self.nav2_feedback_callback
+        )
+        send_goal_future.add_done_callback(self.nav2_goal_response_callback)
+    
+    def nav2_goal_response_callback(self, future):
+        """Callback when Nav2 accepts or rejects the goal."""
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().warn(f'[{self.agent_name}] Nav2 goal was rejected!')
+            self.hardware_goal_in_progress = False
+            self.hardware_goal_failed = True
+            return
+        
+        self.get_logger().info(f'[{self.agent_name}] Nav2 goal accepted, waiting for result...')
+        self._goal_handle = goal_handle
+        
+        # Request the result
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(self.nav2_result_callback)
+    
+    def nav2_result_callback(self, future):
+        """Callback when Nav2 navigation completes."""
+        result = future.result().result
+        status = future.result().status
+        
+        # ActionGoalStatus: SUCCEEDED=4, CANCELED=5, ABORTED=6
+        from action_msgs.msg import GoalStatus
+        
+        if status == GoalStatus.STATUS_SUCCEEDED:
+            self.get_logger().info(f'[{self.agent_name}] Nav2 goal SUCCEEDED! Robot reached the target.')
+            self.hardware_goal_reached = True
+            self.hardware_goal_failed = False
+        elif status == GoalStatus.STATUS_CANCELED:
+            self.get_logger().warn(f'[{self.agent_name}] Nav2 goal was CANCELED.')
+            self.hardware_goal_reached = False
+            self.hardware_goal_failed = True
+        elif status == GoalStatus.STATUS_ABORTED:
+            self.get_logger().error(f'[{self.agent_name}] Nav2 goal ABORTED! Error: {result.error_msg if hasattr(result, "error_msg") else "unknown"}')
+            self.hardware_goal_reached = False
+            self.hardware_goal_failed = True
+        else:
+            self.get_logger().warn(f'[{self.agent_name}] Nav2 goal finished with status: {status}')
+            self.hardware_goal_reached = False
+            self.hardware_goal_failed = True
+        
+        self.hardware_goal_in_progress = False
+        self._goal_handle = None
+    
+    def nav2_feedback_callback(self, feedback_msg):
+        """Callback for Nav2 navigation feedback (current progress)."""
+        feedback = feedback_msg.feedback
+        current_pose = feedback.current_pose.pose
+        distance_remaining = feedback.distance_remaining
+        # Uncomment for verbose feedback logging:
+        # self.get_logger().info(f'[{self.agent_name}] Nav2 feedback - Distance remaining: {distance_remaining:.2f}m')
+    
+    def cancel_nav2_goal(self):
+        """Cancel the current Nav2 navigation goal."""
+        if not USE_HARDWARE or self._goal_handle is None:
+            return
+        
+        self.get_logger().info(f'[{self.agent_name}] Canceling Nav2 goal...')
+        cancel_future = self._goal_handle.cancel_goal_async()
+        cancel_future.add_done_callback(self.nav2_cancel_callback)
+    
+    def nav2_cancel_callback(self, future):
+        """Callback when Nav2 goal cancellation completes."""
+        cancel_response = future.result()
+        if len(cancel_response.goals_canceling) > 0:
+            self.get_logger().info(f'[{self.agent_name}] Nav2 goal successfully canceled.')
+        else:
+            self.get_logger().warn(f'[{self.agent_name}] Nav2 goal cancellation failed.')
 
     def status_callback(self, msg):
         self.sim_arrived = msg.arrived
@@ -715,6 +955,10 @@ class LTLControllerDrone(Node):
                                 # self.get_logger().info("--------Block detected---------")
                                 self.world.block[str(act)] = 1
                                 # self.if_obs = True
+                                # Cancel any ongoing Nav2 navigation when obstacle detected
+                                if USE_HARDWARE and hasattr(self, '_goal_handle') and self._goal_handle is not None:
+                                    self.cancel_nav2_goal()
+                                    self.hardware_goal_in_progress = False
                                 try: 
                                     self.on_hold = True
                                     publish_msg = RelayRequest()
@@ -822,6 +1066,10 @@ class LTLControllerDrone(Node):
                                 # self.get_logger().info("--------Block detected---------")
                                 self.world.block[str(act)] = 1
                                 # self.if_obs = True
+                                # Cancel any ongoing Nav2 navigation when obstacle detected
+                                if USE_HARDWARE and hasattr(self, '_goal_handle') and self._goal_handle is not None:
+                                    self.cancel_nav2_goal()
+                                    self.hardware_goal_in_progress = False
                                 try: 
                                     self.on_hold = True
                                     publish_msg = RelayRequest()
@@ -969,6 +1217,38 @@ class LTLControllerDrone(Node):
                             msg.next_flag = self.act
                             self.next_issac_step_pub.publish(msg)
                             self.get_logger().info(f'Next step published to Issac Sim...')
+                    elif USE_HARDWARE:
+                        # Hardware mode: TurtleBot3 with Nav2
+                        # First, check if we have a pending goal that needs to be sent (Nav2 was not ready before)
+                        if self.hardware_goal_pending and self.pending_goal_pose is not None:
+                            self.get_logger().info(f'[{self.agent_name}] Retrying pending goal: ({self.pending_goal_pose[0]:.2f}, {self.pending_goal_pose[1]:.2f})')
+                            self.send_nav2_goal(self.pending_goal_pose[0], self.pending_goal_pose[1])
+                            # If goal was successfully sent, clear the pending flag
+                            if not self.hardware_goal_pending:
+                                self.get_logger().info(f'[{self.agent_name}] Pending goal successfully sent!')
+                        # Only proceed if: goal reached, goal failed (need replan), or first start
+                        elif (self.hardware_goal_reached or self.hardware_goal_failed or self.hardware_navigation_start):
+                            if self.hardware_goal_failed:
+                                # Navigation failed - may need to handle obstacle or retry
+                                self.get_logger().warn(f'[{self.agent_name}] Hardware navigation failed! Attempting to continue...')
+                            
+                            # Execute the next move in the plan
+                            self.next_move()
+                            
+                            # Reset flags
+                            self.hardware_goal_reached = False
+                            self.hardware_goal_failed = False
+                            self.hardware_navigation_start = False
+                            
+                            # Send the new pose to TurtleBot3 via Nav2
+                            # Only send navigation goal if we have a valid pose to go to
+                            if self.pose != self.previous_pose or self.act == 'g':
+                                self.send_nav2_goal(self.pose[0], self.pose[1])
+                                self.get_logger().info(f'[{self.agent_name}] Nav2 goal sent to TurtleBot3: ({self.pose[0]:.2f}, {self.pose[1]:.2f})')
+                            else:
+                                # Non-movement action (load/unload), mark as immediately complete
+                                self.hardware_goal_reached = True
+                                self.get_logger().info(f'[{self.agent_name}] Non-movement action: {self.act}, proceeding...')
                     else:           
                         self.next_move()
                 else:

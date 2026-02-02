@@ -84,7 +84,7 @@ class ShowMoveNode(Node):
         # Load transition system from configuration file (if exists)
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
-        self.nodes, self.actions = build_graph_halton(20, 20, 1000)
+        self.nodes, self.actions = build_graph_halton(18, 18, 100)
         self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system['actions'].update(self.actions)
         # The process to integrate self.nodes and self.actions into the transition system is omitted

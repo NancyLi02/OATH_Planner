@@ -122,8 +122,9 @@ class ClusterTaskPlanner:
             m.addConstr(gp.quicksum(x[j, node_idx] for j in range(N) if j != node_idx) == y[i], f"pickup_in_{i}")
             m.addConstr(gp.quicksum(x[node_idx, j] for j in range(N) if j != node_idx) == y[i], f"pickup_out_{i}")
 
-        # 限制必须选恰好 robot_capacity 个 pickup
-        m.addConstr(y.sum() == robot_capacity, "capacity")
+        # 限制选择的pickup数量：如果任务数少于capacity，则选择所有任务；否则选择capacity个
+        actual_capacity = min(robot_capacity, n_pickups)
+        m.addConstr(y.sum() == actual_capacity, "capacity")
 
         # delivery选择变量z[j]等于是否有pickup关联到它
         for j, delivery_label in enumerate(delivery_labels):
