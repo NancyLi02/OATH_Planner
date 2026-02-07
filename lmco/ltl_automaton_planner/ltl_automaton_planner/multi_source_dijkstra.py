@@ -10,12 +10,12 @@ from scipy.spatial import Delaunay
 
 
 # ------------------------ Parameters ------------------------
-d_min = 0.8
-d_opt = 2
-sigma = 0.5
-floor_prob = 0.2
-wall_thick = 0.1
-x_length, y_length = 18, 18
+d_min = 0.5       # Minimum allowed distance to avoid points being too close to obstacles
+d_opt = 1.5      # Optimal distance (highest sampling probability)
+sigma = 0.5       # Controls the width of the probability distribution
+floor_prob = 0.2  # Minimum sampling probability in open areas
+wall_thick = 0.1  # Thickness of the walls
+x_length, y_length = 15, 12
 
 # ------------------------ Wall Loading ------------------------
 current_dir = os.path.dirname(__file__)

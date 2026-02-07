@@ -150,7 +150,7 @@ def density_probability(d, d_min, d_opt, sigma, floor):
     return floor + (1 - floor) * np.exp(-((d - d_opt) ** 2) / (2 * sigma ** 2))
 
 # Rejection sampling algorithm
-def rejection_sampling(n_samples, lines, area_size, d_min=0.8, d_opt=2, sigma=0.5, floor=0.2):
+def rejection_sampling(n_samples, lines, area_size, d_min=0.5, d_opt=1.5, sigma=0.5, floor=0.2):
     np.random.seed(42)
     random_value = np.random.rand()
     # print(f'random_value is {random_value}')
@@ -176,10 +176,10 @@ def rejection_sampling(n_samples, lines, area_size, d_min=0.8, d_opt=2, sigma=0.
 def build_graph_halton(x_length=20, y_length=20, n_points=700, new_task_points=None):
     points_with_label = load_points_with_label(new_task_points)
 
-    x_length = 18
-    y_length = 18
+    x_length = 15
+    y_length = 12
     # n_points = 1000
-    n_points = 100
+    n_points = 120
     x = halton_sequence(n_points, 2) * x_length
     y = halton_sequence(n_points, 3) * y_length
     points = np.vstack((x, y)).T

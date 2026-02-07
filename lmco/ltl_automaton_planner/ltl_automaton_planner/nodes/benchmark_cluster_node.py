@@ -66,13 +66,17 @@ class EquipmentMode(Enum):
     FAIL = (0, 0, 0)
 
 class GridWorld(object):
-    def __init__(self, grid_size):
-         # Constants
-        self.grid_size = grid_size
+    def __init__(self, grid_width, grid_height=None):
+        if grid_height is None:
+            grid_height = grid_width
+        self.grid_size = max(grid_width, grid_height)
+        self.grid_width = grid_width
+        self.grid_height = grid_height
         self.load_elements()
-        
-        self.width, self.height = 800, 800
-        self.cell_size = self.width // self.grid_size
+        # Keep aspect ratio: fit in ~800px
+        self.cell_size = min(800 // grid_width, 800 // grid_height)
+        self.width = grid_width * self.cell_size
+        self.height = grid_height * self.cell_size
 
         home_directory = os.path.expanduser("~")
 
@@ -261,11 +265,11 @@ class LTLControllerDrone(Node):
             
             # ========== Coordinate Transformation Setup ==========
             # Parameters for transforming pygame map coordinates to real-world meters
-            # Default: pygame map 18x18 units -> real map 9ft x 9ft
-            self.declare_parameter('pygame_map_width', 18.0)
-            self.declare_parameter('pygame_map_height', 18.0)
-            self.declare_parameter('real_map_width_ft', 9.0)
-            self.declare_parameter('real_map_height_ft', 9.0)
+            # Default: pygame map 15x12 units (matches wall.yaml)
+            self.declare_parameter('pygame_map_width', 15.0)
+            self.declare_parameter('pygame_map_height', 12.0)
+            self.declare_parameter('real_map_width_ft', 15.0)
+            self.declare_parameter('real_map_height_ft', 12.0)
             self.declare_parameter('pygame_origin_x', 0.0)
             self.declare_parameter('pygame_origin_y', 0.0)
             self.declare_parameter('real_origin_x', 0.0)  # Real world origin offset in meters
@@ -300,7 +304,7 @@ class LTLControllerDrone(Node):
             self.get_logger().info(f'  Scale factors: {self.coord_transformer.scale_x:.6f} m/unit (x), {self.coord_transformer.scale_y:.6f} m/unit (y)')
             self.get_logger().info(f'  Real world origin offset: ({real_origin_x}, {real_origin_y}) m')
 
-        self.nodes, generated_actions = build_graph_halton(18, 18, 100)
+        self.nodes, generated_actions = build_graph_halton(15, 12, 100)
         
         self.transition_system ['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system ['actions'].update(generated_actions)
@@ -663,7 +667,7 @@ class LTLControllerDrone(Node):
             for point, label in self.new_task_points:
                 self.task_points[point] = label
             # Rebuild the transition system with the new points
-            self.nodes, generated_actions = build_graph_halton(20, 20, 1000, self.new_task_points)
+            self.nodes, generated_actions = build_graph_halton(15, 12, 120, self.new_task_points)
             self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
             # Clear old movement actions and add new ones
             keys_to_delete = [k for k in self.transition_system['actions'] if k.startswith('from_')]
@@ -1328,10 +1332,11 @@ def main(args=None):
     rclpy.init(args=args)
     node = rclpy.create_node('benchmark_node_main')
 
-    grid_size = node.declare_parameter('N', 8).get_parameter_value().integer_value
-    node.get_logger().info(f"grid_size: {grid_size}")
+    map_width = node.declare_parameter('map_width', 15).get_parameter_value().integer_value
+    map_height = node.declare_parameter('map_height', 12).get_parameter_value().integer_value
+    node.get_logger().info(f"map size: {map_width}x{map_height}")
     
-    env = GridWorld(grid_size)
+    env = GridWorld(map_width, map_height)
     node.get_logger().info("reach here")
     ltl_drone = LTLControllerDrone(env)
     

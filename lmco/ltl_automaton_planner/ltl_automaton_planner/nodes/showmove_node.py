@@ -62,10 +62,16 @@ FAIL = (0, 0, 0)
 # We will use the one from ltl_automaton_utilities.
 
 class GridWorld(object):
-    def __init__(self, grid_size):
-        self.grid_size = grid_size
-        self.width, self.height = 800, 800
-        self.cell_size = self.width // self.grid_size
+    def __init__(self, grid_width, grid_height=None):
+        if grid_height is None:
+            grid_height = grid_width
+        self.grid_size = max(grid_width, grid_height)  # for backward compat where single value used
+        self.grid_width = grid_width
+        self.grid_height = grid_height
+        # Keep aspect ratio: fit in ~800px, same cell_size for x and y
+        self.cell_size = min(800 // grid_width, 800 // grid_height)
+        self.width = grid_width * self.cell_size
+        self.height = grid_height * self.cell_size
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.font = pygame.font.SysFont('timesnewroman', 20)
         pygame.display.set_caption("Multiagent Task Planner")
@@ -84,7 +90,7 @@ class ShowMoveNode(Node):
         # Load transition system from configuration file (if exists)
         transition_system_textfile = self.declare_parameter('transition_system_textfile', '').get_parameter_value().string_value
         self.transition_system = import_ts_from_file(transition_system_textfile)
-        self.nodes, self.actions = build_graph_halton(18, 18, 100)
+        self.nodes, self.actions = build_graph_halton(15, 12, 100)
         self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system['actions'].update(self.actions)
         # The process to integrate self.nodes and self.actions into the transition system is omitted
@@ -1012,10 +1018,11 @@ def main(args=None):
     rclpy.init(args=args)
     # Create a node for obtaining parameters
     main_node = rclpy.create_node('showmove_node_main')
-    grid_size = main_node.declare_parameter('N', 20).get_parameter_value().integer_value
-    main_node.get_logger().info(f"grid_size: {grid_size}")
+    map_width = main_node.declare_parameter('map_width', 15).get_parameter_value().integer_value
+    map_height = main_node.declare_parameter('map_height', 12).get_parameter_value().integer_value
+    main_node.get_logger().info(f"map size: {map_width}x{map_height}")
     
-    env = GridWorld(grid_size)
+    env = GridWorld(map_width, map_height)
     main_node.get_logger().info("Starting showmove_node ...")
     # Create the actual node for subscription and display
     showposition = ShowMoveNode(env)

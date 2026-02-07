@@ -1,34 +1,47 @@
 # 18 tasks
 task_points:
-  "2,10": 'bb'
-  "8,16": 'cb'
+  "4,1": 'bb'
+  "1,5": 'cb'
+  "7,1": 'db'
 
+  "1,7": 'bc'
+  "5,7": 'cc'
+  "5,11": 'dc'
 
-  "10,2": 'bc'
-  "16,8": 'cc'
+  "10,11": 'bd'
+  "11,7": 'cd'
+  "14,7": 'dd'
+
+  "11,5": 'be'
+  "14,5": 'ce'
+  "14,1": 'de'
 
 
 
 
 
 task_to_delivery:
-  'b': ['bb', 'cb']
-  'c': ['bc', 'cc']
+  'b': ['bb', 'cb', 'db']
+  'c': ['bc', 'cc', 'dc']
+  'd': ['bd', 'cd', 'dd']
+  'e': ['be', 'ce', 'de']
 
 
 
-special_labels: []
+special_labels: ['bb', 'cb', 'dc']
 
 delivery_points:
-  "16,2": 'c'
-  "2,16": 'b'
+  "1,1": 'b'
+  "1,11": 'c'
+  "13,10": 'd'
+  "10,2": 'e'
 
 
 robot_positions:
-  "robot1": "2,2"
-  "robot2": "16,16"
-  # "robot3": "9,11"
-  # "robot4": "11,9"
+  "robot1": "1,9"
+  "robot2": "14,11"
+  "robot3": "7,5"
+  "robot4": "8,5"
 
 
-special_robot: []
+special_robot: ['robot1', 'robot3']

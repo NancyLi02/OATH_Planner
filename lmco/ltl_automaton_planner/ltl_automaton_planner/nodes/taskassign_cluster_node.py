@@ -214,7 +214,7 @@ class TaskAssignNode(Node):
         self.clusterer = CostMapClusterer(
             points_with_label=self.points_with_label,
             wall_yaml_path=self.wall_path,
-            num_clusters=2,
+            num_clusters=4,
             halton_points_csv=self.halton_points_csv,
             wall_thick=0.1,
             precomputed_distances_csv=self.precomputed_distances_csv
@@ -271,7 +271,7 @@ class TaskAssignNode(Node):
         # Record response start time (monotonic for accurate duration)
         response_start_mono = time.monotonic()
         response_start_time = time.time()
-        
+
         self.get_logger().info("=== ADD_TASK_CALLBACK TRIGGERED ===")
         self.get_logger().info(f"Received add task command from LLM, new {msg.task_type} task appears at {msg.location}, assignning new task......")
         self.add_task(msg.location, msg.task_type, msg.task_label, msg.delivery_point)
@@ -336,7 +336,7 @@ class TaskAssignNode(Node):
         self.clusterer = CostMapClusterer(
             points_with_label=self.points_with_label,
             wall_yaml_path=self.wall_path,
-            num_clusters=2,
+            num_clusters=4,
             halton_points_csv=self.halton_points_csv,
             wall_thick=0.1,
             precomputed_distances_csv=self.precomputed_distances_csv
@@ -1310,7 +1310,7 @@ class TaskAssignNode(Node):
                     delivery_points=delivery_points,
                     delivery_labels=delivery_labels_unique,
                     pickup_to_delivery=pickup_to_delivery,
-                    robot_capacity=3  # Default capacity
+                    robot_capacity=2  # Default capacity
                 )
                 
                 # Check if MILP failed (chosen_pickups is empty)
@@ -1424,14 +1424,12 @@ class TaskAssignNode(Node):
             self.get_logger().info("\n=== ALL TASKS ASSIGNED ===")
 
     def _get_delivery_point(self, delivery_label):
-        """Get delivery point coordinates for a given delivery label"""
-        # You need to add actual delivery point coordinates here
-        # For now, using placeholder coordinates based on delivery label
+        """Get delivery point coordinates for a given delivery label (within map 15x12)."""
         delivery_points = {
-            'b': (10, 10),  # Delivery point for group b
-            'c': (15, 15),  # Delivery point for group c
-            'd': (20, 20),  # Delivery point for group d
-            'e': (25, 25),  # Delivery point for group e
+            'b': (10, 10),   # Delivery point for group b
+            'c': (14, 11),   # Delivery point for group c (within 15x12)
+            'd': (12, 10),   # Delivery point for group d (within 15x12)
+            'e': (14, 11),   # Delivery point for group e (within 15x12)
         }
         return delivery_points.get(delivery_label, (0, 0))
 

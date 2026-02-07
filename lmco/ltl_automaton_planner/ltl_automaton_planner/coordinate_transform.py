@@ -8,13 +8,13 @@ coordinates (in meters) for sending navigation goals to the TurtleBot3.
 Usage:
     from ltl_automaton_planner.coordinate_transform import CoordinateTransformer
     
-    # Create transformer with default settings (18x18 pygame map, 9ft x 9ft real map)
+    # Create transformer with default settings (15x12 pygame map, 15ft x 12ft real map)
     transformer = CoordinateTransformer()
     
     # Or customize the parameters
     transformer = CoordinateTransformer(
-        pygame_map_size=(18, 18),       # pygame map dimensions
-        real_map_size_ft=(9.0, 9.0),    # real map size in feet
+        pygame_map_size=(15, 12),       # pygame map dimensions
+        real_map_size_ft=(15.0, 12.0),  # real map size in feet
         pygame_origin=(0, 0),           # pygame coordinate origin
         real_origin=(0.0, 0.0)          # real world origin offset in meters
     )
@@ -43,8 +43,8 @@ class CoordinateTransformer:
     """
     
     def __init__(self, 
-                 pygame_map_size=(18, 18), 
-                 real_map_size_ft=(9.0, 9.0),
+                 pygame_map_size=(15, 12), 
+                 real_map_size_ft=(15.0, 12.0),
                  pygame_origin=(0, 0),
                  real_origin=(0.0, 0.0)):
         """
@@ -52,7 +52,7 @@ class CoordinateTransformer:
         
         Args:
             pygame_map_size (tuple): Size of the pygame map (width, height) in units.
-                                    Default: (18, 18)
+                                    Default: (15, 12)
             real_map_size_ft (tuple): Size of the real map (width, height) in feet.
                                       Default: (9.0, 9.0)
             pygame_origin (tuple): Origin point (x, y) of the pygame coordinate system.
@@ -168,14 +168,14 @@ class CoordinateTransformer:
 
 
 # Default transformer instance with standard settings
-# pygame map: 18x18 units
-# real map: 9ft x 9ft = 2.7432m x 2.7432m
-# Scale: 0.1524 m/unit (approximately 6 inches per pygame unit)
+# pygame map: 15x12 units
+# real map: 15ft x 12ft = 4.572m x 3.6576m
+# Scale: 0.3048 m/unit (1 ft per pygame unit)
 default_transformer = CoordinateTransformer()
 
 
-def create_transformer_from_params(pygame_width=18, pygame_height=18,
-                                    real_width_ft=9.0, real_height_ft=9.0,
+def create_transformer_from_params(pygame_width=15, pygame_height=12,
+                                    real_width_ft=15.0, real_height_ft=12.0,
                                     pygame_origin_x=0, pygame_origin_y=0,
                                     real_origin_x=0.0, real_origin_y=0.0):
     """

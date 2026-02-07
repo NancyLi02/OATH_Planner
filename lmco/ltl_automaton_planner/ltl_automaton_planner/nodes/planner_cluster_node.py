@@ -95,7 +95,7 @@ class MainPlanner(Node):
         # Load the base transition system structure, but the nodes and actions will be populated by build_graph_halton
         self.transition_system = import_ts_from_file(transition_system_textfile)
         # We now generate the graph once at initialization
-        self.nodes, generated_actions = build_graph_halton(20, 20, 1000)
+        self.nodes, generated_actions = build_graph_halton(15, 12, 1000)
         self.transition_system['state_models']['2d_pose_region']['nodes'] = self.nodes
         self.transition_system['actions'].update(generated_actions)
         # IMPORTANT: self.actions must point to the same object as transition_system['actions']
