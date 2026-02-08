@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 import os
+import threading
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 import sys
 import yaml
 import std_msgs
@@ -47,7 +49,7 @@ from nav2_msgs.action import NavigateToPose
 #=================================================================
 
 USE_ISAAC = False
-USE_HARDWARE = False  # Set to True for TurtleBot3 hardware experiments
+USE_HARDWARE = True  # Set to True for TurtleBot3 hardware experiments
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -254,7 +256,10 @@ class LTLControllerDrone(Node):
             else:
                 self.get_logger().info(f'[{self.agent_name}] Nav2 action server connected!')
             
-            # Hardware navigation state variables
+            # Hardware navigation state variables (protected by _hw_nav_lock
+            # when using MultiThreadedExecutor, since action client callbacks
+            # run in a ReentrantCallbackGroup and can fire concurrently with timers)
+            self._hw_nav_lock = threading.Lock()
             self.hardware_goal_in_progress = False
             self.hardware_goal_reached = False
             self.hardware_goal_failed = False
@@ -262,6 +267,12 @@ class LTLControllerDrone(Node):
             self.hardware_goal_pending = False  # Flag to track pending goal when Nav2 not ready
             self.pending_goal_pose = None  # Store the pending goal position
             self._goal_handle = None
+            
+            # Goal timeout tracking: resend if Nav2 doesn't respond or complete in time
+            self._goal_send_time = None       # When send_goal_async() was called
+            self._goal_accepted = False       # Whether nav2_goal_response_callback fired with accepted=True
+            self._goal_response_timeout = 10.0   # Seconds to wait for goal accepted response
+            self._goal_completion_timeout = 60.0  # Seconds to wait for navigation to complete
             
             # ========== Coordinate Transformation Setup ==========
             # Parameters for transforming pygame map coordinates to real-world meters
@@ -344,7 +355,12 @@ class LTLControllerDrone(Node):
         self.total_plan_index = 0
         self.next_interval = 10
 
-        self.create_timer(1.0/10, self.simulate)
+        # NOTE: simulate timer is NOT started here.
+        # It will be started in prefix_plan_callback() when the first plan arrives.
+        # For hardware mode, a Nav2 discovery timer runs first to ensure the action
+        # server is available (like the CLI 'ros2 action send_goal' does).
+        self._simulate_timer = None
+        self._nav2_wait_timer = None
 
         self.status_sub = self.create_subscription(
             Status,
@@ -686,14 +702,33 @@ class LTLControllerDrone(Node):
             self.no_task = False
             self.final_on_hold = False
 
+        # Start the simulate timer on first plan received
+        if self._simulate_timer is None and self._nav2_wait_timer is None:
+            self.get_logger().info(f"[{self.agent_name}] First plan received.")
+            self.t_sim = self.get_clock().now()
+            if USE_HARDWARE:
+                # Like the CLI 'ros2 action send_goal' which prints
+                # "Waiting for an action server to become available...",
+                # we must wait for Nav2 DDS discovery to complete before sending goals.
+                # If server is already discovered, start immediately.
+                if self.nav2_action_client.server_is_ready():
+                    self.get_logger().info(f"[{self.agent_name}] Nav2 action server already available. Starting simulate timer.")
+                    self._simulate_timer = self.create_timer(1.0/10, self.simulate)
+                else:
+                    self.get_logger().info(f"[{self.agent_name}] Waiting for Nav2 action server to become available...")
+                    self._nav2_wait_timer = self.create_timer(0.5, self._wait_for_nav2_server)
+            else:
+                self._simulate_timer = self.create_timer(1.0/10, self.simulate)
+
         # Reset hardware navigation state when receiving new task
         if USE_HARDWARE:
-            self.hardware_goal_in_progress = False
-            self.hardware_goal_reached = False
-            self.hardware_goal_failed = False
-            self.hardware_navigation_start = True  # Allow first movement
-            self.hardware_goal_pending = False  # Clear any pending goals
-            self.pending_goal_pose = None
+            with self._hw_nav_lock:
+                self.hardware_goal_in_progress = False
+                self.hardware_goal_reached = False
+                self.hardware_goal_failed = False
+                self.hardware_navigation_start = True  # Allow first movement
+                self.hardware_goal_pending = False  # Clear any pending goals
+                self.pending_goal_pose = None
             if self._goal_handle is not None:
                 self.cancel_nav2_goal()  # Cancel any ongoing navigation
             self.get_logger().info(f"[{self.agent_name}] Hardware navigation state reset for new task.")
@@ -764,6 +799,23 @@ class LTLControllerDrone(Node):
             self.publish_task_request()
 
     # ========== Hardware (TurtleBot3) Navigation Methods ==========
+    def _wait_for_nav2_server(self):
+        """
+        Periodically check if Nav2 action server is discovered via DDS.
+        Once available, cancel this timer and start the simulate timer.
+        This mimics the CLI 'ros2 action send_goal' behavior which prints
+        "Waiting for an action server to become available..." before sending.
+        """
+        if self.nav2_action_client.server_is_ready():
+            self.get_logger().info(
+                f"[{self.agent_name}] Nav2 action server is now available! Starting navigation.")
+            self._nav2_wait_timer.cancel()
+            self._nav2_wait_timer = None
+            self._simulate_timer = self.create_timer(1.0/10, self.simulate)
+        else:
+            self.get_logger().info(
+                f"[{self.agent_name}] Still waiting for Nav2 action server...")
+
     def send_nav2_goal(self, target_x, target_y, target_yaw=0.0):
         """
         Send a navigation goal to Nav2 for TurtleBot3.
@@ -786,22 +838,9 @@ class LTLControllerDrone(Node):
         real_x, real_y = real_coord
         
         # Always log the goal point for debugging (even if Nav2 not available)
-        self.get_logger().info(f'[{self.agent_name}] [DEBUG] Pygame coord: ({target_x:.4f}, {target_y:.4f}) -> '
-                               f'Real coord: ({real_x:.4f}m, {real_y:.4f}m), yaw={target_yaw:.4f}')
+        # self.get_logger().info(f'[{self.agent_name}] [DEBUG] Pygame coord: ({target_x:.4f}, {target_y:.4f}) -> '
+        #                        f'Real coord: ({real_x:.4f}m, {real_y:.4f}m), yaw={target_yaw:.4f}')
         
-        # Check if action server is available before sending
-        if not self.nav2_action_client.server_is_ready():
-            self.get_logger().warn(f'[{self.agent_name}] Nav2 action server not ready! Waiting for connection...')
-            self.get_logger().warn(f'[{self.agent_name}] Target goal (pygame): ({target_x:.4f}, {target_y:.4f})')
-            self.get_logger().warn(f'[{self.agent_name}] Target goal (real): ({real_x:.4f}m, {real_y:.4f}m)')
-            # Wait for Nav2 to be ready - mark goal as pending for retry
-            self.hardware_goal_in_progress = False
-            self.hardware_goal_reached = False  # Keep waiting, don't proceed
-            self.hardware_goal_failed = False
-            self.hardware_goal_pending = True  # Mark that we have a pending goal
-            self.pending_goal_pose = (target_x, target_y)  # Store the PYGAME goal for retry
-            return
-            
         # Create the goal message with REAL-WORLD coordinates (in meters)
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose = PoseStamped()
@@ -818,31 +857,75 @@ class LTLControllerDrone(Node):
         goal_msg.pose.pose.orientation.z = math.sin(target_yaw / 2.0)
         goal_msg.pose.pose.orientation.w = math.cos(target_yaw / 2.0)
         
-        self.hardware_goal_in_progress = True
-        self.hardware_goal_reached = False
-        self.hardware_goal_failed = False
-        self.hardware_goal_pending = False  # Clear pending flag - goal is being sent
-        self.pending_goal_pose = None
+        with self._hw_nav_lock:
+            self.hardware_goal_in_progress = True
+            self.hardware_goal_reached = False
+            self.hardware_goal_failed = False
+            self.hardware_goal_pending = False
+            self.pending_goal_pose = None
+            # Store the pygame goal for retry if send fails
+            self._last_goal_pygame = (target_x, target_y)
+            # Record send time for timeout detection
+            self._goal_send_time = self.get_clock().now()
+            self._goal_accepted = False
         
         self.get_logger().info(f'[{self.agent_name}] Sending Nav2 goal: pygame({target_x:.2f}, {target_y:.2f}) -> real({real_x:.4f}m, {real_y:.4f}m)')
         
-        # Send the goal asynchronously
-        send_goal_future = self.nav2_action_client.send_goal_async(
-            goal_msg,
-            feedback_callback=self.nav2_feedback_callback
-        )
-        send_goal_future.add_done_callback(self.nav2_goal_response_callback)
+        # Safety net: if server is somehow not discovered, mark as pending for retry
+        # (should rarely trigger since _wait_for_nav2_server ensures discovery first)
+        if not self.nav2_action_client.server_is_ready():
+            self.get_logger().warn(f'[{self.agent_name}] Nav2 server not yet discovered, will retry...')
+            with self._hw_nav_lock:
+                self.hardware_goal_in_progress = False
+                self.hardware_goal_pending = True
+                self.pending_goal_pose = (target_x, target_y)
+            return
+        
+        try:
+            send_goal_future = self.nav2_action_client.send_goal_async(
+                goal_msg,
+                feedback_callback=self.nav2_feedback_callback
+            )
+            send_goal_future.add_done_callback(self.nav2_goal_response_callback)
+        except Exception as e:
+            self.get_logger().warn(f'[{self.agent_name}] send_goal_async failed: {e}. Will retry...')
+            with self._hw_nav_lock:
+                self.hardware_goal_in_progress = False
+                self.hardware_goal_pending = True
+                self.pending_goal_pose = (target_x, target_y)
     
     def nav2_goal_response_callback(self, future):
-        """Callback when Nav2 accepts or rejects the goal."""
-        goal_handle = future.result()
+        """Callback when Nav2 accepts or rejects the goal.
+        Runs in ReentrantCallbackGroup, so must use _hw_nav_lock."""
+        try:
+            goal_handle = future.result()
+        except Exception as e:
+            # send_goal_async itself failed (e.g. server not discovered yet)
+            self.get_logger().warn(f'[{self.agent_name}] Nav2 goal send failed: {e}. Will retry...')
+            with self._hw_nav_lock:
+                self.hardware_goal_in_progress = False
+                if hasattr(self, '_last_goal_pygame') and self._last_goal_pygame is not None:
+                    self.hardware_goal_pending = True
+                    self.pending_goal_pose = self._last_goal_pygame
+                else:
+                    self.hardware_goal_failed = True
+            return
+
         if not goal_handle.accepted:
-            self.get_logger().warn(f'[{self.agent_name}] Nav2 goal was rejected!')
-            self.hardware_goal_in_progress = False
-            self.hardware_goal_failed = True
+            self.get_logger().warn(f'[{self.agent_name}] Nav2 goal was rejected! Will retry...')
+            with self._hw_nav_lock:
+                self.hardware_goal_in_progress = False
+                # Retry: mark as pending instead of failed
+                if hasattr(self, '_last_goal_pygame') and self._last_goal_pygame is not None:
+                    self.hardware_goal_pending = True
+                    self.pending_goal_pose = self._last_goal_pygame
+                else:
+                    self.hardware_goal_failed = True
             return
         
         self.get_logger().info(f'[{self.agent_name}] Nav2 goal accepted, waiting for result...')
+        with self._hw_nav_lock:
+            self._goal_accepted = True
         self._goal_handle = goal_handle
         
         # Request the result
@@ -850,32 +933,34 @@ class LTLControllerDrone(Node):
         result_future.add_done_callback(self.nav2_result_callback)
     
     def nav2_result_callback(self, future):
-        """Callback when Nav2 navigation completes."""
+        """Callback when Nav2 navigation completes.
+        Runs in ReentrantCallbackGroup, so must use _hw_nav_lock."""
         result = future.result().result
         status = future.result().status
         
         # ActionGoalStatus: SUCCEEDED=4, CANCELED=5, ABORTED=6
         from action_msgs.msg import GoalStatus
         
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            self.get_logger().info(f'[{self.agent_name}] Nav2 goal SUCCEEDED! Robot reached the target.')
-            self.hardware_goal_reached = True
-            self.hardware_goal_failed = False
-        elif status == GoalStatus.STATUS_CANCELED:
-            self.get_logger().warn(f'[{self.agent_name}] Nav2 goal was CANCELED.')
-            self.hardware_goal_reached = False
-            self.hardware_goal_failed = True
-        elif status == GoalStatus.STATUS_ABORTED:
-            self.get_logger().error(f'[{self.agent_name}] Nav2 goal ABORTED! Error: {result.error_msg if hasattr(result, "error_msg") else "unknown"}')
-            self.hardware_goal_reached = False
-            self.hardware_goal_failed = True
-        else:
-            self.get_logger().warn(f'[{self.agent_name}] Nav2 goal finished with status: {status}')
-            self.hardware_goal_reached = False
-            self.hardware_goal_failed = True
-        
-        self.hardware_goal_in_progress = False
-        self._goal_handle = None
+        with self._hw_nav_lock:
+            if status == GoalStatus.STATUS_SUCCEEDED:
+                self.get_logger().info(f'[{self.agent_name}] Nav2 goal SUCCEEDED! Robot reached the target.')
+                self.hardware_goal_reached = True
+                self.hardware_goal_failed = False
+            elif status == GoalStatus.STATUS_CANCELED:
+                self.get_logger().warn(f'[{self.agent_name}] Nav2 goal was CANCELED.')
+                self.hardware_goal_reached = False
+                self.hardware_goal_failed = True
+            elif status == GoalStatus.STATUS_ABORTED:
+                self.get_logger().error(f'[{self.agent_name}] Nav2 goal ABORTED! Error: {result.error_msg if hasattr(result, "error_msg") else "unknown"}')
+                self.hardware_goal_reached = False
+                self.hardware_goal_failed = True
+            else:
+                self.get_logger().warn(f'[{self.agent_name}] Nav2 goal finished with status: {status}')
+                self.hardware_goal_reached = False
+                self.hardware_goal_failed = True
+            
+            self.hardware_goal_in_progress = False
+            self._goal_handle = None
     
     def nav2_feedback_callback(self, feedback_msg):
         """Callback for Nav2 navigation feedback (current progress)."""
@@ -1223,16 +1308,65 @@ class LTLControllerDrone(Node):
                             self.get_logger().info(f'Next step published to Issac Sim...')
                     elif USE_HARDWARE:
                         # Hardware mode: TurtleBot3 with Nav2
-                        # First, check if we have a pending goal that needs to be sent (Nav2 was not ready before)
-                        if self.hardware_goal_pending and self.pending_goal_pose is not None:
-                            self.get_logger().info(f'[{self.agent_name}] Retrying pending goal: ({self.pending_goal_pose[0]:.2f}, {self.pending_goal_pose[1]:.2f})')
-                            self.send_nav2_goal(self.pending_goal_pose[0], self.pending_goal_pose[1])
-                            # If goal was successfully sent, clear the pending flag
-                            if not self.hardware_goal_pending:
-                                self.get_logger().info(f'[{self.agent_name}] Pending goal successfully sent!')
-                        # Only proceed if: goal reached, goal failed (need replan), or first start
-                        elif (self.hardware_goal_reached or self.hardware_goal_failed or self.hardware_navigation_start):
-                            if self.hardware_goal_failed:
+                        # --- Timeout detection: resend goal if Nav2 never responded ---
+                        with self._hw_nav_lock:
+                            in_progress = self.hardware_goal_in_progress
+                            goal_accepted = self._goal_accepted
+                            send_time = self._goal_send_time
+                            last_goal = self._last_goal_pygame if hasattr(self, '_last_goal_pygame') else None
+                        
+                        if in_progress and send_time is not None:
+                            elapsed = (self.get_clock().now().nanoseconds - send_time.nanoseconds) / 1e9
+                            if not goal_accepted and elapsed > self._goal_response_timeout:
+                                # Nav2 never responded with "goal accepted" - resend
+                                self.get_logger().warn(
+                                    f'[{self.agent_name}] Nav2 goal response TIMEOUT ({elapsed:.1f}s). '
+                                    f'Server may not be fully ready. Resending goal...')
+                                # Cancel any stale goal handle
+                                if self._goal_handle is not None:
+                                    try:
+                                        self._goal_handle.cancel_goal_async()
+                                    except Exception:
+                                        pass
+                                    self._goal_handle = None
+                                with self._hw_nav_lock:
+                                    self.hardware_goal_in_progress = False
+                                    if last_goal is not None:
+                                        self.hardware_goal_pending = True
+                                        self.pending_goal_pose = last_goal
+                                    else:
+                                        self.hardware_goal_failed = True
+                            elif goal_accepted and elapsed > self._goal_completion_timeout:
+                                # Goal accepted but navigation taking too long - cancel and resend
+                                self.get_logger().warn(
+                                    f'[{self.agent_name}] Nav2 goal completion TIMEOUT ({elapsed:.1f}s). '
+                                    f'Canceling and resending...')
+                                self.cancel_nav2_goal()
+                                with self._hw_nav_lock:
+                                    self.hardware_goal_in_progress = False
+                                    if last_goal is not None:
+                                        self.hardware_goal_pending = True
+                                        self.pending_goal_pose = last_goal
+                                    else:
+                                        self.hardware_goal_failed = True
+                        
+                        # --- Normal state machine logic ---
+                        # Snapshot shared state under lock (action client callbacks
+                        # run concurrently in MultiThreadedExecutor)
+                        with self._hw_nav_lock:
+                            is_pending = self.hardware_goal_pending and self.pending_goal_pose is not None
+                            pending_pose = self.pending_goal_pose if is_pending else None
+                            should_proceed = (self.hardware_goal_reached or self.hardware_goal_failed or self.hardware_navigation_start)
+                            goal_failed = self.hardware_goal_failed
+
+                        if is_pending:
+                            self.get_logger().info(f'[{self.agent_name}] Retrying pending goal: ({pending_pose[0]:.2f}, {pending_pose[1]:.2f})')
+                            self.send_nav2_goal(pending_pose[0], pending_pose[1])
+                            with self._hw_nav_lock:
+                                if not self.hardware_goal_pending:
+                                    self.get_logger().info(f'[{self.agent_name}] Pending goal successfully sent!')
+                        elif should_proceed:
+                            if goal_failed:
                                 # Navigation failed - may need to handle obstacle or retry
                                 self.get_logger().warn(f'[{self.agent_name}] Hardware navigation failed! Attempting to continue...')
                             
@@ -1240,18 +1374,22 @@ class LTLControllerDrone(Node):
                             self.next_move()
                             
                             # Reset flags
-                            self.hardware_goal_reached = False
-                            self.hardware_goal_failed = False
-                            self.hardware_navigation_start = False
+                            with self._hw_nav_lock:
+                                self.hardware_goal_reached = False
+                                self.hardware_goal_failed = False
+                                self.hardware_navigation_start = False
                             
                             # Send the new pose to TurtleBot3 via Nav2
                             # Only send navigation goal if we have a valid pose to go to
+
+                            self.get_logger().info(f'[{self.agent_name}] Previous pose: {self.previous_pose}, Current pose: {self.pose}, Action: {self.act}')
                             if self.pose != self.previous_pose or self.act == 'g':
                                 self.send_nav2_goal(self.pose[0], self.pose[1])
                                 self.get_logger().info(f'[{self.agent_name}] Nav2 goal sent to TurtleBot3: ({self.pose[0]:.2f}, {self.pose[1]:.2f})')
                             else:
                                 # Non-movement action (load/unload), mark as immediately complete
-                                self.hardware_goal_reached = True
+                                with self._hw_nav_lock:
+                                    self.hardware_goal_reached = True
                                 self.get_logger().info(f'[{self.agent_name}] Non-movement action: {self.act}, proceeding...')
                     else:           
                         self.next_move()
@@ -1340,18 +1478,22 @@ def main(args=None):
     node.get_logger().info("reach here")
     ltl_drone = LTLControllerDrone(env)
     
-    while(rclpy.ok()):
-        try:
-            # ltl_drone = LTLControllerDrone(env)
-            rclpy.spin_once(ltl_drone)
-        except ValueError as e:
-            node.get_logger().error(f"LTL drone node: {e}")
-            env.output_video.release()
-            break
-
-    # pygame.quit()
-    node.destroy_node()
-    rclpy.shutdown()
+    # Use MultiThreadedExecutor so that action client callbacks
+    # (goal response, result) are processed in separate threads
+    # and won't be starved by the 10Hz simulate timer.
+    # This is critical for reliable Nav2 goal handling.
+    executor = MultiThreadedExecutor(num_threads=4)
+    executor.add_node(ltl_drone)
+    
+    try:
+        executor.spin()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        executor.shutdown()
+        ltl_drone.destroy_node()
+        node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

@@ -54,6 +54,14 @@ class MainPlanner(Node):
         self.task_data = self.load_tasks(self.ltl_formula_file)
         self.get_logger().info("MainPlanner node started")
 
+        # Signal to taskassign that this planner is ready (all topics set up)
+        ready_msg = RobotID()
+        ready_msg.robot_id = self.agent_name
+        self.planner_ready_pub.publish(ready_msg)
+        self.get_logger().info(f"[{self.agent_name}] Published planner ready signal")
+
+        
+
         # self.nodes, self.actions = build_graph_halton(20, 20, 1000)
 
         # start_time = time.time()
@@ -64,7 +72,7 @@ class MainPlanner(Node):
         
         # robotid_msg = RobotID()
         # robotid_msg.robot_id = self.agent_name
-        # self.finish_build_auto_pub.publish(robotid_msg)
+        # self.planner_ready_pub.publish(robotid_msg)
         # time.sleep(1)
         # self.init_score_list()
         
@@ -246,7 +254,14 @@ class MainPlanner(Node):
         self.suffix_plan_pub = self.create_publisher(LTLPlan, 'suffix_plan', 10)
         self.publisher_ = self.create_publisher(RelayResponse, 'replanning_response', 10)   
         self.score_list_pub = self.create_publisher(ScoreList, 'score_list', qos_profile)
-        self.finish_build_auto_pub = self.create_publisher(RobotID, 'finish_building_auto', 10)  
+        # Use TRANSIENT_LOCAL so taskassign receives this even if it subscribes slightly later
+        planner_ready_qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+        self.planner_ready_pub = self.create_publisher(RobotID, 'planner_node_ready', planner_ready_qos)  
         self.request_cluster_pub = self.create_publisher(ClusterRequest, 'cluster_request', 10)   
         self.no_task_pub = self.create_publisher(NoTask, 'no_task', 10)
         
@@ -266,11 +281,18 @@ class MainPlanner(Node):
             10)
 
 
+        # Use TRANSIENT_LOCAL to receive initial task assignment even if published before this node started
+        cluster_task_qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=10
+        )
         self.cluster_task_sub = self.create_subscription(
             ClusterTaskassign,
             'ClusterTaskassign',
             self.cluster_task_callback,
-            10
+            cluster_task_qos
         )
 
         self.score_request_sub = self.create_subscription(

@@ -112,11 +112,17 @@ class TaskAssignNode(Node):
         self.robot_types = ['special' if name in special_robot_list else 'normal' for name in self.robot_names]
 
         # Publishers for each robot namespace
+        # Use TRANSIENT_LOCAL so late-joining planner subscribers still receive the initial assignment
+        cluster_task_qos = QoSProfile(
+            depth=10,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
         self.task_pubs = {}
         self.no_task_pubs = {}
         for idx, robot in enumerate(self.robot_names):
             topic = f"/{robot}/ClusterTaskassign"
-            self.task_pubs[robot] = self.create_publisher(ClusterTaskassign, topic, 10)
+            self.task_pubs[robot] = self.create_publisher(ClusterTaskassign, topic, cluster_task_qos)
             # NoTask publisher with namespace
             no_task_topic = f"/{robot}/no_task"
             self.no_task_pubs[robot] = self.create_publisher(NoTask, no_task_topic, 10)
@@ -149,7 +155,7 @@ class TaskAssignNode(Node):
             self.add_task_callback,
             10
         )
-        self.get_logger().info("Successfully created subscription to /add_task topic")
+        # self.get_logger().info("Successfully created subscription to /add_task topic")
 
         self.change_task_priority_subs = []
         for robot in self.robot_names:
@@ -265,7 +271,25 @@ class TaskAssignNode(Node):
         self.assigned_points_global = set()
 
         self.get_logger().info("TaskAssignNode initialization completed successfully")
-        self.finish_callback()
+
+        # ========== Wait for all planner nodes to be ready before first task assignment ==========
+        self.finished_robots = set()
+        self._task_assignment_started = False
+        # Subscribe to each planner's ready signal with TRANSIENT_LOCAL
+        # so we receive signals even from planners that started before us
+        planner_ready_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.planner_ready_subs = []
+        for robot in self.robot_names:
+            topic = f"/{robot}/planner_node_ready"
+            sub = self.create_subscription(RobotID, topic, self.planner_ready_callback, planner_ready_qos)
+            self.planner_ready_subs.append(sub)
+        self.get_logger().info(f"Waiting for {self.robot_count} planner(s) to be ready: {self.robot_names}")
+        # Fallback timer: if not all planners report within 30s, start anyway
+        # self._fallback_timer = self.create_timer(30.0, self._fallback_start_assignment)
 
     def add_task_callback(self, msg):
         # Record response start time (monotonic for accurate duration)
@@ -1095,11 +1119,30 @@ class TaskAssignNode(Node):
 
         
 
+    def planner_ready_callback(self, msg):
+        """Called when a planner node signals it is ready."""
+        robot_id = msg.robot_id
+        if robot_id not in self.finished_robots:
+            self.finished_robots.add(robot_id)
+            self.get_logger().info(f"Planner ready: {robot_id} ({len(self.finished_robots)}/{self.robot_count})")
+        # Check if all planners are ready
+        if not self._task_assignment_started and all(name in self.finished_robots for name in self.robot_names):
+            self.get_logger().info("All planner nodes are ready!")
+            # self._fallback_timer.cancel()  # Cancel the fallback timer
+            self.finish_callback()
+
+    # def _fallback_start_assignment(self):
+    #     """Fallback: start task assignment even if not all planners reported ready."""
+    #     if not self._task_assignment_started:
+    #         missing = [name for name in self.robot_names if name not in self.finished_robots]
+    #         self.get_logger().warn(f"Timeout waiting for planners. Missing: {missing}. Starting task assignment anyway...")
+    #         self._fallback_timer.cancel()
+    #         self.finish_callback()
+
     def finish_callback(self):
-        # self.get_logger().info(f"Received finish_building_auto from {msg.robot_id}")
-        # self.finished_robots.add(msg.robot_id)
-        # # When all robots have finished building, start task assignment.
-        # if all(name in self.finished_robots for name in self.robot_names):
+        if self._task_assignment_started:
+            return  # Prevent double execution
+        self._task_assignment_started = True
         self.get_logger().info("Starting task assignment...")
         
         # Start timing for initial task assignment
