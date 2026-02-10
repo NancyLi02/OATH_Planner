@@ -150,7 +150,7 @@ def density_probability(d, d_min, d_opt, sigma, floor):
     return floor + (1 - floor) * np.exp(-((d - d_opt) ** 2) / (2 * sigma ** 2))
 
 # Rejection sampling algorithm
-def rejection_sampling(n_samples, lines, area_size, d_min=0.5, d_opt=1.5, sigma=0.5, floor=0.2):
+def rejection_sampling(n_samples, lines, area_size, d_min=0.9, d_opt=1.5, sigma=0.5, floor=0.2):
     np.random.seed(42)
     random_value = np.random.rand()
     # print(f'random_value is {random_value}')

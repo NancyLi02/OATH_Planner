@@ -8,7 +8,7 @@ import os
 import re
 
 # Global parameter definitions
-d_min = 0.5       # Minimum allowed distance to avoid points being too close to obstacles
+d_min = 0.9       # Minimum allowed distance to avoid points being too close to obstacles
 d_opt = 1.5      # Optimal distance (highest sampling probability)
 sigma = 0.5       # Controls the width of the probability distribution
 floor_prob = 0.2  # Minimum sampling probability in open areas

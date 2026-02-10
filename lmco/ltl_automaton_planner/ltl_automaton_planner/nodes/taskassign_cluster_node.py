@@ -216,6 +216,14 @@ class TaskAssignNode(Node):
                 task_to_delivery[label] = group
         self.task_to_delivery = task_to_delivery
 
+        # Load delivery points from YAML: invert "coord_str -> label" to "label -> (x, y)"
+        self.delivery_point_map = {}
+        for coord_str, label in yaml_data.get('delivery_points', {}).items():
+            match = re.match(r"([\d\.]+),([\d\.]+)", coord_str)
+            if match:
+                x, y = float(match.group(1)), float(match.group(2))
+                self.delivery_point_map[label] = (x, y)
+
         # Load wall data from YAML file and perform task clustering using new CostMapClusterer interface
         self.clusterer = CostMapClusterer(
             points_with_label=self.points_with_label,
@@ -1467,14 +1475,8 @@ class TaskAssignNode(Node):
             self.get_logger().info("\n=== ALL TASKS ASSIGNED ===")
 
     def _get_delivery_point(self, delivery_label):
-        """Get delivery point coordinates for a given delivery label (within map 15x12)."""
-        delivery_points = {
-            'b': (10, 10),   # Delivery point for group b
-            'c': (14, 11),   # Delivery point for group c (within 15x12)
-            'd': (12, 10),   # Delivery point for group d (within 15x12)
-            'e': (14, 11),   # Delivery point for group e (within 15x12)
-        }
-        return delivery_points.get(delivery_label, (0, 0))
+        """Get delivery point coordinates for a given delivery label from Task_Points.yaml."""
+        return self.delivery_point_map.get(delivery_label, (0, 0))
 
     def _nearest_neighbor_fallback(self, robot_start, task_points, task_labels):
         """Fallback method using nearest neighbor when MILP fails, with delivery points grouped after pickups."""
