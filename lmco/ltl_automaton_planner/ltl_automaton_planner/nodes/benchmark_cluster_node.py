@@ -2,34 +2,24 @@
 import os
 import rclpy
 from rclpy.node import Node
-import sys
 import yaml
-import std_msgs
-from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TaskFail, AgentFail, AgentFailTask, NoTask, TransitionSystemStateStamped, TransitionSystemState,UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition, AddTask, ObstacleUpdate
-from ltl_automaton_msgs.srv import TaskReplanningDelete, TaskReplanningModify # TaskReplanningAddRequest, TaskReplanningDeleteRequest, TaskReplanningRelabelRequest
+from ltl_automaton_msgs.msg import TaskFail, AgentFail, AgentFailTask, NoTask, UpdateValidTasks, WaitingRequest, StopWaiting, PositionRequest, TaskRequestCluster, CurrentPosition, LTLPlan, RelayRequest, RelayResponse, ShowPosition, AddTask, ObstacleUpdate
 # Import transition system loader
-from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump, add_block_polygon, add_bump_polygon, update_graph_with_obstacle
+from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file, extract_numbers, build_graph_halton, check_in_block, check_in_bump, add_block_polygon, add_bump_polygon
 # Import modules for commanding the a1
 
-from geometry_msgs.msg import PoseStamped
-from std_msgs.msg import String, Bool
-import pygame
+from std_msgs.msg import String
 from enum import Enum
-import cv2
-import numpy as np
 import time
 import csv
 import json
 import math
-from shapely.geometry import Point, LineString, Polygon
-from example_interfaces.srv import AddTwoInts
+from shapely.geometry import LineString, Polygon
 import re
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 from interfaces_hmm_sim.msg import Status, ReplanStatus, AgentGoTo
 from ament_index_python.packages import get_package_share_directory
-from std_msgs.msg import String
 
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
@@ -66,8 +56,6 @@ class GridWorld(object):
         
         self.width, self.height = 800, 800
         self.cell_size = self.width // self.grid_size
-
-        home_directory = os.path.expanduser("~")
 
     
     def load_elements(self):
@@ -255,10 +243,18 @@ class LTLControllerDrone(Node):
             self.get_logger().warn(f'Robot {self.agent_name} not found in Task_Points.yaml')
             self.pose = (0, 0)
 
-        self.special_robots = yaml_data.get('special_robot', [])
-        self.is_special_robot = self.agent_name in self.special_robots
-        self.speed_factor = 1.0 if self.is_special_robot else 1.5
-        self.get_logger().info(f'[{self.agent_name}] special={self.is_special_robot}, speed_factor={self.speed_factor}')
+        # NOTE: The legacy "special_robot" binary classification was removed in
+        # favour of a multi-type capability vector defined under
+        # `robot_capabilities` in Task_Points.yaml. The simulator no longer has
+        # a single special/normal speed boundary; we keep a uniform speed
+        # factor for the benchmark and let the task assigner enforce
+        # heterogeneous capability matching.
+        self.robot_capabilities = (yaml_data.get('robot_capabilities', {}) or {}).get(self.agent_name, [])
+        self.speed_factor = 1.5
+        self.get_logger().info(
+            f'[{self.agent_name}] capabilities={self.robot_capabilities}, '
+            f'speed_factor={self.speed_factor}'
+        )
 
         self.pose_index = self.init_pose
 
@@ -993,7 +989,7 @@ class LTLControllerDrone(Node):
                             msg.next_step = [float(x) for x in self.pose]
                             msg.next_flag = self.act
                             self.next_issac_step_pub.publish(msg)
-                            self.get_logger().info(f'Next step published to Issac Sim...')
+                            self.get_logger().info('Next step published to Issac Sim...')
                     else:           
                         self.next_move()
                 else:

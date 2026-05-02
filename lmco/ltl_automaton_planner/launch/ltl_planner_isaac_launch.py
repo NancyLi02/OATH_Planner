@@ -62,8 +62,6 @@ def generate_launch_description():
             PushRosNamespace(LaunchConfiguration(f'{robot_namespace}_namespace')),
             Node(
                 package='ltl_automaton_planner',
-                # executable='benchmark_node',
-                # name='benchmark_node',
                 executable='benchmark_cluster_node',
                 name='benchmark_cluster_node',
                 output='screen',
@@ -76,8 +74,6 @@ def generate_launch_description():
             ),
             Node(
                 package='ltl_automaton_planner',
-                # executable='planner_node',
-                # name='planner_node',
                 executable='planner_cluster_node',
                 name='planner_cluster_node',
                 output='screen',
@@ -95,8 +91,6 @@ def generate_launch_description():
     
     taskassign_node = Node(
         package='ltl_automaton_planner',
-        # executable='taskassign_node',
-        # name='taskassign_node',
         executable='taskassign_cluster_node',
         name='taskassign_cluster_node',
         output='screen',
@@ -136,6 +130,6 @@ def generate_launch_description():
     
     ld.add_action(taskassign_node)
     ld.add_action(showmove_node)
-    # ld.add_action(llm_command_parser_node)
-    # ld.add_action(human_llm_chat_node)
+    ld.add_action(llm_command_parser_node)
+    ld.add_action(human_llm_chat_node)
     return ld

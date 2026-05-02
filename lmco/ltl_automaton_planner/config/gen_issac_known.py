@@ -1,34 +1,34 @@
 import yaml
 import os
 
-# 你的工作区绝对路径
+
 base_dir = "/home/nanli/ros2_ws/src/lmco/ltl_automaton_planner/config"
 
 task_points_path = os.path.join(base_dir, "Task_Points.yaml")
 isaac_known_path = os.path.join(base_dir, "isaac_known.yaml")
 
-# 1. 读取 Task_Points.yaml
+
 with open(task_points_path, 'r', encoding='utf-8') as f:
     data = yaml.safe_load(f)
 
-# 2. 收集所有 label
+
 all_labels = set()
 for d in ['task_points']:
     for v in data.get(d, {}).values():
         all_labels.add(v.strip())
 
-# 3. 收集所有 delivery label
+
 delivery_labels = set()
 for v in data.get('delivery_points', {}).values():
     delivery_labels.add(v.strip())
 
-# 4. 生成 load.guard（所有 task_points label 用 || 连接）
+
 load_guard = ' || '.join(sorted(all_labels))
 
-# 5. 生成 unload.guard（所有 delivery label 用 || 连接）
+
 unload_guard = ' || '.join(sorted(delivery_labels))
 
-# 6. 生成 isaac_known.yaml 内容
+
 isaac_yaml = f"""actions:
   load:
     guard: '{load_guard}'
@@ -85,7 +85,7 @@ state_models:
     ts_type: Drone_state
 """
 
-# 7. 写入 isaac_known.yaml
+
 with open(isaac_known_path, 'w', encoding='utf-8') as f:
     f.write(isaac_yaml)
 

@@ -74,11 +74,11 @@ robot_positions:
 #   "robot4": [1, 0]
 
 
-robot_capabilities:
-  "robot1": [1, 0, 1]
-  "robot2": [1, 0, 0]
-  "robot3": [1, 0, 1]
-  "robot4": [1, 1, 1]
+# robot_capabilities:
+#   "robot1": [1, 0, 1]
+#   "robot2": [1, 0, 0]
+#   "robot3": [1, 0, 1]
+#   "robot4": [1, 1, 1]
 
 
 # special robots

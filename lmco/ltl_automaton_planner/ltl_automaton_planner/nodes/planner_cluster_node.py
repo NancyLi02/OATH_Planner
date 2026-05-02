@@ -1,24 +1,14 @@
 #!/usr/bin/env python
-import numpy as np
 import rclpy
 from rclpy.node import Node
-import sys
-import importlib
-import matplotlib.pyplot as plt
-import os
-from copy import deepcopy
 from ltl_automaton_planner.ltl_tools.product import ProdAut
 from ltl_automaton_planner.ltl_tools.buchi import mission_to_buchi
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy
-import std_msgs
 
-#import matplotlib.pyplot as plt
-import networkx as nx
-from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, handle_ts_state_msg, extract_numbers, build_graph_halton, update_graph_with_obstacle, add_block_polygon, load_lines_from_yaml, BLOCK_POLYGONS
+from ltl_automaton_planner.ltl_automaton_utilities import state_models_from_ts, import_ts_from_file, build_graph_halton, update_graph_with_obstacle
 
 # Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import AddTask, AgentFail, ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemStateStamped, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, TaskAssignment, TaskReAssignment, ScoreRequest, ScoreList, RobotID, ObstacleUpdate, NoTask
-from ltl_automaton_msgs.srv import * #TaskPlanning, TaskPlanningResponse, TaskReplanningAdd, TaskReplanningDelete, TaskReplanningRelabel, TaskReplanningAddResponse, TaskReplanningDeleteResponse
+from ltl_automaton_msgs.msg import AddTask, ClusterRequest, NoTask, TaskRequestCluster, ClusterTaskassign, TransitionSystemState, LTLPlan, RelayRequest, RelayResponse, ScoreRequest, ScoreList, ObstacleUpdate
 from std_msgs.msg import String
 
 # Import dynamic reconfigure components for dynamic parameters (see dynamic_reconfigure and dynamic_params package)
@@ -28,20 +18,9 @@ from ltl_automaton_planner.ltl_tools.ltl_planner import LTLPlanner
 
 import time
 import json
-import yaml
-from example_interfaces.srv import AddTwoInts
 import re
 from ltl_automaton_planner.Gen_LTL import generate_ltl_formula
-from shapely.geometry import Polygon, LineString
-
-def show_automaton(automaton_graph):
-    pos=nx.spring_layout(automaton_graph)
-    nx.draw(automaton_graph, pos)
-    nx.draw_networkx_labels(automaton_graph, pos)
-    edge_labels = nx.get_edge_attributes(automaton_graph, 'guard')
-    nx.draw_networkx_edge_labels(automaton_graph, pos, edge_labels = edge_labels)
-    plt.show()
-    return
+from shapely.geometry import Polygon
 
 class MainPlanner(Node):
     def __init__(self):
@@ -50,8 +29,6 @@ class MainPlanner(Node):
         self.init_params()
         print(self.get_node_names_and_namespaces())
         self.setup_pub_sub()
-
-        self.task_data = self.load_tasks(self.ltl_formula_file)
         self.get_logger().info("MainPlanner node started")
 
         # self.nodes, self.actions = build_graph_halton(20, 20, 1000)
@@ -62,13 +39,7 @@ class MainPlanner(Node):
         # build_automaton_time = end_time - start_time
         # self.get_logger().info(f'Building Automaton for {self.agent_name} cost {build_automaton_time} seconds.')
         
-        # robotid_msg = RobotID()
-        # robotid_msg.robot_id = self.agent_name
-        # self.finish_build_auto_pub.publish(robotid_msg)
-        # time.sleep(1)
-        # self.init_score_list()
-        
-        
+
     def init_params(self):
         self.declare_parameter('agent_name', '')  
         self.declare_parameter('initial_beta', 1000)  
@@ -78,9 +49,6 @@ class MainPlanner(Node):
         self.declare_parameter('N', 40)
         self.declare_parameter('init_state', 0)
         self.declare_parameter('ltl_formula_file','')
-
-
-        self.ltl_formula_file = self.get_parameter('ltl_formula_file').get_parameter_value().string_value
         self.agent_name = self.get_parameter('agent_name').get_parameter_value().string_value
         # self.get_logger().info(f'Robot name is {self.agent_name}')
 
@@ -88,9 +56,6 @@ class MainPlanner(Node):
         self.gamma = self.get_parameter('gamma').get_parameter_value().integer_value
         self.algo_type = self.get_parameter('algo_type').get_parameter_value().string_value
         self.grid_size = self.get_parameter('N').get_parameter_value().integer_value
-        param_list = [parameter.name for parameter in self._parameters.values()]
-        # print("param_list", param_list)
-
         transition_system_textfile = self.get_parameter('transition_system_textfile').get_parameter_value().string_value
         # Load the base transition system structure, but the nodes and actions will be populated by build_graph_halton
         self.transition_system = import_ts_from_file(transition_system_textfile)
@@ -109,8 +74,6 @@ class MainPlanner(Node):
         
         self.score_list = []
         self.task_index = list(range(1, 21))  # [1, 2, ..., 18]
-        self.cur_task = ''
-        self.task_number = 0
         self.current_task_list = []
         self.pose_index = self.init_state
         self.position = []
@@ -135,18 +98,6 @@ class MainPlanner(Node):
             10
         )
 
-
-    def load_tasks(self, yaml_file):
-        try:
-            with open(yaml_file, 'r') as file:
-                yaml_content = yaml.safe_load(file)
-            tasks = yaml_content.get('tasks', {})
-            task_data = {task_id: {'hard_task': task.get('hard_task', ""), 'soft_task': task.get('soft_task', "")}
-                         for task_id, task in tasks.items()}
-            return task_data
-        except Exception as e:
-            self.get_logger().error(f"Failed to read or parse the YAML file: {e}")
-            raise
 
     def generate_ltl_formula(self, route_labels):
         if not route_labels:
@@ -214,22 +165,22 @@ class MainPlanner(Node):
 
         buchi = mission_to_buchi(hard_task, soft_task)
         self.robot_model = TSModel(state_models)
-        self.get_logger().info(f"Step 1: finish building robot model and buchi automaton.")
+        self.get_logger().info("Step 1: finish building robot model and buchi automaton.")
 
         self.product_automaton = ProdAut(self.robot_model, buchi, self.initial_beta)
-        self.get_logger().info(f"Step 2: finish building product automaton.")
+        self.get_logger().info("Step 2: finish building product automaton.")
         self.product_automaton.graph['ts'].build_full()
-        self.get_logger().info(f"Step 3: finish building product automaton.")
+        self.get_logger().info("Step 3: finish building product automaton.")
         self.product_automaton.build_full_relaxed()
-        self.get_logger().info(f"Step 4: finish building product automaton.")
+        self.get_logger().info("Step 4: finish building product automaton.")
         self.ltl_planner = LTLPlanner(self.robot_model, hard_task, soft_task, self.initial_beta, self.gamma)
-        self.get_logger().info(f"Step 5: finish building ltl planner.")
+        self.get_logger().info("Step 5: finish building ltl planner.")
         self.ltl_planner.optimal(self.product_automaton, algo=self.algo_type, N=self.grid_size)
-        self.get_logger().info(f"Step 6: finish running ltl planner.")
+        self.get_logger().info("Step 6: finish running ltl planner.")
         # initialize storage of set of possible runs in product
         self.ltl_planner.curr_ts_state = list(self.ltl_planner.product.graph['ts'].graph['initial'])[0]
         self.ltl_planner.posb_runs = set([(n,) for n in self.ltl_planner.product.graph['initial']])
-        self.get_logger().info(f"Step 7: finish initializing ltl planner.")
+        self.get_logger().info("Step 7: finish initializing ltl planner.")
 
 
     def setup_pub_sub(self):
@@ -246,9 +197,7 @@ class MainPlanner(Node):
         self.suffix_plan_pub = self.create_publisher(LTLPlan, 'suffix_plan', 10)
         self.publisher_ = self.create_publisher(RelayResponse, 'replanning_response', 10)   
         self.score_list_pub = self.create_publisher(ScoreList, 'score_list', qos_profile)
-        self.finish_build_auto_pub = self.create_publisher(RobotID, 'finish_building_auto', 10)  
         self.request_cluster_pub = self.create_publisher(ClusterRequest, 'cluster_request', 10)   
-        self.no_task_pub = self.create_publisher(NoTask, 'no_task', 10)
         
         # Subscribe to NoTask messages
         self.no_task_sub = self.create_subscription(
@@ -440,21 +389,6 @@ class MainPlanner(Node):
 
         self.pub_score()
 
-    def init_score_list(self):
-        formatted_pose = f'{self.init_state}'
-        initial_state = {
-            '2d_pose_region': formatted_pose,
-            'Drone_state': 'unloaded'
-        }
-
-        self.score_list = []
-        for i in self.task_index:
-            task_id = f'task{i}'
-            self.update_score_automaton(task_id, initial_state)
-            self.score_list.append(self.build_score_list(task_id))  # Append scores to the list
-        self.pub_score()
-
-
     def pub_score(self):
         self.get_logger().info(f'Finish calculating score for {self.agent_name}: {self.score_list}')
         score_msg = ScoreList()
@@ -583,65 +517,6 @@ class MainPlanner(Node):
         
         self.publisher_.publish(res)
 
-    #----------------------------------------------
-    # Publish prefix and suffix plans from planner
-    #----------------------------------------------
-    def publish_plan(self, task_id):
-        
-        if self.ltl_planners[task_id].run is not None:
-            # self.get_logger().info("in push plan...")
-            # Prefix plan
-            #-------------
-            self.prefix_plan_msg = LTLPlan()
-            self.prefix_plan_msg.header.stamp = self.get_clock().now().to_msg()
-            self.prefix_plan_msg.action_sequence = self.ltl_planners[task_id].run.pre_plan
-            self.prefix_plan_msg.ts_state_sequence = []
-            self.prefix_plan_msg.cur_task = self.task_number
-            # # Go through all TS state in plan and add it as TransitionSystemState message
-            for ts_state in self.ltl_planners[task_id].run.line:
-                ts_state_msg = TransitionSystemState()
-                ts_state_msg.state_dimension_names = self.transition_system['state_dim']
-                # ts_state_msg.state_dimension_names = self.ltl_planner.product.graph['ts'].graph['ts_state_format']
-                # If TS state is more than 1 dimension (is a tuple)
-                if type(ts_state) is tuple:
-                    ts_state_msg.states = list(ts_state)
-                # Else state is a single string
-                else:
-                    ts_state_msg.states = [ts_state]
-                # Add to plan TS state sequence
-                self.prefix_plan_msg.ts_state_sequence.append(ts_state_msg)
-
-            # Publish
-            # self.get_logger().info("Publish Prefix Plan")
-            # print(prefix_plan_msg.action_sequence)
-            self.prefix_plan_pub.publish(self.prefix_plan_msg)
-
-            # Suffix plan
-            #-------------
-            self.suffix_plan_msg = LTLPlan()
-            self.suffix_plan_msg.header.stamp = self.get_clock().now().to_msg()
-            self.suffix_plan_msg.action_sequence = self.ltl_planners[task_id].run.suf_plan
-            self.suffix_plan_msg.ts_state_sequence = []
-            # # Go through all TS state in plan and add it as TransitionSystemState message
-            for ts_state in self.ltl_planners[task_id].run.loop:
-                ts_state_msg = TransitionSystemState()
-                ts_state_msg.state_dimension_names = self.transition_system['state_dim']
-                # ts_state_msg.state_dimension_names = self.ltl_planner.product.graph['ts'].graph['ts_state_format']
-                # If TS state is more than 1 dimension (is a tuple)
-                if type(ts_state) is tuple:
-                    ts_state_msg.states = list(ts_state)
-                # Else state is a single string
-                else:
-                    ts_state_msg.states = [ts_state]
-
-                # Add to plan TS state sequence
-                self.suffix_plan_msg.ts_state_sequence.append(ts_state_msg)
-
-            # Publish
-            # self.get_logger().info("Publish Suffix Plan")
-            self.suffix_plan_pub.publish(self.suffix_plan_msg)
-
-
     def replanning_modify_callback(self, task_replanning_req):
         if task_replanning_req:
             self.get_logger().info(f"[{self.agent_name}] Replanning [Modify] Callback for edge {task_replanning_req.from_pose} -> {task_replanning_req.to_pose}")
@@ -750,9 +625,6 @@ class MainPlanner(Node):
         return
 
     
-    def replanning_relabel_callback(self):
-        pass
-
     def listener_callback(self, msg):
         if msg.type == "modify":
             self.replanning_modify_callback(msg)

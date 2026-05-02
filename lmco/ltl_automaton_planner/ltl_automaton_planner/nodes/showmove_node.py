@@ -1,26 +1,31 @@
 #!/usr/bin/env python3
 import os
+import math
 import rclpy
 from rclpy.node import Node
 import pygame
-import numpy as np
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import Polygon
 from ltl_automaton_planner.ltl_automaton_utilities import (
-    import_ts_from_file, 
-    extract_numbers, 
-    build_graph_halton, 
+    import_ts_from_file,
+    extract_numbers,
+    build_graph_halton,
     load_lines_from_yaml,
     update_graph_with_obstacle,
     add_bump_polygon,
     add_block_polygon,
     BUMP_POLYGONS,
-    BLOCK_POLYGONS
+    BLOCK_POLYGONS,
 )
 import sys
-import cv2
-from ltl_automaton_msgs.msg import ShowPosition, UpdateValidTasks, TaskFail, AddTask, ObstacleUpdate, ChangeTaskPriority
+from ltl_automaton_msgs.msg import (
+    ShowPosition,
+    UpdateValidTasks,
+    TaskFail,
+    AddTask,
+    ObstacleUpdate,
+    ChangeTaskPriority,
+)
 from std_msgs.msg import String
-from enum import Enum
 import threading
 import yaml
 import json
@@ -56,16 +61,146 @@ MAGENTA = (255, 0, 255)         # For newly added walls
 NOTASK_COLOR = (0, 255, 0)
 FINISHED_TASK = (190, 190, 190)
 FAIL = (0, 0, 0)
+LEGEND_BG = (245, 245, 250)
+LEGEND_BORDER = (180, 180, 190)
+
+# ---- Multi-type task palette ----
+# Distinct colors for up to 12 task types; cycled if there are more.
+TYPE_COLORS = [
+    (220, 50, 60),     # Red
+    (60, 180, 75),     # Green
+    (50, 100, 235),    # Blue
+    (255, 130, 30),    # Orange
+    (155, 60, 200),    # Purple
+    (0, 160, 200),     # Teal
+    (240, 90, 175),    # Pink
+    (140, 100, 50),    # Brown
+    (190, 190, 50),    # Olive
+    (90, 90, 90),      # Dark Grey
+    (50, 200, 200),    # Aqua
+    (255, 200, 80),    # Amber
+]
+
+# Distinct shapes for up to 8 task types; cycled if there are more.
+TYPE_SHAPES = [
+    'square',
+    'circle',
+    'triangle_up',
+    'diamond',
+    'triangle_down',
+    'pentagon',
+    'hexagon',
+    'star',
+]
+
+# Distinct robot base colors (cycled if more robots than entries)
+ROBOT_BASE_COLORS = [
+    (255, 20, 147),    # DeepPink
+    (0, 130, 220),     # Strong Blue
+    (50, 180, 80),     # LimeGreen
+    (255, 175, 0),     # Gold/Amber
+    (155, 80, 220),    # Violet
+    (255, 90, 90),     # Tomato Red
+    (60, 200, 200),    # Cyan
+    (160, 110, 60),    # Brown
+]
+
+
+def _shape_for_type(type_id):
+    if type_id is None or type_id < 1:
+        return 'square'
+    return TYPE_SHAPES[(type_id - 1) % len(TYPE_SHAPES)]
+
+
+def _color_for_type(type_id):
+    if type_id is None or type_id < 1:
+        return GREY
+    return TYPE_COLORS[(type_id - 1) % len(TYPE_COLORS)]
+
+
+def _color_for_robot(index):
+    return ROBOT_BASE_COLORS[index % len(ROBOT_BASE_COLORS)]
+
+
+def _lighten(rgb, amount=80):
+    return tuple(min(255, c + amount) for c in rgb)
+
+
+def _draw_marker(screen, shape, center, size, fill_color,
+                 border_color=BLACK, border_width=2):
+    """Draw a marker shape centered at `center` with bounding size `size`."""
+    cx, cy = int(center[0]), int(center[1])
+    half = max(2, size // 2)
+
+    if shape == 'square':
+        rect = pygame.Rect(cx - half, cy - half, half * 2, half * 2)
+        pygame.draw.rect(screen, fill_color, rect)
+        if border_color:
+            pygame.draw.rect(screen, border_color, rect, border_width)
+    elif shape == 'circle':
+        pygame.draw.circle(screen, fill_color, (cx, cy), half)
+        if border_color:
+            pygame.draw.circle(screen, border_color, (cx, cy), half, border_width)
+    elif shape == 'triangle_up':
+        pts = [(cx, cy - half), (cx - half, cy + half), (cx + half, cy + half)]
+        pygame.draw.polygon(screen, fill_color, pts)
+        if border_color:
+            pygame.draw.polygon(screen, border_color, pts, border_width)
+    elif shape == 'triangle_down':
+        pts = [(cx, cy + half), (cx - half, cy - half), (cx + half, cy - half)]
+        pygame.draw.polygon(screen, fill_color, pts)
+        if border_color:
+            pygame.draw.polygon(screen, border_color, pts, border_width)
+    elif shape == 'diamond':
+        pts = [(cx, cy - half), (cx + half, cy), (cx, cy + half), (cx - half, cy)]
+        pygame.draw.polygon(screen, fill_color, pts)
+        if border_color:
+            pygame.draw.polygon(screen, border_color, pts, border_width)
+    elif shape == 'pentagon':
+        pts = []
+        for i in range(5):
+            angle = -math.pi / 2 + i * 2 * math.pi / 5
+            pts.append((cx + half * math.cos(angle), cy + half * math.sin(angle)))
+        pygame.draw.polygon(screen, fill_color, pts)
+        if border_color:
+            pygame.draw.polygon(screen, border_color, pts, border_width)
+    elif shape == 'hexagon':
+        pts = []
+        for i in range(6):
+            angle = i * math.pi / 3
+            pts.append((cx + half * math.cos(angle), cy + half * math.sin(angle)))
+        pygame.draw.polygon(screen, fill_color, pts)
+        if border_color:
+            pygame.draw.polygon(screen, border_color, pts, border_width)
+    elif shape == 'star':
+        pts = []
+        for i in range(10):
+            r = half if i % 2 == 0 else half // 2
+            angle = -math.pi / 2 + i * math.pi / 5
+            pts.append((cx + r * math.cos(angle), cy + r * math.sin(angle)))
+        pygame.draw.polygon(screen, fill_color, pts)
+        if border_color:
+            pygame.draw.polygon(screen, border_color, pts, border_width)
+    else:
+        # Fallback square
+        rect = pygame.Rect(cx - half, cy - half, half * 2, half * 2)
+        pygame.draw.rect(screen, fill_color, rect)
+        if border_color:
+            pygame.draw.rect(screen, border_color, rect, border_width)
 
 # ---------- Walls ----------
 # The local load_lines_from_yaml function is removed.
 # We will use the one from ltl_automaton_utilities.
 
 class GridWorld(object):
-    def __init__(self, grid_size):
+    def __init__(self, grid_size, legend_width=320):
         self.grid_size = grid_size
-        self.width, self.height = 800, 800
-        self.cell_size = self.width // self.grid_size
+        # The map area stays 800x800 (same as before); a side panel hosts the legend.
+        self.grid_width = 800
+        self.height = 800
+        self.legend_width = legend_width
+        self.width = self.grid_width + self.legend_width
+        self.cell_size = self.grid_width // self.grid_size
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.font = pygame.font.SysFont('timesnewroman', 20)
         pygame.display.set_caption("Multiagent Task Planner")
@@ -144,29 +279,54 @@ class ShowMoveNode(Node):
             label for pt, label in self.points.items()
             if pt not in self.unloaded_points
         ]
-        # special robot
-        self.special_robot_ids = yaml_data.get('special_robot', [])
-        # special labels
-        self.special_labels = set(yaml_data.get('special_labels', []))
 
+        # ---- Multi-type task definitions ----
+        # type_labels_map: {type_id -> [task_labels]} parsed from typeN_labels keys
+        self.type_labels_map = {}
+        max_type_id = 0
+        for key, value in yaml_data.items():
+            m = re.match(r"type(\d+)_labels", key)
+            if m and value:
+                tid = int(m.group(1))
+                self.type_labels_map[tid] = list(value)
+                max_type_id = max(max_type_id, tid)
+        self.num_task_types = max_type_id if max_type_id > 0 else 0
+
+        # task_label -> type_id
+        self.task_label_to_type = {}
+        for tid, labels in self.type_labels_map.items():
+            for lbl in labels:
+                self.task_label_to_type[lbl] = tid
+
+        # robot_capabilities: list[list[int]] aligned with robot_ids
         self.robot_ids = list(yaml_data.get('robot_positions', {}).keys())
-
-        PINK_LOADED = (255, 105, 180)
-        PINK_UNLOADED = (255, 182, 193)
-        BLUE_LOADED = (0, 0, 255)       
-        BLUE_UNLOADED = (135, 206, 250)   
-        self.color_mapping = {}
-        for robot_id in self.robot_ids:
-            if robot_id in self.special_robot_ids:
-                self.color_mapping[robot_id] = {
-                    'loaded': PINK_LOADED,
-                    'unloaded': PINK_UNLOADED
-                }
+        robot_caps_dict = yaml_data.get('robot_capabilities', {}) or {}
+        self.robot_capabilities = {}
+        for rid in self.robot_ids:
+            cap = robot_caps_dict.get(rid)
+            if cap is None:
+                cap = [1] * max(1, self.num_task_types)
             else:
-                self.color_mapping[robot_id] = {
-                    'loaded': BLUE_LOADED,
-                    'unloaded': BLUE_UNLOADED
-                }
+                cap = list(cap)
+                if self.num_task_types > 0 and len(cap) < self.num_task_types:
+                    cap = cap + [0] * (self.num_task_types - len(cap))
+                elif self.num_task_types > 0 and len(cap) > self.num_task_types:
+                    cap = cap[: self.num_task_types]
+            self.robot_capabilities[rid] = cap
+
+        # Per-robot color (loaded/unloaded shade) determined by index in robot_ids.
+        self.color_mapping = {}
+        for idx, robot_id in enumerate(self.robot_ids):
+            base = _color_for_robot(idx)
+            self.color_mapping[robot_id] = {
+                'loaded': base,
+                'unloaded': _lighten(base, 80),
+                'base': base,
+            }
+
+        # Backward-compat shims (kept so old code paths don't break)
+        self.special_robot_ids = []
+        self.special_labels = set()
         
         self.failed_task_list = []
 
@@ -430,7 +590,7 @@ class ShowMoveNode(Node):
                 total_time = self.end_time - self.start_time
                 self.get_logger().info("="*60)
                 self.get_logger().info("🎉 All robots have finished tasks!")
-                self.get_logger().info(f"📊 Planner Running Time:")
+                self.get_logger().info("📊 Planner Running Time:")
                 self.get_logger().info(f"   Starting Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.start_time))}")
                 self.get_logger().info(f"   Ending Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.end_time))}")
                 self.get_logger().info(f"   Total Time: {total_time:.2f} seconds")
@@ -638,23 +798,53 @@ class ShowMoveNode(Node):
             self.get_logger().info("New bump received for visualization.")
 
     def add_task_callback(self, msg):
-        self.get_logger().info(f"Received add task command from LLM, new {msg.task_type} task appears at {msg.location}, updating map......")
+        self.get_logger().info(
+            f"Received add task command from LLM, new task type='{msg.task_type}' appears at {msg.location}, updating map......"
+        )
         point = tuple(msg.location)
         label = msg.task_label
-        
+
         if point in self.points:
             self.get_logger().info(f"Task point already exists at {point}, skipping...")
             return
-            
+
         self.points[point] = label
-    
-        if msg.task_type == "special":
-            self.special_labels.add(label)
-        
+
+        # Try to parse the task_type as a type id (int or 'typeN'); fall back to type 1.
+        type_id = self._parse_task_type_field(msg.task_type)
+        if type_id is None or type_id < 1:
+            type_id = 1
+        if self.num_task_types > 0 and type_id > self.num_task_types:
+            self.num_task_types = type_id
+            # Pad existing robot capability vectors with zeros for the new type
+            for rid in self.robot_ids:
+                cap = self.robot_capabilities.get(rid, [])
+                if len(cap) < self.num_task_types:
+                    self.robot_capabilities[rid] = list(cap) + [0] * (self.num_task_types - len(cap))
+        self.type_labels_map.setdefault(type_id, []).append(label)
+        self.task_label_to_type[label] = type_id
+
         # Remove from finished_tasks if exists (this is a new task, should not be marked as finished)
         if label in self.finished_tasks:
             self.finished_tasks.discard(label)
             self.get_logger().info(f"Removed '{label}' from finished_tasks as it's a new task")
+
+    @staticmethod
+    def _parse_task_type_field(task_type_str):
+        """Convert AddTask.task_type string into a 1-based int type id; None if unparsable."""
+        if task_type_str is None:
+            return None
+        s = str(task_type_str).strip().lower()
+        if not s:
+            return None
+        try:
+            return int(s)
+        except ValueError:
+            pass
+        m = re.match(r"type\s*(\d+)", s)
+        if m:
+            return int(m.group(1))
+        return None
 
     def change_task_priority_callback(self, msg):
         """Handle task priority changes for visual indication"""
@@ -871,52 +1061,54 @@ class ShowMoveNode(Node):
         # Define all task points and their labels, where some points are marked as unload points
         points = self.points
         unloaded_points = self.unloaded_points
-        loaded_labels = self.loaded_labels
-        special_points = self.special_labels
 
-        # Iterate through all points, choose color based on status:
+        marker_size = max(12, self.world.cell_size // 2 + 4)
+        label_font = pygame.font.SysFont("Arial", 16)
+
+        # Iterate through all points, choose color/shape based on type and status:
         for pt, label in points.items():
             pixel_pos = self.transform_coords(pt)
-            side = self.world.cell_size // 2
-            
-            # Check if this is a high priority task
             is_high_priority = label in self.high_priority_tasks
+            is_finished = label in self.finished_tasks
 
             if pt in unloaded_points:
-                color = GREEN
+                # Delivery points: keep a clear, fixed look (green diamond with black border)
+                _draw_marker(
+                    self.world.screen,
+                    'diamond',
+                    pixel_pos,
+                    marker_size + 4,
+                    GREEN,
+                    border_color=BLACK,
+                    border_width=2,
+                )
             else:
-                if label in self.finished_tasks:
-                    color = self.finished_tasks_color
-                    special_color = self.finished_tasks_color
-                else:
-                    color = CYAN
-                    special_color = RED
+                type_id = self.task_label_to_type.get(label)
+                shape = _shape_for_type(type_id)
+                fill_color = self.finished_tasks_color if is_finished else _color_for_type(type_id)
+                _draw_marker(
+                    self.world.screen,
+                    shape,
+                    pixel_pos,
+                    marker_size,
+                    fill_color,
+                    border_color=BLACK,
+                    border_width=2,
+                )
 
-            # Draw the task point (special tasks as triangles, others as rectangles)
-            if label in special_points:
-                top = (pixel_pos[0], pixel_pos[1] - side // 2)
-                left = (pixel_pos[0] - side // 2, pixel_pos[1] + side // 2)
-                right = (pixel_pos[0] + side // 2, pixel_pos[1] + side // 2)
-                pygame.draw.polygon(self.world.screen, special_color, [top, left, right], 0)
-            else:
-                rect = pygame.Rect(pixel_pos[0] - side // 2, pixel_pos[1] - side // 2, side, side)
-                pygame.draw.rect(self.world.screen, color, rect)
-
-            # Draw high priority task visual indication (blinking red circle)
-            if is_high_priority and label not in self.finished_tasks:
+            # High priority indicator: blinking red ring
+            if is_high_priority and not is_finished:
                 if self.blink_state:
-                    # Draw bright red circle when blink_state is True
-                    pygame.draw.circle(self.world.screen, (255, 0, 0), pixel_pos, side + 6, 3)
-                # When blink_state is False, don't draw - creates blinking effect
+                    pygame.draw.circle(
+                        self.world.screen, (255, 0, 0), pixel_pos, marker_size + 6, 3
+                    )
 
-            # Draw red circle around failed loading tasks
-            if pt not in unloaded_points:
-                if label in self.failed_task_list:
-                    pygame.draw.circle(self.world.screen, RED, pixel_pos, side, 2)
+            # Failed-task indicator: red ring around the marker
+            if pt not in unloaded_points and label in self.failed_task_list:
+                pygame.draw.circle(self.world.screen, RED, pixel_pos, marker_size, 2)
 
-            # Draw the label
-            font = pygame.font.SysFont("Arial", 16)
-            text_surface = font.render(label, True, BLACK)
+            # Label text
+            text_surface = label_font.render(label, True, BLACK)
             self.world.screen.blit(text_surface, (pixel_pos[0] + 5, pixel_pos[1] + 5))
 
         # Draw bumps (e.g., bushes) in YELLOW
@@ -997,23 +1189,139 @@ class ShowMoveNode(Node):
             pygame.draw.circle(node_surface, (160, 160, 200, 60), pos, 2)
         self.world.screen.blit(node_surface, (0, 0))
     
-        # Draw all robot positions (reading shared data under lock)
+        # Draw all robot positions (reading shared data under lock).
+        # All robots share the same circular shape; the body color reflects
+        # mode (loaded/unloaded/waiting/notask/fail) and a numeric id label is
+        # drawn on top of the circle.
+        radius = max(10, self.world.cell_size // 2)
         with self.lock:
             for robot_id, info in self.robot_positions.items():
                 pos = info['pose']
                 color = info['mode']
-                pixel_pos = ((pos[0] * self.world.cell_size), (self.world.height - pos[1] * self.world.cell_size))
-                # Larger circle for special robots
-                radius = self.world.cell_size // 3
-                if robot_id in self.special_robot_ids:
-                    radius = self.world.cell_size // 2
+                pixel_pos = (
+                    int(pos[0] * self.world.cell_size),
+                    int(self.world.height - pos[1] * self.world.cell_size),
+                )
+
+                # Filled body
                 pygame.draw.circle(self.world.screen, color, pixel_pos, radius)
-                font = pygame.font.SysFont("Arial", 16)
-                text_surface = font.render(robot_id, True, BLACK)
-                self.world.screen.blit(text_surface, (pixel_pos[0] + 5, pixel_pos[1] + 5))
+                # Black outline
+                pygame.draw.circle(self.world.screen, BLACK, pixel_pos, radius, 2)
+
+                # Numeric id (extract trailing digits, e.g. 'robot3' -> '3')
+                rid_match = re.search(r'(\d+)$', robot_id)
+                rid_text = rid_match.group(1) if rid_match else robot_id
+                id_font = pygame.font.SysFont("Arial", 18, bold=True)
+                # Use white-ish text on darker fills, black text otherwise
+                text_color = WHITE if sum(color) < 380 else BLACK
+                text_surface = id_font.render(rid_text, True, text_color)
+                text_rect = text_surface.get_rect(center=pixel_pos)
+                self.world.screen.blit(text_surface, text_rect)
+
+        # Side panel: legend for task types and robot capabilities
+        self._draw_legend()
 
         pygame.display.flip()
         self.world.clock.tick(30)
+
+    # ===================== Legend =====================
+
+    def _draw_legend(self):
+        """Render a side-panel legend covering task types and robot capabilities."""
+        screen = self.world.screen
+        x0 = self.world.grid_width
+        panel_rect = pygame.Rect(x0, 0, self.world.legend_width, self.world.height)
+        pygame.draw.rect(screen, LEGEND_BG, panel_rect)
+        pygame.draw.line(screen, LEGEND_BORDER, (x0, 0), (x0, self.world.height), 2)
+
+        title_font = pygame.font.SysFont("Arial", 18, bold=True)
+        section_font = pygame.font.SysFont("Arial", 16, bold=True)
+        item_font = pygame.font.SysFont("Arial", 14)
+
+        margin_x = 14
+        cur_y = 14
+
+        title = title_font.render("Legend", True, BLACK)
+        screen.blit(title, (x0 + margin_x, cur_y))
+        cur_y += 28
+
+        # ---- Task Types ----
+        section = section_font.render("Task Types", True, BLACK)
+        screen.blit(section, (x0 + margin_x, cur_y))
+        cur_y += 22
+
+        # Show each declared type with marker + count of labels
+        type_ids_sorted = sorted(self.type_labels_map.keys()) if self.type_labels_map else []
+        marker_x = x0 + margin_x + 10
+        text_x = x0 + margin_x + 36
+
+        for tid in type_ids_sorted:
+            if cur_y > self.world.height - 200:
+                break  # keep room for the robot legend section
+            shape = _shape_for_type(tid)
+            color = _color_for_type(tid)
+            _draw_marker(screen, shape, (marker_x, cur_y + 8), 18, color,
+                         border_color=BLACK, border_width=2)
+            count = len(self.type_labels_map.get(tid, []))
+            line = item_font.render(f"Type {tid}  ({count} tasks)", True, BLACK)
+            screen.blit(line, (text_x, cur_y + 1))
+            cur_y += 22
+
+        # Delivery point marker reference
+        cur_y += 4
+        _draw_marker(screen, 'diamond', (marker_x, cur_y + 8), 18, GREEN,
+                     border_color=BLACK, border_width=2)
+        screen.blit(item_font.render("Delivery point", True, BLACK), (text_x, cur_y + 1))
+        cur_y += 24
+
+        # ---- Robots ----
+        cur_y += 6
+        section = section_font.render("Robots & Capabilities", True, BLACK)
+        screen.blit(section, (x0 + margin_x, cur_y))
+        cur_y += 22
+
+        rid_font = pygame.font.SysFont("Arial", 14, bold=True)
+        for idx, rid in enumerate(self.robot_ids):
+            if cur_y > self.world.height - 28:
+                break
+            base = _color_for_robot(idx)
+            # Filled circle with id digit
+            pygame.draw.circle(screen, base, (marker_x, cur_y + 8), 10)
+            pygame.draw.circle(screen, BLACK, (marker_x, cur_y + 8), 10, 2)
+            rid_match = re.search(r'(\d+)$', rid)
+            rid_digit = rid_match.group(1) if rid_match else str(idx + 1)
+            text_color = WHITE if sum(base) < 380 else BLACK
+            id_surf = rid_font.render(rid_digit, True, text_color)
+            id_rect = id_surf.get_rect(center=(marker_x, cur_y + 8))
+            screen.blit(id_surf, id_rect)
+
+            # Capability list, e.g. "R3: T1, T3, T5"
+            cap = self.robot_capabilities.get(rid, [])
+            allowed_types = [str(i + 1) for i, v in enumerate(cap) if int(v) == 1]
+            cap_text = ", ".join(f"T{t}" for t in allowed_types) if allowed_types else "—"
+            line = item_font.render(f"{rid}: {cap_text}", True, BLACK)
+            screen.blit(line, (text_x, cur_y + 1))
+            cur_y += 22
+
+            # If capability text is long, also draw small type marker chips on next line
+            if cap and any(int(v) == 1 for v in cap):
+                chip_x = text_x
+                chip_y = cur_y + 2
+                for tid_idx, v in enumerate(cap):
+                    if int(v) != 1:
+                        continue
+                    tid = tid_idx + 1
+                    _draw_marker(
+                        screen,
+                        _shape_for_type(tid),
+                        (chip_x + 7, chip_y + 7),
+                        12,
+                        _color_for_type(tid),
+                        border_color=BLACK,
+                        border_width=1,
+                    )
+                    chip_x += 18
+                cur_y += 18
 
 def main(args=None):
     pygame.init()

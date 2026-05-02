@@ -122,12 +122,11 @@ class ClusterTaskPlanner:
             m.addConstr(gp.quicksum(x[j, node_idx] for j in range(N) if j != node_idx) == y[i], f"pickup_in_{i}")
             m.addConstr(gp.quicksum(x[node_idx, j] for j in range(N) if j != node_idx) == y[i], f"pickup_out_{i}")
 
-        # 限制最多选 robot_capacity 个 pickup
+
         m.addConstr(y.sum() <= robot_capacity, "capacity")
-        # 至少选 1 个 pickup（避免空路线）
+
         m.addConstr(y.sum() >= 1, "min_pickup")
 
-        # delivery选择变量z[j]等于是否有pickup关联到它
         for j, delivery_label in enumerate(delivery_labels):
             related_pickup_idx = [i for i, pl in enumerate(pickup_labels) if pickup_to_delivery[pl] == delivery_label]
             if related_pickup_idx:
@@ -138,7 +137,7 @@ class ClusterTaskPlanner:
                 m.addConstr(z[j] == 0, f"delivery_active_zero_{delivery_label}")
 
 
-        # 只能访问被激活的delivery，且恰好访问一次
+
         for j, delivery_label in enumerate(delivery_labels):
             delivery_idx = delivery_label_to_idx[delivery_label]
             m.addConstr(gp.quicksum(x[i, delivery_idx] for i in range(N) if i != delivery_idx) == z[j], f"delivery_visit_{delivery_label}")

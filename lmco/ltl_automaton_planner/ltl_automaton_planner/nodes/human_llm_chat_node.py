@@ -1,6 +1,8 @@
 import os
+import re
 import json
 import traceback
+import yaml
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -9,6 +11,7 @@ import threading
 import tkinter as tk
 from tkinter import scrolledtext
 import time
+from ament_index_python.packages import get_package_share_directory
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -21,7 +24,11 @@ INTENT_PARAMS = {
             "location": "coordinates [x, y] (e.g., [5.0, 19.5])",
             "task_label": "two-letter code chosen by user (e.g., 'fb', 'aa', 'xy')",
             "delivery_point": "single letter: 'b', 'c', 'd', or 'e'",
-            "task_type": "type of task: 'normal' or 'special' (default: 'normal')"
+            "task_type": (
+                "integer task type id (string form: '1', '2', ...). "
+                "Each robot has a binary capability vector indicating which "
+                "task types it can perform."
+            )
         }
     },
     "obstacle_update": {
@@ -46,15 +53,36 @@ INTENT_PARAMS = {
 class HumanLLMChatNode(Node):
     def __init__(self):
         super().__init__('human_llm_chat_node')
-        
+
         self.instruction_pub = self.create_publisher(String, '/human_instruction', 10)
-        
+
         # Timing data publisher
         self.timing_pub = self.create_publisher(String, '/timing_data', 10)
-        
+
         self.conversation_history = []
         self.current_intent = None
         self.collected_params = {}
+
+        # Discover multi-type task info & robot capabilities from the shared yaml,
+        # so the prompt can describe them to the LLM dynamically.
+        self.type_labels_map = {}
+        self.num_task_types = 0
+        self.robot_capabilities = {}
+        try:
+            package_share = get_package_share_directory('ltl_automaton_planner')
+            task_points_yaml = os.path.join(package_share, 'config', 'Task_Points.yaml')
+            with open(task_points_yaml, 'r') as f:
+                yaml_data = yaml.safe_load(f) or {}
+            for key, value in yaml_data.items():
+                m = re.match(r"type(\d+)_labels", key)
+                if m and value:
+                    tid = int(m.group(1))
+                    self.type_labels_map[tid] = list(value)
+                    if tid > self.num_task_types:
+                        self.num_task_types = tid
+            self.robot_capabilities = yaml_data.get('robot_capabilities', {}) or {}
+        except Exception as e:
+            self.get_logger().warn(f"Could not load Task_Points.yaml for type info: {e}")
         
         # Timing tracking variables (using monotonic time for durations)
         self.input_start_mono = None  # When user starts typing (monotonic)
@@ -335,18 +363,47 @@ Just tell me what you need, for example:
                 'error'
             ))
     
+    def _build_task_type_block(self):
+        """Render a short LLM-facing description of the current task types and robot capabilities."""
+        if self.num_task_types <= 0:
+            return (
+                "task_type is a string identifier; default to '1' if unknown."
+            )
+
+        type_lines = []
+        for tid in sorted(self.type_labels_map.keys()):
+            labels = self.type_labels_map[tid]
+            sample = ", ".join(labels[:6])
+            type_lines.append(f'     * "{tid}": example labels [{sample}]')
+
+        cap_lines = []
+        for rid in sorted(self.robot_capabilities.keys()):
+            cap = self.robot_capabilities[rid]
+            allowed = [str(i + 1) for i, v in enumerate(cap) if int(v) == 1]
+            cap_lines.append(f"     * {rid}: types [{', '.join(allowed) if allowed else '—'}]")
+
+        return (
+            f"   The system has {self.num_task_types} heterogeneous task types.\n"
+            f"   task_type must be a string holding the integer id of the type "
+            f"(e.g. '1', '2', ..., '{self.num_task_types}').\n"
+            f"   - Available task types and example labels:\n" + "\n".join(type_lines) + "\n"
+            f"   - Robot capabilities (which types each robot can perform):\n"
+            + "\n".join(cap_lines)
+        )
+
     def analyze_with_llm(self, user_input):
         """Use LLM to analyze user input and check for missing parameters."""
-        
+
         # Build conversation context
         self.conversation_history.append({"role": "user", "content": user_input})
-        
+
+        task_type_block = self._build_task_type_block()
         system_prompt = f"""You are a friendly and intelligent assistant helping users control robots. You can understand casual, vague, or informal language and interpret the user's intent.
 
 YOUR CAPABILITIES:
 You help users create 3 types of robot commands:
 1. add_task - Send a robot to do something at a location
-   - REQUIRED: 
+   - REQUIRED:
      * location: [x, y] coordinates (e.g., [5.0, 19.5])
      * task_label: a two-letter code chosen by the user (e.g., 'fb', 'aa', 'xy')
      * delivery_point: a single letter indicating the delivery room - ONLY 'b', 'c', 'd', or 'e' are valid
@@ -354,7 +411,8 @@ You help users create 3 types of robot commands:
        - 'c' = location [5, 16]
        - 'd' = location [16, 13]
        - 'e' = location [16, 5.5]
-   - OPTIONAL: task_type ("normal" or "special")
+   - OPTIONAL: task_type (string holding an integer id, default '1')
+{task_type_block}
    
 2. obstacle_update - Report an obstacle in the environment
    - REQUIRED: obstacle_location - can be specified as:

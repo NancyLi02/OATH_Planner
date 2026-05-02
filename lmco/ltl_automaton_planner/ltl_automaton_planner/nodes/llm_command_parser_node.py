@@ -1,6 +1,7 @@
 import os
 import json
 import math
+import re
 import time
 import rclpy
 from rclpy.node import Node
@@ -67,6 +68,20 @@ class LLMCommandParserNode(Node):
         with open(task_points_yaml, 'r') as f:
             yaml_data = yaml.safe_load(f)
         robot_names = list(yaml_data.get('robot_positions', {}).keys())
+
+        # Discover declared task types (typeN_labels) and capability vectors so we can
+        # describe them to the LLM.
+        self.type_labels_map = {}
+        max_type_id = 0
+        for key, value in yaml_data.items():
+            m = re.match(r"type(\d+)_labels", key) if value else None
+            if m:
+                tid = int(m.group(1))
+                self.type_labels_map[tid] = list(value)
+                max_type_id = max(max_type_id, tid)
+        self.num_task_types = max_type_id
+
+        self.robot_capabilities = yaml_data.get('robot_capabilities', {}) or {}
         self.task_pubs = {}
         for robot in robot_names:
             topic = f'/{robot}/add_task'
@@ -124,7 +139,7 @@ class LLMCommandParserNode(Node):
                     msg_out.location = parameters.get("location", [0.0, 0.0])
                     msg_out.task_label = parameters.get("task_label", "")
                     msg_out.delivery_point = parameters.get("delivery_point", "")
-                    msg_out.task_type = parameters.get("task_type", "normal")
+                    msg_out.task_type = str(parameters.get("task_type", "1"))
                     self.publish_add_task(msg_out)
                     self.get_logger().info(f'Published AddTask: {msg_out}')
                     
@@ -214,9 +229,28 @@ class LLMCommandParserNode(Node):
             self.get_logger().error(f'Parsing or publishing failed: {e}')
 
     def call_llm(self, instruction_text):
+        # Build a short description of the available task types for the LLM
+        if self.num_task_types > 0:
+            type_lines = []
+            for tid in sorted(self.type_labels_map.keys()):
+                examples = ", ".join(self.type_labels_map[tid][:6])
+                type_lines.append(f'    - "{tid}": e.g. labels {examples}')
+            task_types_block = (
+                f"task_type must be one of {sorted(self.type_labels_map.keys())} "
+                f"(integer 1..{self.num_task_types} encoded as a string).\n"
+                + "\n".join(type_lines)
+            )
+        else:
+            task_types_block = (
+                'task_type is a string identifier, "1" by default.'
+            )
+
         prompt = f"""
 You are a command parser. Convert the following instruction into a JSON array, where each element represents one intent.
 Possible intents: "add_task" or "obstacle_update" or "change_task_priority".
+
+The system uses {self.num_task_types or 'an unknown number of'} heterogeneous task types.
+{task_types_block}
 
 Each element should follow one of the following formats:
 
@@ -227,7 +261,7 @@ For "add_task":
     "location": [1.0, 2.0],
     "delivery_point": "b",
     "task_label": "fb",
-    "task_type": "special"
+    "task_type": "1"
   }}
 }}
 

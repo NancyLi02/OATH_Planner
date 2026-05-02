@@ -1,2 +1,0 @@
-hard_task: "([]<> (r1 && loaded)) && ([]<> (r1 && unloaded))"
-soft_task: "[]!r3"
