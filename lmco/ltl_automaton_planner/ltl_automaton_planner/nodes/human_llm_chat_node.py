@@ -78,12 +78,12 @@ class HumanLLMChatNode(Node):
             current_scaling = self.root.tk.call('tk', 'scaling')
             if current_scaling > 1.5:
                 # Reduce scaling for better fit on high-DPI screens
-                self.root.tk.call('tk', 'scaling', 1.25)
+                self.root.tk.call('tk', 'scaling', 1)
         except Exception:
             pass
         
         self.root.title("Human-LLM Command Interface")
-        self.root.geometry("800x700")
+        self.root.geometry("500x400")
         self.root.configure(bg='#1e1e2e')
         
         # Main frame
@@ -94,7 +94,7 @@ class HumanLLMChatNode(Node):
         title_label = tk.Label(
             main_frame, 
             text="Robot Task Command Interface",
-            font=('Consolas', 20, 'bold'),
+            font=('Consolas', 14, 'bold'),
             fg='#89b4fa',
             bg='#1e1e2e'
         )
@@ -107,7 +107,7 @@ class HumanLLMChatNode(Node):
         # Input entry
         self.input_entry = tk.Entry(
             input_frame,
-            font=('Consolas', 14),
+            font=('Consolas', 10),
             bg='#45475a',
             fg='#cdd6f4',
             insertbackground='#f5e0dc',
@@ -121,7 +121,7 @@ class HumanLLMChatNode(Node):
         self.send_btn = tk.Button(
             input_frame,
             text="Send",
-            font=('Consolas', 13, 'bold'),
+            font=('Consolas', 10, 'bold'),
             bg='#89b4fa',
             fg='#1e1e2e',
             activebackground='#b4befe',
@@ -136,7 +136,7 @@ class HumanLLMChatNode(Node):
         self.reset_btn = tk.Button(
             input_frame,
             text="Reset",
-            font=('Consolas', 13),
+            font=('Consolas', 10),
             bg='#f38ba8',
             fg='#1e1e2e',
             activebackground='#eba0ac',
@@ -151,7 +151,7 @@ class HumanLLMChatNode(Node):
         self.chat_display = scrolledtext.ScrolledText(
             main_frame,
             wrap=tk.WORD,
-            font=('Consolas', 14),
+            font=('Consolas', 10),
             bg='#313244',
             fg='#cdd6f4',
             insertbackground='#f5e0dc',

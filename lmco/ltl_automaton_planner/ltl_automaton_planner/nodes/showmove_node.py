@@ -402,7 +402,8 @@ class ShowMoveNode(Node):
             elif timing_type == 'robot_finished':
                 agent_name = data.get('agent_name', 'unknown')
                 self.timing_data['robot_finished'][agent_name] = data
-                self.get_logger().info(f"[TIMING COLLECTED] Robot {agent_name} finished with {data.get('total_steps', 0)} steps")
+                dist = data.get('total_distance', 0.0)
+                self.get_logger().info(f"[TIMING COLLECTED] Robot {agent_name} finished: {data.get('total_steps', 0)} steps, total distance = {dist:.4f}")
                 
             elif timing_type == 'instruction_sent':
                 # Store instruction sent timing for correlation
@@ -551,21 +552,25 @@ class ShowMoveNode(Node):
             self.get_logger().info("│   No system response timing data collected                                  │")
         self.get_logger().info("└─────────────────────────────────────────────────────────────────────────────┘")
         
-        # 5. Robot Step Count Summary
+        # 5. Robot Step Count & Distance Summary
         self.get_logger().info("")
         self.get_logger().info("┌─────────────────────────────────────────────────────────────────────────────┐")
-        self.get_logger().info("│ 5. ROBOT STEP COUNT SUMMARY                                                 │")
+        self.get_logger().info("│ 5. ROBOT STEP COUNT & DISTANCE SUMMARY                                       │")
         self.get_logger().info("├─────────────────────────────────────────────────────────────────────────────┤")
         if self.timing_data['robot_finished']:
             total_steps = 0
+            total_distance_all = 0.0
             for agent_name, data in sorted(self.timing_data['robot_finished'].items()):
                 steps = data.get('total_steps', 0)
+                dist = data.get('total_distance', 0.0)
                 total_steps += steps
-                self.get_logger().info(f"│   {agent_name}: {steps} steps{' '*(60-len(agent_name)-len(str(steps)))}│")
+                total_distance_all += dist
+                self.get_logger().info(f"│   {agent_name}: {steps} steps, distance = {dist:.4f}{' '*(38-len(agent_name)-len(str(steps))-len(f'{dist:.4f}'))}│")
             self.get_logger().info("│   ─────────────────────────────────────────────────────────────────────── │")
             self.get_logger().info(f"│   TOTAL STEPS (ALL ROBOTS): {total_steps:<48}│")
+            self.get_logger().info(f"│   TOTAL DISTANCE (ALL ROBOTS): {total_distance_all:.4f}{' '*(44-len(f'{total_distance_all:.4f}'))}│")
         else:
-            self.get_logger().info("│   No robot step count data collected                                        │")
+            self.get_logger().info("│   No robot step/distance data collected                                    │")
         self.get_logger().info("└─────────────────────────────────────────────────────────────────────────────┘")
         
         # 6. Overall Summary
@@ -578,7 +583,9 @@ class ShowMoveNode(Node):
         self.get_logger().info(f"│   Number of robots: {len(self.robot_ids):<56}│")
         
         total_steps_all = sum(d.get('total_steps', 0) for d in self.timing_data['robot_finished'].values())
+        total_distance_all = sum(d.get('total_distance', 0.0) for d in self.timing_data['robot_finished'].values())
         self.get_logger().info(f"│   Total steps (all robots): {total_steps_all:<48}│")
+        self.get_logger().info(f"│   Total distance (all robots): {total_distance_all:.4f}{' '*(42-len(f'{total_distance_all:.4f}'))}│")
         
         total_ui_time = sum(d['duration'] for d in self.timing_data['ui_inputs']) if self.timing_data['ui_inputs'] else 0
         total_llm_time = sum(d['duration'] for d in self.timing_data['llm_processing']) if self.timing_data['llm_processing'] else 0
@@ -919,6 +926,7 @@ class ShowMoveNode(Node):
                 bump_coords = [self.transform_coords(pt) for pt in bump.exterior.coords]
                 pygame.draw.polygon(self.world.screen, YELLOW, bump_coords, 0)
         
+        edge_surface = pygame.Surface((self.world.width, self.world.height), pygame.SRCALPHA)
         for action in self.actions:
             pose_ab = extract_numbers(str(action))
             pose_a = pose_ab[0]
@@ -936,7 +944,8 @@ class ShowMoveNode(Node):
                 int(self.world.height - (self.nodes[str(pose_b)]['attr']['pose'][1] * self.world.cell_size))
             )
 
-            pygame.draw.line(self.world.screen, GREY, start_pos, end_pos, 1)
+            pygame.draw.line(edge_surface, (200, 200, 200, 50), start_pos, end_pos, 1)
+        self.world.screen.blit(edge_surface, (0, 0))
         
         # The drawing loops for self.world.block and self.world.bump seem to draw detected edges, not polygons.
         # This is different from the obstacle drawing above. This logic can remain.
@@ -980,14 +989,13 @@ class ShowMoveNode(Node):
 
             pygame.draw.line(self.world.screen, YELLOW, start_pos, end_pos, 3)
             
-        # Draw nodes
+        # Draw nodes (subtle, semi-transparent)
+        node_surface = pygame.Surface((self.world.width, self.world.height), pygame.SRCALPHA)
         for node in self.nodes:
-            pygame.draw.circle(
-                self.world.screen, BLUE,
-                (self.nodes[node]['attr']['pose'][0] * self.world.cell_size,
-                 self.world.height - (self.nodes[node]['attr']['pose'][1] * self.world.cell_size)),
-                3
-            )
+            pos = (int(self.nodes[node]['attr']['pose'][0] * self.world.cell_size),
+                   int(self.world.height - (self.nodes[node]['attr']['pose'][1] * self.world.cell_size)))
+            pygame.draw.circle(node_surface, (160, 160, 200, 60), pos, 2)
+        self.world.screen.blit(node_surface, (0, 0))
     
         # Draw all robot positions (reading shared data under lock)
         with self.lock:

@@ -7,6 +7,7 @@ MILP Benchmark Script (Decoupled Version)
 """
 
 import time
+import sys
 import yaml
 import pandas as pd
 import numpy as np
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import List, Tuple, Dict
 import gurobipy as gp
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from MILP import ClusterTaskPlanner
 
 
@@ -207,100 +209,67 @@ def plot_benchmark_boxplot(
     if len(data) == 0:
         raise ValueError("No successful runs to plot")
 
-    fig, ax = plt.subplots(figsize=(8, 4))
+    import matplotlib as mpl
+    mpl.rcParams.update({
+        'font.family': 'sans-serif',
+        'font.sans-serif': ['DejaVu Sans', 'Arial', 'Helvetica'],
+        'axes.linewidth': 1.0,
+        'axes.edgecolor': '0.15',
+        'xtick.direction': 'in',
+        'ytick.direction': 'in',
+        'xtick.major.width': 1.2,
+        'ytick.major.width': 1.2,
+        'axes.spines.top': False,
+        'axes.spines.right': False,
+    })
 
-    # Calculate statistics for trend shading
+    fig, ax = plt.subplots(figsize=(8, 4), constrained_layout=True)
+
     positions = np.arange(1, len(data) + 1)
-    means = np.array([np.mean(d) for d in data])
-    mins = np.array([np.min(d) for d in data])
-    maxs = np.array([np.max(d) for d in data])
-
-    # Polynomial fitting for smooth trend curve (degree 3 for rise-then-fall pattern)
-    poly_degree = min(3, len(positions) - 1)
-    
-    # Fit polynomial to means
-    coeffs_mean = np.polyfit(positions, means, poly_degree)
-    poly_mean = np.poly1d(coeffs_mean)
-    
-    # Add padding to min/max before fitting to ensure coverage of all data points
-    data_range = maxs.max() - mins.min()
-    padding = data_range * 0.2  # 20% padding
-    maxs_padded = maxs + padding
-    mins_padded = mins - padding
-    
-    # Fit polynomial to padded upper and lower bounds
-    coeffs_upper = np.polyfit(positions, maxs_padded, poly_degree)
-    coeffs_lower = np.polyfit(positions, mins_padded, poly_degree)
-    poly_upper = np.poly1d(coeffs_upper)
-    poly_lower = np.poly1d(coeffs_lower)
-    
-    # Generate smooth curve points
-    x_smooth = np.linspace(positions.min(), positions.max(), 100)
-    y_mean_smooth = poly_mean(x_smooth)
-    y_upper_smooth = poly_upper(x_smooth)
-    y_lower_smooth = poly_lower(x_smooth)
-    
-    # Ensure lower bound doesn't go negative
-    y_lower_smooth = np.maximum(y_lower_smooth, 0)
-
-    # Add light purple shaded area to show fitted trend range (covers all data points)
-    ax.fill_between(
-        x_smooth,
-        y_lower_smooth,
-        y_upper_smooth,
-        color="#9370DB",  # Medium purple
-        alpha=0.15,
-        zorder=1,
-    )
-
-    # Add smooth trend line through fitted means (dashed)
-    ax.plot(
-        x_smooth,
-        y_mean_smooth,
-        color="#8A2BE2",  # Blue violet
-        linestyle="--",
-        linewidth=2,
-        alpha=0.7,
-        zorder=2,
-    )
 
     bp = ax.boxplot(
         data,
         labels=capacities,
+        positions=positions,
         patch_artist=True,
-        showfliers=True,
-        zorder=3,
+        showfliers=False,
     )
 
     colors = plt.cm.viridis(np.linspace(0.2, 0.8, len(data)))
     for patch, color in zip(bp["boxes"], colors):
         patch.set_facecolor(color)
-        patch.set_alpha(0.7)
+        patch.set_alpha(0.72)
+        patch.set_edgecolor("0.25")
+        patch.set_linewidth(1.2)
+    for w in bp["whiskers"]:
+        w.set(color="0.45", linewidth=1.2, linestyle="--")
+    for c in bp["caps"]:
+        c.set(color="0.45", linewidth=1.2)
+    for m in bp["medians"]:
+        m.set(color="#B22222", linewidth=2)
 
-    ax.set_xlabel("Number of Tasks (Capacity)", fontsize=16)
-    ax.set_ylabel("Solve Time (seconds)", fontsize=16)
+    ax.set_xlabel("Number of Tasks (Capacity)", fontsize=18)
+    ax.set_ylabel("Solve Time (seconds)", fontsize=18)
     ax.tick_params(axis="both", labelsize=16)
 
-    ax.yaxis.grid(True, linestyle="--", alpha=0.7)
     ax.set_axisbelow(True)
+    ax.yaxis.grid(True, linestyle="-", alpha=0.35, color="0.75", linewidth=0.8)
+    ax.xaxis.grid(False)
 
-    ax.scatter(
-        positions,
-        means,
-        marker="D",
-        s=20,
-        color="red",
-        zorder=5,
-    )
+    for spine in ax.spines.values():
+        spine.set_edgecolor("0.15")
+        spine.set_linewidth(1.0)
 
     output_path.mkdir(parents=True, exist_ok=True)
     pdf_path = output_path / filename
+    png_path = output_path / filename.replace(".pdf", ".png")
 
-    plt.tight_layout()
-    plt.savefig(pdf_path, format="pdf")
+    plt.savefig(pdf_path, dpi=300, bbox_inches="tight", pad_inches=0.08)
+    plt.savefig(png_path, dpi=300, bbox_inches="tight", pad_inches=0.08)
     plt.close()
 
     print(f"Boxplot saved to: {pdf_path}")
+    print(f"Boxplot saved to: {png_path}")
 
 
 # =========================
@@ -333,7 +302,7 @@ def print_summary(df: pd.DataFrame):
 
 if __name__ == "__main__":
     script_dir = Path(__file__).parent
-    output_dir = script_dir / "benchmark_results"
+    output_dir = script_dir.parent / "benchmark_results"
     result_file = output_dir / "milp_benchmark_results.xlsx"
 
     # -------- MODE 1: Run experiments --------

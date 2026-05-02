@@ -1435,13 +1435,13 @@ class TaskAssignNode(Node):
         }
         return delivery_points.get(delivery_label, (0, 0))
 
-    def _nearest_neighbor_fallback(self, robot_start, task_points, task_labels):
+    def _nearest_neighbor_fallback(self, robot_start, task_points, task_labels, robot_capacity=3):
         """Fallback method using nearest neighbor when MILP fails, with delivery points grouped after pickups."""
         current_pos = robot_start
         remaining = list(range(len(task_points)))
         pickup_sequence = []
 
-        while remaining:
+        while remaining and len(pickup_sequence) < robot_capacity:
             nearest_idx = min(remaining, key=lambda i: np.linalg.norm(np.array(current_pos) - np.array(task_points[i])))
             pickup_sequence.append(nearest_idx)
             current_pos = task_points[nearest_idx]

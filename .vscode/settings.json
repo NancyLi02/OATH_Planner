@@ -42,5 +42,6 @@
         "/opt/ros/humble/local/lib/python3.10/dist-packages"
     ],
     "cmake.sourceDirectory": "/home/nanli/ros2_ws/src/interfaces_hmm_sim",
-    "ros.distro": "humble"
+    "ros.distro": "humble",
+    "ROS2.distro": "humble"
 }

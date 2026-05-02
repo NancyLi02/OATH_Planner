@@ -136,6 +136,6 @@ def generate_launch_description():
     
     ld.add_action(taskassign_node)
     ld.add_action(showmove_node)
-    ld.add_action(llm_command_parser_node)
-    ld.add_action(human_llm_chat_node)
+    # ld.add_action(llm_command_parser_node)
+    # ld.add_action(human_llm_chat_node)
     return ld

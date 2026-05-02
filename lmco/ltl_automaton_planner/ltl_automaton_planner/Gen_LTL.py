@@ -8,7 +8,7 @@ def generate_ltl_formula(route, pickup_labels, delivery_labels):
     Returns:
         str: Nested LTL formula as a string.
     """
-    # 先统计每个pickup在route中的顺序编号
+
     pickup_order = {}
     count = 1
     for node in route:
@@ -25,18 +25,18 @@ def generate_ltl_formula(route, pickup_labels, delivery_labels):
             raise ValueError(f"Node {node} not in pickup or delivery labels")
 
     formula = ""
-    # 找到第一个pickup点
+
     first_pickup_idx = None
     for idx, node in enumerate(route):
         if node in pickup_labels:
             first_pickup_idx = idx
             break
-    # 按route正序嵌套
+
     for idx, node in enumerate(reversed(route)):
         real_idx = len(route) - 1 - idx
         state = get_state(node)
         if real_idx == first_pickup_idx and node in pickup_labels:
-            # 第一个pickup点，必须是loaded1，且不是loaded2和loaded3
+
             part = f"({node} && loaded1 && !loaded2 && !loaded3)"
         else:
             part = f"({node} && {state})"

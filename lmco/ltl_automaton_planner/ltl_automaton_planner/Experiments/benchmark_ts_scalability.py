@@ -24,26 +24,35 @@ import yaml
 
 # Add the parent directory to path to enable imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, current_dir)
+parent_dir = os.path.dirname(current_dir)  # Go up one level to ltl_automaton_planner
+# Insert at the beginning to ensure we use source code, not installed package
+sys.path.insert(0, parent_dir)
 
 # Use the same imports as planner_cluster_node.py
-from ltl_tools.product import ProdAut
-from ltl_tools.buchi import mission_to_buchi
-from ltl_tools.ts import TSModel
-from ltl_tools.ltl_planner import LTLPlanner
+from ltl_automaton_planner.ltl_tools.product import ProdAut
+from ltl_automaton_planner.ltl_tools.buchi import mission_to_buchi
+from ltl_automaton_planner.ltl_tools.ts import TSModel
+from ltl_automaton_planner.ltl_tools.ltl_planner import LTLPlanner
 
 # Import from ltl_automaton_utilities - same as planner_cluster_node.py
-from ltl_automaton_utilities import (
-    state_models_from_ts, 
-    import_ts_from_file, 
-    halton_sequence,
-    rejection_sampling
-)
+# Import directly from source file to avoid using installed package
+import importlib.util
+ltl_utils_path = os.path.join(parent_dir, 'ltl_automaton_utilities.py')
+spec = importlib.util.spec_from_file_location("ltl_automaton_utilities", ltl_utils_path)
+ltl_utils = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(ltl_utils)
+
+# Import the functions we need
+state_models_from_ts = ltl_utils.state_models_from_ts
+import_ts_from_file = ltl_utils.import_ts_from_file
+halton_sequence = ltl_utils.halton_sequence
+rejection_sampling = ltl_utils.rejection_sampling
 
 
 def get_config_dir():
     """Get the config directory path - works when running directly from source"""
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config'))
+    # From Experiments/ directory, go up to ltl_automaton_planner package root, then to config
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config'))
 
 
 def load_lines_from_yaml_local():
@@ -93,7 +102,7 @@ def load_points_with_label_local(new_task_points=None):
     return points_with_label, robot_position_order
 
 
-def build_graph_halton_variable(n_points, x_length=20, y_length=20, new_task_points=None, initial_robot='robot2'):
+def build_graph_halton_variable(n_points, x_length=20, y_length=20, new_task_points=None, initial_robot='robot2', random_seed=None):
     """
     Build graph with Halton sequence sampling - MODIFIED to actually use n_points parameter.
     This is a copy of build_graph_halton from ltl_automaton_utilities.py, 
@@ -105,6 +114,7 @@ def build_graph_halton_variable(n_points, x_length=20, y_length=20, new_task_poi
         y_length: Y dimension of the area
         new_task_points: Optional new task points to add
         initial_robot: Which robot position to use as initial state (default: 'robot2')
+        random_seed: Optional random seed for sampling. If None, uses current random state.
     
     Returns:
         nodes: Dictionary of nodes
@@ -122,7 +132,7 @@ def build_graph_halton_variable(n_points, x_length=20, y_length=20, new_task_poi
         obstacles.append(buffered)
         
     # Generate valid points using rejection sampling - use the actual n_points parameter!
-    valid_points = rejection_sampling(n_points, lines, x_length)
+    valid_points = rejection_sampling(n_points, lines, x_length, random_seed=random_seed)
     
     nodes = dict()
     actions = dict()
@@ -206,10 +216,19 @@ def get_transition_system_path():
     return os.path.join(get_config_dir(), 'isaac_known.yaml')
 
 
-def run_benchmark(n_points, ltl_formula, initial_beta=1000, gamma=10, algo_type='dstar', grid_size=40):
+def run_benchmark(n_points, ltl_formula, initial_beta=1000, gamma=10, algo_type='dstar', grid_size=40, random_seed=None):
     """
     Run a single benchmark with specified number of sampling points.
     Uses the same approach as planner_cluster_node.py
+    
+    Args:
+        n_points: Number of sampling points
+        ltl_formula: LTL formula to use
+        initial_beta: Initial beta parameter
+        gamma: Gamma parameter
+        algo_type: Algorithm type
+        grid_size: Grid size
+        random_seed: Optional random seed for sampling. If None, uses current random state.
     
     Returns:
         dict with timing results
@@ -238,7 +257,7 @@ def run_benchmark(n_points, ltl_formula, initial_beta=1000, gamma=10, algo_type=
         # ============================================================
         print(f"  Building graph with {n_points} sampling points...")
         graph_start = time.time()
-        nodes, actions, initial_node_index = build_graph_halton_variable(n_points, initial_robot='robot2')
+        nodes, actions, initial_node_index = build_graph_halton_variable(n_points, initial_robot='robot2', random_seed=random_seed)
         graph_end = time.time()
         results['graph_build_time'] = graph_end - graph_start
         results['actual_nodes'] = len(nodes)
@@ -404,13 +423,17 @@ def main():
         
         for run_idx in range(num_runs):
             print(f"\nRun {run_idx + 1}/{num_runs}:")
+            # Use different random seed for each run to ensure different sampling points
+            # Combine n_points and run_idx to create unique seeds for each configuration and run
+            run_seed = n_points * 10000 + run_idx * 1000 + int(time.time() * 1000) % 1000
             result = run_benchmark(
                 n_points=n_points,
                 ltl_formula=ltl_formula,
                 initial_beta=initial_beta,
                 gamma=gamma,
                 algo_type=algo_type,
-                grid_size=grid_size
+                grid_size=grid_size,
+                random_seed=run_seed
             )
             all_results['results'][n_points].append(result)
             

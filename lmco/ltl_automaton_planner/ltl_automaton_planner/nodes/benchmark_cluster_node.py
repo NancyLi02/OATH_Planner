@@ -22,6 +22,7 @@ import numpy as np
 import time
 import csv
 import json
+import math
 from shapely.geometry import Point, LineString, Polygon
 from example_interfaces.srv import AddTwoInts
 import re
@@ -254,6 +255,11 @@ class LTLControllerDrone(Node):
             self.get_logger().warn(f'Robot {self.agent_name} not found in Task_Points.yaml')
             self.pose = (0, 0)
 
+        self.special_robots = yaml_data.get('special_robot', [])
+        self.is_special_robot = self.agent_name in self.special_robots
+        self.speed_factor = 1.0 if self.is_special_robot else 1.5
+        self.get_logger().info(f'[{self.agent_name}] special={self.is_special_robot}, speed_factor={self.speed_factor}')
+
         self.pose_index = self.init_pose
 
         self.previous_pose = self.pose
@@ -262,7 +268,7 @@ class LTLControllerDrone(Node):
         self.t_sim = self.get_clock().now()  # Use the ROS2 clock for the current time
         self.plan_index = 0
         self.total_plan_index = 0
-        self.next_interval = 10
+        self.next_interval = 10 / self.speed_factor
 
         self.create_timer(1.0/10, self.simulate)
 
@@ -287,6 +293,9 @@ class LTLControllerDrone(Node):
         
         # Step counter for timing summary
         self.total_steps = 0
+        # Distance: total and per-step (only movement steps have non-zero distance)
+        self.total_distance = 0.0
+        self.step_distances = []
         
         # Timing data publisher
         self.timing_pub = self.create_publisher(String, '/timing_data', 10)
@@ -539,7 +548,7 @@ class LTLControllerDrone(Node):
         Publish final timing data for this robot.
         """
         self.get_logger().info(f'[{self.agent_name}] Received ALL_ROBOTS_FINISHED signal!')
-        self.get_logger().info(f'[TIMING] {self.agent_name} FINAL stats - Total steps: {self.total_steps}, Total plan index: {self.total_plan_index}')
+        self.get_logger().info(f'[TIMING] {self.agent_name} FINAL stats - Total steps: {self.total_steps}, Total distance: {self.total_distance:.4f}, Total plan index: {self.total_plan_index}')
         
         # Publish final timing data for this robot
         timing_msg = String()
@@ -548,6 +557,8 @@ class LTLControllerDrone(Node):
             'agent_name': self.agent_name,
             'total_steps': self.total_steps,
             'total_plan_index': self.total_plan_index,
+            'total_distance': self.total_distance,
+            'step_distances': self.step_distances,
             'final': True,
             'timestamp': time.time()
         })
@@ -767,13 +778,20 @@ class LTLControllerDrone(Node):
                             self.mode = EquipmentMode.RESCUE
                         else: # including action "stay", nothing particular needs to be done
                             pass
+                        # Per-step distance (Euclidean); only "from_*" moves change position
+                        step_dist = math.hypot(
+                            self.pose[0] - self.previous_pose[0],
+                            self.pose[1] - self.previous_pose[1]
+                        ) if str(act)[:4] == "from" else 0.0
+                        self.step_distances.append(step_dist)
+                        self.total_distance += step_dist
                         self.plan_index += 1
                         self.total_plan_index += 1
                         self.total_steps += 1  # Increment step counter
                         # self.get_logger().info(f"plan index: {self.plan_index}")
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
-                        self.next_interval = action_dict['weight']*5 # +1
+                        self.next_interval = action_dict['weight'] * 5 / self.speed_factor
                         # self.get_logger().info("beanchmark fix 0.6")
                         
                         ##### Logging
@@ -882,12 +900,19 @@ class LTLControllerDrone(Node):
                             self.mode = EquipmentMode.RESCUE
                         else: # including action "stay", nothing particular needs to be done
                             pass
+                        # Per-step distance (Euclidean); only "goto*" moves change position
+                        step_dist = math.hypot(
+                            self.pose[0] - self.previous_pose[0],
+                            self.pose[1] - self.previous_pose[1]
+                        ) if str(act)[:4] == "goto" else 0.0
+                        self.step_distances.append(step_dist)
+                        self.total_distance += step_dist
                         self.plan_index += 1
                         self.total_plan_index += 1
                         self.total_steps += 1  # Increment step counter
                         print(self.mode)
                         self.t = self.get_clock().now().to_msg()
-                        self.next_interval = action_dict['weight']*5 # +1
+                        self.next_interval = action_dict['weight'] * 5 / self.speed_factor
                         
                         ########Logging
                         last_round_time = 50 if (self.previous_pose, self.pose) in self.world.bump else 10
